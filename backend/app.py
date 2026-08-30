@@ -36,13 +36,11 @@ def _configure_logging():
 _configure_logging()
 
 
-def _rate_limit_key():
-    """Resolve the per-request key for rate limiting.
+def _jwt_sub():
+    """Return the authenticated user id (from a valid JWT) or None.
 
-    Authenticated users are keyed by their user id (from a valid JWT) so each
-    account gets its own budget; when no valid token is present (e.g. the
-    public authentication endpoints), fall back to the client IP. Unknown
-    tokens never error here -- they are simply treated as unauthenticated.
+    Expired/invalid tokens never raise here -- they are simply treated as
+    unauthenticated, matching the rate limiter's behaviour.
     """
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
@@ -52,10 +50,45 @@ def _rate_limit_key():
                 payload = decode_token(token)
                 identity = payload.get("sub")
                 if identity is not None:
-                    return "user:{}".format(identity)
+                    return str(identity)
             except Exception:
                 pass
+    return None
+
+
+def _rate_limit_key():
+    """Resolve the per-request key for rate limiting.
+
+    Authenticated users are keyed by their user id (from a valid JWT) so each
+    account gets its own budget; when no valid token is present (e.g. the
+    public authentication endpoints), fall back to the client IP. Unknown
+    tokens never error here -- they are simply treated as unauthenticated.
+    """
+    identity = _jwt_sub()
+    if identity is not None:
+        return "user:{}".format(identity)
     return "ip:{}".format(request.remote_addr or "unknown")
+
+
+def _set_rls_context():
+    """Expose the authenticated user id to Postgres Row-Level Security.
+
+    Sets the ``request.jwt.claims.sub`` GUC for the current transaction to the
+    JWT user id (see ``migrations/versions/f0e9d8c7b6a5_*.py``). ``SET LOCAL``
+    is scoped to the current transaction, so each request gets its own context
+    and no value leaks into the next request. Unauthenticated requests leave the
+    GUC unset and RLS policies fail closed.
+    """
+    identity = _jwt_sub()
+    if identity is None:
+        return
+    try:
+        db.session.execute(
+            text("SET LOCAL request.jwt.claims.sub TO :sub"),
+            {"sub": identity},
+        )
+    except Exception:
+        logger.exception("Failed to set RLS context")
 
 
 # ============================================================
@@ -200,6 +233,16 @@ def create_app():
                 "X-RateLimit-Remaining": str(result["remaining"]),
                 "X-RateLimit-Reset": str(result["reset_at"]),
             }
+        return None
+
+    @app.before_request
+    def set_rls_context():
+        # Establish the Row-Level Security context for authenticated requests.
+        # Runs for every request (including ones the rate limiter skips) before
+        # the route handler executes any query.
+        if request.method == "OPTIONS":
+            return None
+        _set_rls_context()
         return None
 
     @app.after_request

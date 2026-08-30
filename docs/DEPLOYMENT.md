@@ -70,6 +70,13 @@ Free-tier production stack:
 - Uses `wsgi.py` as the WSGI entrypoint (the `python app.py` dev server is only for local dev).
 - In-memory rate limiter is single-instance; keep `--workers 2` on one free instance (fine for a hobby app). For horizontal scaling you'd back it with Redis.
 - Health check: `GET /api/health` and `GET /`.
+- Row-Level Security: a migration (`f0e9d8c7b6a5`) enables Postgres RLS with
+  per-user ownership policies on `trips` and `subscriptions` (forced) and a
+  per-user policy on `users` (not forced, so unauthenticated flows still work).
+  The app sets the authenticated user id into the `request.jwt.claims.sub` GUC
+  per request (`SET LOCAL`) so the database enforces ownership too. RLS fails
+  closed whenever the GUC is unset. Applying the migration via `flask db upgrade`
+  is required for the constraints to take effect.
 
 ---
 

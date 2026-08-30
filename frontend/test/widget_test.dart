@@ -7,7 +7,7 @@ void main() {
     await tester.pumpWidget(const TriporaApp());
 
     expect(find.text('Tripora'), findsOneWidget);
-    expect(find.text('Your journey.\nPowered by AI.'), findsOneWidget);
+    expect(find.text('Plan trips that fit your pace.'), findsOneWidget);
     expect(find.text('Start Planning'), findsOneWidget);
   });
 }
