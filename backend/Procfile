@@ -1,0 +1,7 @@
+# Processor for persistent hosts (Railway, Render, Fly.io, VPS).
+# This backend uses PostgreSQL, an in-memory rate limiter and DB migrations, so it
+# must run as a long-lived process — NOT a Vercel serverless function.
+#
+# `gunicorn` is a process server; it is pinned in requirements.txt so it is
+# installed automatically at build time.
+web: gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 120 wsgi:app

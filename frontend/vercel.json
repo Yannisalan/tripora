@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "build/web",
+  "installCommand": "if cd flutter; then git pull && cd .. ; else git clone --branch stable --depth 1 https://github.com/flutter/flutter.git; fi && flutter/bin/flutter config --enable-web && flutter/bin/flutter pub get",
+  "buildCommand": "flutter/bin/flutter build web --release --dart-define=API_BASE_URL=${API_BASE_URL:-https://api.tripora.example.com} --dart-define=PREMIUM_ENABLED=${PREMIUM_ENABLED:-false}",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
