@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
 import '../../widgets/social_sign_in_section.dart';
@@ -25,6 +26,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _showVerification = false;
+  bool _acceptedTerms = false;
+  bool _acceptedPrivacy = false;
   String? _statusMessage;
 
   @override
@@ -40,6 +43,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (!_acceptedTerms || !_acceptedPrivacy) {
+      setState(() {
+        _statusMessage =
+            'Please accept the Terms & Conditions and Privacy Policy to continue.';
+      });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please accept the Terms & Conditions and Privacy Policy.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       return;
     }
 
@@ -337,7 +358,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  _ConsentRow(
+                    leading: 'I agree to the',
+                    label: 'Terms & Conditions',
+                    route: AppRoutes.terms,
+                    value: _acceptedTerms,
+                    onChanged: _isLoading
+                        ? null
+                        : (value) => setState(() => _acceptedTerms = value),
+                  ),
+                  _ConsentRow(
+                    leading: 'I have read the',
+                    label: 'Privacy Policy',
+                    route: AppRoutes.privacy,
+                    value: _acceptedPrivacy,
+                    onChanged: _isLoading
+                        ? null
+                        : (value) => setState(() => _acceptedPrivacy = value),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -464,6 +504,79 @@ class _FieldsDivider extends StatelessWidget {
         ),
         const Expanded(child: Divider()),
       ],
+    );
+  }
+}
+
+class _ConsentRow extends StatelessWidget {
+  const _ConsentRow({
+    required this.leading,
+    required this.label,
+    required this.route,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String leading;
+  final String label;
+  final String route;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
+    return InkWell(
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: value,
+                onChanged: onChanged == null
+                    ? null
+                    : (_) => onChanged!(!value),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: colors.textSecondary,
+                  ),
+                  children: [
+                    TextSpan(text: '$leading '),
+                    WidgetSpan(
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pushNamed(route),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                    TextSpan(text: '.'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

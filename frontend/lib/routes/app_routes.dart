@@ -15,6 +15,8 @@ import '../screens/travel/stay_search_screen.dart';
 import '../screens/travel/car_search_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/legal/legal_screen.dart';
+import '../screens/legal/legal_content.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -26,6 +28,8 @@ class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String terms = '/terms';
+  static const String privacy = '/privacy';
   static const String explore = '/explore';
   static const String planner = '/planner';
   static const String itinerary = '/itinerary';
@@ -57,6 +61,18 @@ class AppRoutes {
       // REGISTER
       // ========================================================
       register: (_) => const RegisterScreen(),
+
+      // ========================================================
+      // LEGAL (TERMS & PRIVACY)
+      // ========================================================
+      terms: (_) => const LegalScreen(
+            title: TermsContent.title,
+            sections: TermsContent.sections,
+          ),
+      privacy: (_) => const LegalScreen(
+            title: PrivacyContent.title,
+            sections: PrivacyContent.sections,
+          ),
 
       // ========================================================
       // EXPLORE
