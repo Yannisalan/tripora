@@ -95,7 +95,9 @@ def send_verification_email(to_email, token):
             "(SMTP not configured)",
             to_email,
         )
-        logger.info("[EMAIL-PLACEHOLDER] token for %s: %s", to_email, token)
+        # NEVER log the raw token: it is the account's verification secret and
+        # must stay out of logs/stdout even in the local placeholder path (it
+        # is conveyed to the user out-of-band, via their inbox).
         return True
 
     msg = _build_message(to_email, token)

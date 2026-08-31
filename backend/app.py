@@ -10,10 +10,12 @@ from sqlalchemy import text
 
 from config.database import db
 from config.settings import Config
+from models.activity_log import ActivityLog
 from routes.auth import auth_bp
 from routes.trips import trips_bp
 from routes.premium import premium_bp
 from routes.travel import travel_bp
+from routes.admin import admin_bp
 from services.rate_limiter import limiter, RateLimitExceeded
 
 logger = logging.getLogger(__name__)
@@ -178,6 +180,7 @@ def create_app():
     app.register_blueprint(trips_bp)
     app.register_blueprint(premium_bp)
     app.register_blueprint(travel_bp)
+    app.register_blueprint(admin_bp)
 
     # ========================================================
     # RATE LIMITING
@@ -252,6 +255,49 @@ def create_app():
             for name, value in headers.items():
                 response.headers[name] = value
         return response
+
+    # ========================================================
+    # REQUEST LOGGING (ANALYTICS)
+    # ========================================================
+    #
+    # When enabled, record each handled request into the activity log as an
+    # ``api_request`` event so the admin dashboard can show raw traffic. The
+    # page-view beacon writes its own row (and would otherwise double-count),
+    # and OPTIONS / health probes are noise, so both are skipped here.
+    # --------------------------------------------------------
+
+    @app.after_request
+    def record_api_request(response):
+        if not Config.REQUEST_LOGGING_ENABLED:
+            return response
+
+        endpoint = request.endpoint
+        if endpoint == "admin.track_page_view":
+            return response
+        if request.method == "OPTIONS":
+            return response
+        if endpoint in ("home", "health"):
+            return response
+
+        try:
+            row = ActivityLog(
+                event_type="api_request",
+                path=request.path,
+                method=request.method,
+                status_code=response.status_code,
+                user_id=_jwt_sub(),
+                ip_address=request.headers.get(
+                    "X-Forwarded-For",
+                    request.remote_addr or "",
+                ).split(",")[0].strip()[:64] or None,
+            )
+            db.session.add(row)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Failed to record API request activity")
+        return response
+
 
     # ========================================================
     # HOME

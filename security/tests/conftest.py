@@ -49,7 +49,7 @@ os.environ.setdefault("DB_PORT", "3306")
 os.environ.setdefault("DB_NAME", "tripora_security_test")
 os.environ.setdefault("JWT_SECRET_KEY", "tripora-security-test-secret-key-not-for-production")
 os.environ.setdefault("GEMINI_API_KEY", "tripora-test-dummy-gemini-key")
-
+os.environ.setdefault("ADMIN_API_TOKEN", "tripora-test-admin-token")
 # Rate limiting is OFF for the pre-existing security suite so those tests
 # behave exactly as they did before the feature was added (several issue many
 # generate/write requests in a single test). The dedicated module
@@ -57,6 +57,23 @@ os.environ.setdefault("GEMINI_API_KEY", "tripora-test-dummy-gemini-key")
 # behaviour; Config still reads its limit/window defaults from the (unset)
 # environment for the assertion tests.
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+
+# Request-logging (the analytics after_request hook) writes a row per request,
+# which serializes badly on the suite's single shared in-memory SQLite
+# connection and slows/hangs many-request tests. The dedicated admin tests
+# exercise the analytics endpoints directly, so keep it OFF here for speed and
+# isolation -- exactly like RATE_LIMIT_ENABLED above.
+os.environ.setdefault("REQUEST_LOGGING_ENABLED", "false")
+
+# Force log-only (placeholder) email delivery instead of a real SMTP send.
+# Without these, ``load_dotenv()`` in ``config/settings.py`` can pull real
+# Gmail credentials out of ``backend/.env`` and every test that registers a
+# user would attempt a real (and rate-limited / slow) SMTP delivery. python-
+# dotenv does not override env vars that already exist, so assigning empty
+# values here keeps ``_email_configured()`` False and the suite hermetic.
+for _mail_var in ("MAIL_HOST", "MAIL_PORT", "MAIL_USER", "MAIL_PASSWORD",
+                  "MAIL_FROM", "MAIL_FROM_NAME", "MAIL_USE_TLS"):
+    os.environ.setdefault(_mail_var, "")
 
 
 def _test_database_uri():

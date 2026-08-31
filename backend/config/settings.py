@@ -132,6 +132,23 @@ class Config:
         return list(cls.DEFAULT_CORS_ORIGINS)
 
     # ============================================================
+    # ADMIN / ANALYTICS
+    # ============================================================
+    #
+    # A single shared secret that gates every `/api/admin/*` endpoint. The
+    # Flutter admin UI presents this to whoever runs the product; it is never
+    # returned to normal app users. Leave unset to disable the admin API.
+    # ------------------------------------------------------------
+
+    ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "")
+
+    # When true, the backend records each request into the activity log
+    # (the `api_request` event type). Turn it off to reduce write load.
+    REQUEST_LOGGING_ENABLED = os.getenv(
+        "REQUEST_LOGGING_ENABLED", "true"
+    ).lower() in ("1", "true", "yes", "on")
+
+    # ============================================================
     # DUFFEL TRAVEL SEARCH (PREMIUM)
     # ============================================================
     #
@@ -249,6 +266,8 @@ class Config:
             "travel.search_flights_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_stays_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_cars_route": cls._bucket(A, A_W, 10, 600),
+            # ---- public page-view beacon ----
+            "admin.track_page_view": cls._bucket(A, A_W, 10, 600),
             # ---- default read bucket ----
             "DEFAULT_READ": cls._bucket(R, R_W, 60, 60),
         }

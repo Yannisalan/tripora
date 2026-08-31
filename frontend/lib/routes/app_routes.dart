@@ -17,6 +17,8 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/legal/legal_screen.dart';
 import '../screens/legal/legal_content.dart';
+import '../screens/admin/admin_login_screen.dart';
+import '../screens/admin/admin_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -40,6 +42,12 @@ class AppRoutes {
   static const String travelFlights = '/travel/flights';
   static const String travelStays = '/travel/stays';
   static const String travelCars = '/travel/cars';
+
+  // ============================================================
+  // ADMIN DASHBOARD
+  // ============================================================
+  static const String adminLogin = '/admin/login';
+  static const String adminDashboard = '/admin';
 
   // ============================================================
   // ROUTES
@@ -112,6 +120,12 @@ class AppRoutes {
       // PROFILE
       // ========================================================
       profile: (_) => const ProfileScreen(),
+
+      // ========================================================
+      // ADMIN DASHBOARD (TOKEN-GATED)
+      // ========================================================
+      adminLogin: (_) => const AdminLoginScreen(),
+      adminDashboard: (_) => const AdminScreen(),
     };
 
     // ============================================================

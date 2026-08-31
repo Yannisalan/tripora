@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/utils/route_tracker.dart';
 import 'routes/app_routes.dart';
 
 void main() {
@@ -19,6 +20,8 @@ class TriporaApp extends StatefulWidget {
 }
 
 class _TriporaAppState extends State<TriporaApp> {
+  final RouteTrackingObserver _routeTracker = RouteTrackingObserver();
+
   @override
   Widget build(BuildContext context) {
     final themeMode = widget.themeMode ?? ThemeMode.system;
@@ -31,6 +34,7 @@ class _TriporaAppState extends State<TriporaApp> {
       themeMode: themeMode,
       initialRoute: AppRoutes.home,
       routes: AppRoutes.routes,
+      navigatorObservers: [_routeTracker],
     );
   }
 }
