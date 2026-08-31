@@ -70,6 +70,6 @@ class LegalScreen extends StatelessWidget {
   }
 
   String _resolvePlaceholders(String text) {
-    return text.replaceAll('{{LEGAL_CONTACT_EMAIL}}', 'support@gotripora.app');
+    return text.replaceAll('{{LEGAL_CONTACT_EMAIL}}', 'gotripora@gmail.com');
   }
 }

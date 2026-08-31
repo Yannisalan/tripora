@@ -59,46 +59,39 @@ class TermsContent {
       'for decisions you make based on the Service.',
     ),
     LegalSection(
-      '5. Subscriptions and Purchases',
-      'If you purchase premium features or subscriptions, charges are handled '
-      'through the app store (e.g. Apple App Store / Google Play). Payments '
-      'and cancellations are subject to that store\'s terms, and no refunds '
-      'are offered by us except as required by law.',
-    ),
-    LegalSection(
-      '6. Third-Party Services',
+      '5. Third-Party Services',
       'The Service may integrate with third-party providers for features such '
       'as flights, stays, and car rentals. Those providers have their own '
       'terms and privacy policies, and we are not responsible for their '
       'services.',
     ),
     LegalSection(
-      '7. Intellectual Property',
+      '6. Intellectual Property',
       'The Tripora name, logo, and Service content are owned by us or our '
       'licensors. You may not copy, modify, or redistribute the Service '
       'except as permitted by law.',
     ),
     LegalSection(
-      '8. Termination',
+      '7. Termination',
       'You may stop using the Service at any time. We may suspend or '
       'terminate your access for violations of these Terms. Provisions that '
       'by their nature should survive termination will survive.',
     ),
     LegalSection(
-      '9. Disclaimers and Limitation of Liability',
+      '8. Disclaimers and Limitation of Liability',
       'The Service is provided "as is" and "as available" without warranties '
       'of any kind. To the maximum extent permitted by law, we are not liable '
       'for indirect, incidental, or consequential damages arising from your '
       'use of the Service.',
     ),
     LegalSection(
-      '10. Changes to These Terms',
+      '9. Changes to These Terms',
       'We may update these Terms from time to time. We will notify you of '
       'material changes through the Service. Continued use after changes '
       'takes effect means you accept the updated Terms.',
     ),
     LegalSection(
-      '11. Contact',
+      '10. Contact',
       'If you have questions about these Terms, contact us at '
       '{{LEGAL_CONTACT_EMAIL}}.',
     ),
