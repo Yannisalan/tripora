@@ -7,6 +7,7 @@ import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -188,7 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const ProfileScreenShimmer()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Form(
@@ -199,13 +200,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Card(
                       child: Container(
                         padding: const EdgeInsets.all(20),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              Color(0xFFEFF6FF),
-                              Color(0xFFF5F3FF),
+                              context.triporaColors.surfaceInfo,
+                              context.triporaColors.surfaceSecondary,
                             ],
                           ),
                         ),
@@ -221,11 +222,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   decoration: BoxDecoration(
                                     gradient: AppColors.brandGradient,
                                     shape: BoxShape.circle,
-                                    boxShadow: const [
+                                    boxShadow: [
                                       BoxShadow(
-                                        color: Color(0x332563EB),
+                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                                         blurRadius: 18,
-                                        offset: Offset(0, 6),
+                                        offset: const Offset(0, 6),
                                       ),
                                     ],
                                   ),
@@ -245,17 +246,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         _nameController.text.isEmpty
                                             ? 'Your profile'
                                             : _nameController.text,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.w800,
-                                          color: AppColors.textPrimary,
+                                          color: context.triporaColors.textPrimary,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         _emailController.text,
-                                        style: const TextStyle(
-                                          color: AppColors.textMuted,
+                                        style: TextStyle(
+                                          color: context.triporaColors.textMuted,
                                         ),
                                       ),
                                     ],
@@ -278,13 +279,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
+                          color: context.appStatus.error.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.red.shade200),
+                          border: Border.all(color: context.appStatus.error.withValues(alpha: 0.25)),
                         ),
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.red.shade700),
+                          style: TextStyle(color: context.appStatus.error),
                         ),
                       ),
                     if (_successMessage != null)
@@ -293,16 +294,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
+                          color: context.appStatus.success.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.green.shade200),
+                          border: Border.all(color: context.appStatus.success.withValues(alpha: 0.25)),
                         ),
                         child: Text(
                           _successMessage!,
-                          style: TextStyle(color: Colors.green.shade700),
+                          style: TextStyle(color: context.appStatus.success),
                         ),
                       ),
-                    _buildSectionTitle('Personal details'),
+                    _buildSectionTitle(context, 'Personal details'),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _nameController,
@@ -339,22 +340,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        _buildSectionTitle('Email verification'),
+                        _buildSectionTitle(context, 'Email verification'),
                         const SizedBox(width: 10),
                         Chip(
                           label: Text(
                             _emailVerified ? 'Verified' : 'Unverified',
                           ),
                           backgroundColor: _emailVerified
-                              ? Colors.green.shade50
-                              : Colors.orange.shade50,
+                              ? context.appStatus.success.withValues(alpha: 0.08)
+                              : context.appStatus.warning.withValues(alpha: 0.08),
                           avatar: Icon(
                             _emailVerified
                                 ? Icons.check_circle
                                 : Icons.warning_amber,
                             color: _emailVerified
-                                ? Colors.green
-                                : Colors.orange,
+                                ? context.appStatus.success
+                                : context.appStatus.warning,
                           ),
                         ),
                       ],
@@ -391,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     const SizedBox(height: 20),
-                    _buildSectionTitle('Preferences'),
+                    _buildSectionTitle(context, 'Preferences'),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _preferredLanguage,
@@ -468,7 +469,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    _buildSectionTitle('Security'),
+                    _buildSectionTitle(context, 'Security'),
                     const SizedBox(height: 12),
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
@@ -570,7 +571,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -599,6 +600,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : Icons.lock_open,
                   color: Colors.white,
                   size: 24,
+                  semanticLabel: isPremium ? 'Premium member' : 'Go premium',
                 ),
               ),
               const SizedBox(width: 14),
@@ -620,8 +622,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       isPremium
                           ? 'Unlock flight prices & weather'
-                          : 'Flight prices & daily weather — from '
-                              '${subscription?.priceLabel ?? '—'}/month',
+                          : 'Flight prices & daily weather \u2014 from '
+                              '${subscription?.priceLabel ?? '\u2014'}/month',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 13,
@@ -659,7 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Row(
       children: [
         Container(
@@ -673,10 +675,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: context.triporaColors.textPrimary,
           ),
         ),
       ],

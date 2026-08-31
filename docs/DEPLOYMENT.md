@@ -78,6 +78,27 @@ Free-tier production stack:
   closed whenever the GUC is unset. Applying the migration via `flask db upgrade`
   is required for the constraints to take effect.
 
+### Email verification (optional, server-side only)
+
+Verification emails are sent over **SMTP** using the Python standard library
+(`services/email_service.py`) — no extra dependency. When the SMTP env vars are
+unset, the app logs the code instead of sending (fine for local dev/tests).
+
+| Env var | Example | Notes |
+|---------|---------|-------|
+| `MAIL_HOST` | `smtp-relay.brevo.com` | SMTP server (Brevo-ready; any SMTP provider works) |
+| `MAIL_PORT` | `587` | `587` = STARTTLS, `465` = implicit SSL |
+| `MAIL_USER` | your SMTP login / key | e.g. Brevo SMTP key |
+| `MAIL_PASSWORD` | your SMTP key/secret | |
+| `MAIL_FROM` | `you@gmail.com` | Sender address — must be **confirmed** in the provider. Use a personal email during testing, a domain sender later. |
+| `MAIL_FROM_NAME` | `Tripora` | Optional display name |
+| `MAIL_USE_TLS` | `tls` | `tls` (587) or `ssl` (465); defaults infer from port |
+
+> Brevo is the recommended provider to start because it lets you send from a
+> **confirmed personal email** without owning a custom domain. To use another
+> provider, only change `MAIL_HOST`/`MAIL_PORT`/`MAIL_USER`/`MAIL_PASSWORD`/
+> `MAIL_FROM` — no code changes needed.
+
 ---
 
 ## 3. Frontend — Vercel (free)

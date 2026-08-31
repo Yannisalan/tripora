@@ -402,7 +402,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.triporaColors.backgroundColor,
 
       // ========================================================
       // APP BAR
@@ -411,11 +411,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
+        title: Text(
           'Plan Your Trip',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: Color(0xFF111827),
+            color: context.triporaColors.textPrimary,
           ),
         ),
       ),
@@ -440,23 +440,23 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // HEADER
                       // ==================================================
-                      const Text(
+                      Text(
                         'Create your perfect trip',
                         style: TextStyle(
                           fontSize: 40,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF111827),
+                          color: context.triporaColors.textPrimary,
                         ),
                       ),
 
                       const SizedBox(height: 12),
 
-                      const Text(
+                      Text(
                         'Tell Tripora what you want, and we will help you build the perfect itinerary.',
                         style: TextStyle(
                           fontSize: 17,
                           height: 1.5,
-                          color: Color(0xFF6B7280),
+                          color: context.triporaColors.textSecondary,
                         ),
                       ),
 
@@ -465,7 +465,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // DESTINATION
                       // ==================================================
-                      _buildSectionTitle('Where do you want to go?'),
+                      _buildSectionTitle(context, 'Where do you want to go?'),
 
                       const SizedBox(height: 12),
 
@@ -477,7 +477,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           hintText: 'e.g. Paris, France',
                           prefixIcon: const Icon(Icons.location_on_outlined),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: context.triporaColors.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide.none,
@@ -494,7 +494,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // DATES
                       // ==================================================
-                      _buildSectionTitle('When are you travelling?'),
+                      _buildSectionTitle(context, 'When are you travelling?'),
 
                       const SizedBox(height: 12),
 
@@ -529,7 +529,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // TRAVELERS
                       // ==================================================
-                      _buildSectionTitle('Who is travelling?'),
+                      _buildSectionTitle(context, 'Who is travelling?'),
 
                       const SizedBox(height: 12),
 
@@ -539,14 +539,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.triporaColors.surface,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.people_outline,
-                              color: Color(0xFF2563EB),
+                              color: Theme.of(context).colorScheme.primary,
                             ),
 
                             const SizedBox(width: 15),
@@ -605,7 +605,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // BUDGET
                       // ==================================================
-                      _buildSectionTitle('What is your budget?'),
+                      _buildSectionTitle(context, 'What is your budget?'),
 
                       const SizedBox(height: 12),
 
@@ -616,7 +616,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                             Icons.account_balance_wallet_outlined,
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: context.triporaColors.surface,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide.none,
@@ -654,7 +654,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // TRAVEL STYLE
                       // ==================================================
-                      _buildSectionTitle('What is your travel style?'),
+                      _buildSectionTitle(context, 'What is your travel style?'),
 
                       const SizedBox(height: 12),
 
@@ -673,7 +673,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       // ==================================================
                       // INTERESTS
                       // ==================================================
-                      _buildSectionTitle('What are you interested in?'),
+                      _buildSectionTitle(context, 'What are you interested in?'),
 
                       const SizedBox(height: 12),
 
@@ -830,13 +830,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
   // SECTION TITLE
   // ============================================================
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF111827),
+        color: context.triporaColors.textPrimary,
       ),
     );
   }
@@ -856,12 +856,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.triporaColors.surface,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_month_outlined, color: Color(0xFF2563EB)),
+            Icon(Icons.calendar_month_outlined, color: Theme.of(context).colorScheme.primary),
 
             const SizedBox(width: 12),
 
@@ -871,9 +871,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF6B7280),
+                      color: context.triporaColors.textSecondary,
                     ),
                   ),
 
@@ -881,10 +881,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
                   Text(
                     formatDate(date),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827),
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
                 ],

@@ -401,7 +401,7 @@ class ItineraryScreen extends StatelessWidget {
   ) {
     return Scaffold(
       backgroundColor:
-          const Color(0xFFF8FAFC),
+          context.triporaColors.backgroundColor,
 
       // ========================================================
       // APP BAR
@@ -415,20 +415,21 @@ class ItineraryScreen extends StatelessWidget {
             Colors.transparent,
 
         leading: IconButton(
-          icon: const Icon(
+          tooltip: 'Go back',
+          icon: Icon(
             Icons.arrow_back,
-            color: Color(0xFF111827),
+            color: context.triporaColors.textPrimary,
           ),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
 
-        title: const Text(
+        title: Text(
           'Your Itinerary',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: Color(0xFF111827),
+            color: context.triporaColors.textPrimary,
           ),
         ),
       ),
@@ -468,7 +469,7 @@ class ItineraryScreen extends StatelessWidget {
                     ),
                     decoration:
                         BoxDecoration(
-                      color: Colors.white,
+                      color: context.triporaColors.surface,
                       borderRadius:
                           BorderRadius.circular(
                         20,
@@ -480,14 +481,12 @@ class ItineraryScreen extends StatelessWidget {
                               .start,
                       children: [
 
-                        const Text(
-                          '✦ Your AI Travel Plan',
+                        Text(
+                          '\u2726 Your AI Travel Plan',
                           style:
                               TextStyle(
                             color:
-                                Color(
-                              0xFF2563EB,
-                            ),
+                                Theme.of(context).colorScheme.primary,
                             fontWeight:
                                 FontWeight
                                     .w700,
@@ -502,15 +501,13 @@ class ItineraryScreen extends StatelessWidget {
                         Text(
                           destination,
                           style:
-                              const TextStyle(
+                              TextStyle(
                             fontSize: 36,
                             fontWeight:
                                 FontWeight
                                     .w800,
                             color:
-                                Color(
-                              0xFF111827,
-                            ),
+                                context.triporaColors.textPrimary,
                           ),
                         ),
 
@@ -524,12 +521,14 @@ class ItineraryScreen extends StatelessWidget {
                           children: [
 
                             _buildInfo(
+                              context,
                               Icons
                                   .calendar_month_outlined,
                               '$numberOfDays days',
                             ),
 
                             _buildInfo(
+                              context,
                               Icons
                                   .people_outline,
                               '$travelers traveler'
@@ -537,12 +536,14 @@ class ItineraryScreen extends StatelessWidget {
                             ),
 
                             _buildInfo(
+                              context,
                               Icons
                                   .account_balance_wallet_outlined,
                               budget,
                             ),
 
                             _buildInfo(
+                              context,
                               Icons
                                   .explore_outlined,
                               travelStyle,
@@ -589,7 +590,7 @@ class ItineraryScreen extends StatelessWidget {
                       height: 30,
                     ),
 
-                    _buildCostCard(),
+                    _buildCostCard(context),
                   ],
 
                   const SizedBox(
@@ -600,14 +601,14 @@ class ItineraryScreen extends StatelessWidget {
                   // ITINERARY TITLE
                   // ==================================================
 
-                  const Text(
+                  Text(
                     'Your Itinerary',
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight:
                           FontWeight.w800,
                       color:
-                          Color(0xFF111827),
+                          context.triporaColors.textPrimary,
                     ),
                   ),
 
@@ -615,12 +616,12 @@ class ItineraryScreen extends StatelessWidget {
                     height: 10,
                   ),
 
-                  const Text(
+                  Text(
                     'A suggested plan based on your preferences.',
                     style: TextStyle(
                       fontSize: 16,
                       color:
-                          Color(0xFF6B7280),
+                          context.triporaColors.textSecondary,
                     ),
                   ),
 
@@ -644,22 +645,20 @@ class ItineraryScreen extends StatelessWidget {
                       decoration:
                           BoxDecoration(
                         color:
-                            Colors.white,
+                            context.triporaColors.surface,
                         borderRadius:
                             BorderRadius
                                 .circular(
                           18,
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'No itinerary was generated.',
                         style:
                             TextStyle(
                           fontSize: 16,
                           color:
-                              Color(
-                            0xFF6B7280,
-                          ),
+                              context.triporaColors.textSecondary,
                         ),
                       ),
                     ),
@@ -674,6 +673,7 @@ class ItineraryScreen extends StatelessWidget {
                         ),
                         child:
                             _buildDayCard(
+                          context: context,
                           day: _intValue(
                             day['day'],
                             1,
@@ -814,6 +814,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildInfo(
+    BuildContext context,
     IconData icon,
     String text,
   ) {
@@ -821,12 +822,12 @@ class ItineraryScreen extends StatelessWidget {
       mainAxisSize:
           MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: 19,
-          color:
-              const Color(
-            0xFF2563EB,
+        ExcludeSemantics(
+          child: Icon(
+            icon,
+            size: 19,
+            color:
+                Theme.of(context).colorScheme.primary,
           ),
         ),
 
@@ -837,12 +838,12 @@ class ItineraryScreen extends StatelessWidget {
         Text(
           text,
           style:
-              const TextStyle(
+              TextStyle(
             fontSize: 15,
             fontWeight:
                 FontWeight.w600,
             color:
-                Color(0xFF374151),
+                context.triporaColors.textSecondary,
           ),
         ),
       ],
@@ -853,7 +854,7 @@ class ItineraryScreen extends StatelessWidget {
   // COST CARD
   // ============================================================
 
-  Widget _buildCostCard() {
+  Widget _buildCostCard(BuildContext context) {
     final cost =
         estimatedCost!;
 
@@ -889,16 +890,14 @@ class ItineraryScreen extends StatelessWidget {
       ),
       decoration:
           BoxDecoration(
-        color: Colors.white,
+        color: context.triporaColors.surface,
         borderRadius:
             BorderRadius.circular(
           20,
         ),
         border: Border.all(
           color:
-              const Color(
-            0xFFE5E7EB,
-          ),
+              context.triporaColors.border,
         ),
       ),
       child: Column(
@@ -907,18 +906,16 @@ class ItineraryScreen extends StatelessWidget {
                 .start,
         children: [
 
-          const Row(
+          Row(
             children: [
               Icon(
                 Icons
                     .account_balance_wallet_outlined,
                 color:
-                    Color(
-                  0xFF2563EB,
-                ),
+                    Theme.of(context).colorScheme.primary,
               ),
 
-              SizedBox(
+              const SizedBox(
                 width: 10,
               ),
 
@@ -930,9 +927,7 @@ class ItineraryScreen extends StatelessWidget {
                   fontWeight:
                       FontWeight.w800,
                   color:
-                      Color(
-                    0xFF111827,
-                  ),
+                      context.triporaColors.textPrimary,
                 ),
               ),
             ],
@@ -945,12 +940,12 @@ class ItineraryScreen extends StatelessWidget {
           Text(
             '$currency $total',
             style:
-                const TextStyle(
+                TextStyle(
               fontSize: 38,
               fontWeight:
                   FontWeight.w800,
               color:
-                  Color(0xFF2563EB),
+                  Theme.of(context).colorScheme.primary,
             ),
           ),
 
@@ -958,14 +953,14 @@ class ItineraryScreen extends StatelessWidget {
             height: 8,
           ),
 
-          const Text(
+          Text(
             'Approximate cost for your trip. '
             'Actual prices may vary.',
             style:
                 TextStyle(
               fontSize: 14,
               color:
-                  Color(0xFF6B7280),
+                  context.triporaColors.textSecondary,
             ),
           ),
 
@@ -981,6 +976,7 @@ class ItineraryScreen extends StatelessWidget {
             ),
 
             _buildCostRow(
+              context,
               'Accommodation',
               costs[
                   'accommodation'],
@@ -988,12 +984,14 @@ class ItineraryScreen extends StatelessWidget {
             ),
 
             _buildCostRow(
+              context,
               'Food',
               costs['food'],
               currency,
             ),
 
             _buildCostRow(
+              context,
               'Transportation',
               costs[
                   'transportation'],
@@ -1001,6 +999,7 @@ class ItineraryScreen extends StatelessWidget {
             ),
 
             _buildCostRow(
+              context,
               'Activities',
               costs[
                   'activities'],
@@ -1017,6 +1016,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildCostRow(
+    BuildContext context,
     String label,
     dynamic value,
     String currency,
@@ -1033,12 +1033,10 @@ class ItineraryScreen extends StatelessWidget {
             child: Text(
               label,
               style:
-                  const TextStyle(
+                  TextStyle(
                 fontSize: 16,
                 color:
-                    Color(
-                  0xFF374151,
-                ),
+                    context.triporaColors.textSecondary,
               ),
             ),
           ),
@@ -1046,14 +1044,12 @@ class ItineraryScreen extends StatelessWidget {
           Text(
             '$currency ${value ?? 0}',
             style:
-                const TextStyle(
+                TextStyle(
               fontSize: 16,
               fontWeight:
                   FontWeight.w700,
               color:
-                  Color(
-                0xFF111827,
-              ),
+                  context.triporaColors.textPrimary,
             ),
           ),
         ],
@@ -1066,6 +1062,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildDayCard({
+    required BuildContext context,
     required int day,
     required String? date,
     required String title,
@@ -1081,7 +1078,7 @@ class ItineraryScreen extends StatelessWidget {
       ),
       decoration:
           BoxDecoration(
-        color: Colors.white,
+        color: context.triporaColors.surface,
         borderRadius:
             BorderRadius.circular(
           18,
@@ -1144,12 +1141,10 @@ class ItineraryScreen extends StatelessWidget {
                     Text(
                       'Day $day',
                       style:
-                          const TextStyle(
+                          TextStyle(
                         fontSize: 13,
                         color:
-                            Color(
-                          0xFF6B7280,
-                        ),
+                            context.triporaColors.textMuted,
                         fontWeight:
                             FontWeight
                                 .w600,
@@ -1167,12 +1162,10 @@ class ItineraryScreen extends StatelessWidget {
                           date,
                         ),
                         style:
-                            const TextStyle(
+                            TextStyle(
                           fontSize: 14,
                           color:
-                              Color(
-                            0xFF2563EB,
-                          ),
+                              Theme.of(context).colorScheme.primary,
                           fontWeight:
                               FontWeight
                                   .w600,
@@ -1187,15 +1180,13 @@ class ItineraryScreen extends StatelessWidget {
                     Text(
                       title,
                       style:
-                          const TextStyle(
+                          TextStyle(
                         fontSize: 20,
                         fontWeight:
                             FontWeight
                                 .w700,
                         color:
-                            Color(
-                          0xFF111827,
-                        ),
+                            context.triporaColors.textPrimary,
                       ),
                     ),
                   ],
@@ -1213,14 +1204,12 @@ class ItineraryScreen extends StatelessWidget {
           // ------------------------------------------------------
 
           if (activities.isEmpty)
-            const Text(
+            Text(
               'No activities available for this day.',
               style:
                   TextStyle(
                 color:
-                    Color(
-                  0xFF6B7280,
-                ),
+                    context.triporaColors.textMuted,
               ),
             ),
 
@@ -1238,12 +1227,12 @@ class ItineraryScreen extends StatelessWidget {
                           .start,
                   children: [
 
-                    Icon(
-                      activity.icon,
-                      size: 22,
-                      color:
-                          const Color(
-                        0xFF2563EB,
+                    ExcludeSemantics(
+                      child: Icon(
+                        activity.icon,
+                        size: 22,
+                        color:
+                            Theme.of(context).colorScheme.primary,
                       ),
                     ),
 
@@ -1265,16 +1254,14 @@ class ItineraryScreen extends StatelessWidget {
                               activity
                                   .time,
                               style:
-                                  const TextStyle(
+                                  TextStyle(
                                 fontSize:
                                     12,
                                 fontWeight:
                                     FontWeight
                                         .w600,
                                 color:
-                                    Color(
-                                  0xFF2563EB,
-                                ),
+                                    Theme.of(context).colorScheme.primary,
                               ),
                             ),
 
@@ -1286,16 +1273,14 @@ class ItineraryScreen extends StatelessWidget {
                             activity
                                 .title,
                             style:
-                                const TextStyle(
+                                TextStyle(
                               fontSize:
                                   16,
                               fontWeight:
                                   FontWeight
                                       .w700,
                               color:
-                                  Color(
-                                0xFF111827,
-                              ),
+                                  context.triporaColors.textPrimary,
                             ),
                           ),
 
@@ -1307,15 +1292,13 @@ class ItineraryScreen extends StatelessWidget {
                             activity
                                 .description,
                             style:
-                                const TextStyle(
+                                TextStyle(
                               fontSize:
                                   14,
                               height:
                                   1.5,
                               color:
-                                  Color(
-                                0xFF6B7280,
-                              ),
+                                  context.triporaColors.textSecondary,
                             ),
                           ),
                         ],

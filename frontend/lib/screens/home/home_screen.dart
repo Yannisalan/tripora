@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(fontSize: 14),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              height: 40,
+              height: 48,
             ),
           ),
         ],
@@ -155,31 +155,34 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               colors: [
-                Color(0xFFEFF6FF),
-                Color(0xFFF5F3FF),
-                Color(0xFFECFEFF),
+                context.triporaColors.surfaceInfo,
+                context.triporaColors.surfaceSecondary,
+                context.triporaColors.surfaceAccent,
               ],
             ),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: const Color(0xFF2563EB).withValues(alpha: 0.18),
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withValues(alpha: 0.18),
             ),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.auto_awesome,
                 size: 15,
-                color: Color(0xFF7C3AED),
+                color: Theme.of(context).colorScheme.primary,
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 'AI-powered travel planning',
                 style: TextStyle(
-                  color: Color(0xFF1D4ED8),
+                  color: context.appStatus.info,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -194,17 +197,17 @@ class _HomeScreenState extends State<HomeScreen> {
             fontSize: isCompact ? 38 : 58,
             height: 1.05,
             fontWeight: FontWeight.w900,
-            color: const Color(0xFF111827),
+            color: context.triporaColors.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
         Text(
           'Start with a destination, continue from your saved trips, or discover somewhere new.',
           textAlign: isCompact ? TextAlign.left : TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             height: 1.45,
-            color: Color(0xFF4B5563),
+            color: context.triporaColors.textSecondary,
           ),
         ),
         const SizedBox(height: 24),
@@ -400,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '${trip.numberOfDays} days - ${trip.travelers} ${trip.travelers == 1 ? 'traveler' : 'travelers'}',
-                          style: const TextStyle(color: Color(0xFF6B7280)),
+                          style: TextStyle(color: context.triporaColors.textMuted),
                         ),
                       ],
                     ),
@@ -516,18 +519,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(18),
                 child: Row(
                   children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.brandGradient,
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: Icon(
-                        action.icon,
-                        color: Colors.white,
-                        size: 22,
+                    ExcludeSemantics(
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: AppColors.brandGradient,
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(
+                          action.icon,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -542,15 +547,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 3),
                           Text(
                             action.subtitle,
-                            style: const TextStyle(color: Color(0xFF6B7280)),
+                          style: TextStyle(color: context.triporaColors.textMuted),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Color(0xFF94A3B8),
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: context.triporaColors.textMuted,
+                      ),
                     ),
                   ],
                 ),

@@ -4,6 +4,7 @@ import '../core/utils/logger.dart';
 import '../core/theme/app_theme.dart';
 import '../models/trip_model.dart';
 import '../services/trip_service.dart';
+import '../widgets/shimmer_loader.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final TripModel trip;
@@ -179,7 +180,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   Widget _buildBody() {
     if (_isLoading && _trip.destination.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const TripDetailsShimmer();
     }
 
     if (_errorMessage != null && _trip.destination.isEmpty) {
@@ -262,16 +263,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         if (_isSaving || _isRegenerating)
           Positioned.fill(
             child: ColoredBox(
-              color: Color(0x66000000),
+              color: const Color(0x66000000),
               child: Center(
                 child: Card(
                   child: Padding(
-                    padding: EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 14),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 14),
                         Text(
                           _isRegenerating
                               ? 'Regenerating itinerary...'
@@ -486,6 +487,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         children: [
                           const Expanded(child: Text('Travelers')),
                           IconButton(
+                            tooltip: 'Remove traveler',
                             onPressed: travelers > 1
                                 ? () {
                                     setSheetState(() {
@@ -500,6 +502,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           IconButton(
+                            tooltip: 'Add traveler',
                             onPressed: () {
                               setSheetState(() {
                                 travelers++;
@@ -654,13 +657,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: context.appStatus.error.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.error_outline,
                 size: 42,
-                color: Colors.red.shade600,
+                color: context.appStatus.error,
               ),
             ),
 
@@ -677,10 +680,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             Text(
               _errorMessage ?? 'Something went wrong.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 height: 1.5,
-                color: Colors.grey,
+                color: context.triporaColors.textMuted,
               ),
             ),
 
@@ -702,15 +705,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
+        color: context.appStatus.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.shade200),
+        border: Border.all(color: context.appStatus.warning.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
           Icon(
             Icons.warning_amber_outlined,
-            color: Colors.orange.shade800,
+            color: context.appStatus.warning,
             size: 20,
           ),
 
@@ -720,7 +723,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             child: Text(
               'Could not refresh: $_errorMessage. '
               'Showing cached data.',
-              style: TextStyle(fontSize: 13, color: Colors.orange.shade900),
+              style: TextStyle(fontSize: 13, color: context.appStatus.warning),
             ),
           ),
         ],
@@ -739,10 +742,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       decoration: const BoxDecoration(
         gradient: AppColors.brandGradient,
       ),
-      child: Column(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.flight_takeoff, color: Colors.white, size: 42),
+          const ExcludeSemantics(
+            child: Icon(Icons.flight_takeoff, color: Colors.white, size: 42),
+          ),
 
           const SizedBox(height: 16),
 
@@ -833,7 +838,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Widget _buildInfoItem(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 22),
+        ExcludeSemantics(child: Icon(icon, size: 22)),
 
         const SizedBox(width: 10),
 
@@ -843,7 +848,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.triporaColors.textMuted),
               ),
 
               const SizedBox(height: 3),
@@ -962,7 +967,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-          Icon(icon, size: 20),
+          ExcludeSemantics(child: Icon(icon, size: 20)),
 
           const SizedBox(width: 12),
 
@@ -1098,9 +1103,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             const SizedBox(height: 20),
 
             if (activities.isEmpty)
-              const Text(
+              Text(
                 'No activities available for this day.',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: context.triporaColors.textMuted),
               )
             else
               ...activities.map(_buildActivity),
@@ -1142,7 +1147,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.grey.shade100,
+        color: context.triporaColors.surfaceSecondary,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1168,7 +1173,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: Colors.white,
+                    color: context.triporaColors.surface,
                   ),
                   child: Text(category, style: const TextStyle(fontSize: 12)),
                 ),

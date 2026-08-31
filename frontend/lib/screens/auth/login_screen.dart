@@ -110,16 +110,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.triporaColors.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
+        title: Text(
           'Sign In',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: context.triporaColors.textPrimary,
           ),
         ),
       ),
@@ -143,24 +143,37 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ==================================================
                   Center(
                     child: Container(
-                      width: 72,
-                      height: 72,
-                      alignment: Alignment.center,
+                      width: 88,
+                      height: 88,
                       decoration: BoxDecoration(
-                        gradient: AppColors.brandGradient,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x332563EB),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                             blurRadius: 24,
-                            offset: Offset(0, 10),
+                            offset: const Offset(0, 10),
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.flight_takeoff,
-                        color: Colors.white,
-                        size: 36,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(22),
+                        child: Image.asset(
+                          'assets/logo_new.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                gradient: AppColors.brandGradient,
+                              ),
+                              child: const Icon(
+                                Icons.flight_takeoff,
+                                color: Colors.white,
+                                size: 36,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -170,23 +183,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ==================================================
                   // TITLE
                   // ==================================================
-                  const Text(
+                  Text(
                     'Welcome back to Tripora',
                     textAlign: TextAlign.center,
 
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
 
                   const SizedBox(height: 8),
 
-                  const Text(
+                  Text(
                     'Sign in to continue planning your trip.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 15, color: context.triporaColors.textMuted),
                   ),
 
                   const SizedBox(height: 32),
@@ -265,6 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: const Icon(Icons.lock_outline),
 
                       suffixIcon: IconButton(
+                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                         onPressed: _isLoading
                             ? null
                             : () {
@@ -361,7 +375,7 @@ class _FieldsDivider extends StatelessWidget {
           child: Text(
             'or with email',
             style: TextStyle(
-              color: AppColors.textMuted,
+              color: context.triporaColors.textMuted,
               fontWeight: FontWeight.w500,
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/destinations.dart';
+import '../../core/theme/app_theme.dart';
 import '../../models/destination_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/destination_card.dart';
@@ -66,9 +67,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
       builder: (context) {
         return SafeArea(
           child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            decoration: BoxDecoration(
+              color: context.triporaColors.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
             ),
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
             child: SingleChildScrollView(
@@ -81,7 +84,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
+                        color: context.triporaColors.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -99,7 +102,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                color: const Color(0xFFE5E7EB),
+                                color: context.triporaColors.border,
                                 child: const Icon(
                                   Icons.image_not_supported,
                                 ),
@@ -126,27 +129,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   const SizedBox(height: 22),
                   Text(
                     destination.city,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: Color(0xFF2563EB),
+                      ExcludeSemantics(
+                        child: Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         destination.country,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF2563EB),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ],
@@ -154,10 +159,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   const SizedBox(height: 14),
                   Text(
                     destination.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       height: 1.5,
-                      color: Color(0xFF475569),
+                      color: context.triporaColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -230,27 +235,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [
-                      Color(0xFFEFF6FF),
-                      Color(0xFFF5F3FF),
-                      Color(0xFFECFEFF),
+                      context.triporaColors.surfaceInfo,
+                      context.triporaColors.surfaceSecondary,
+                      context.triporaColors.surfaceAccent,
                     ],
                   ),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.18),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.18),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.public, size: 16, color: Color(0xFF2563EB)),
-                    SizedBox(width: 6),
+                    Icon(
+                      Icons.public,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
                       'Add Africa to your travel list',
                       style: TextStyle(
-                        color: Color(0xFF1D4ED8),
+                        color: context.appStatus.info,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -260,22 +272,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ],
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Discover where to go next',
             style: TextStyle(
               fontSize: 34,
               height: 1.1,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF0F172A),
+              color: context.triporaColors.textPrimary,
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'From Cotonou to Seychelles — search by place or mood, then send the destination straight into Planner.',
             style: TextStyle(
               fontSize: 16,
               height: 1.45,
-              color: Color(0xFF64748B),
+              color: context.triporaColors.textMuted,
             ),
           ),
           const SizedBox(height: 22),
@@ -288,7 +300,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             },
             decoration: InputDecoration(
               hintText: 'Search destinations, food, nature, culture...',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const ExcludeSemantics(child: Icon(Icons.search)),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
@@ -374,15 +386,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
 
     return Card(
-      color: Colors.blue.shade50,
+      color: context.triporaColors.surfaceInfo,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(
-              Icons.travel_explore_outlined,
-              size: 46,
-              color: Colors.blue.shade700,
+            ExcludeSemantics(
+              child: Icon(
+                Icons.travel_explore_outlined,
+                size: 46,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -393,7 +407,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             Text(
               description,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.blue.shade700),
+              style: TextStyle(color: context.appStatus.info),
             ),
             if (hasActiveSearch || hasActiveTag) ...[
               const SizedBox(height: 16),
@@ -433,7 +447,7 @@ class _DetailRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF2563EB)),
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 10),
           Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w800)),
           Expanded(child: Text(value)),

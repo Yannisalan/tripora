@@ -43,8 +43,6 @@ class _PremiumGateState extends State<PremiumGate> {
         _loading = false;
       });
     } catch (_) {
-      // If we can't confirm premium entitlement, treat as not premium
-      // (fail closed) but allow retry from the paywall.
       if (!mounted) return;
       setState(() {
         _premium = false;
@@ -87,15 +85,15 @@ class _Paywall extends StatelessWidget {
                   gradient: AppColors.brandGradient,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Column(
+                child: const Column(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.lock_outline,
                       color: Colors.white,
                       size: 48,
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: 16),
+                    Text(
                       'Premium Travel',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -104,7 +102,7 @@ class _Paywall extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Live flight, hotel and car search is part of '
                       'Tripora Premium.',
@@ -112,7 +110,7 @@ class _Paywall extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         height: 1.4,
-                        color: Colors.white.withValues(alpha: 0.95),
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -123,7 +121,7 @@ class _Paywall extends StatelessWidget {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: const Color(0xFFE5E7EB)),
+                  side: BorderSide(color: context.triporaColors.border),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(18),
@@ -135,17 +133,17 @@ class _Paywall extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade700,
+                          color: context.triporaColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Search flights, hotels and rental cars from '
                         'your region\'s premium price with live results.',
                         style: TextStyle(
                           fontSize: 13,
                           height: 1.4,
-                          color: AppColors.textMuted,
+                          color: context.triporaColors.textMuted,
                         ),
                       ),
                     ],

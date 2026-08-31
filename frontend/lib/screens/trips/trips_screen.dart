@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/utils/logger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/shimmer_loader.dart';
 import '../trip_details.dart';
 import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
@@ -176,7 +177,9 @@ class _TripsScreenState extends State<TripsScreen> {
           content: Text(message),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 3),
-          backgroundColor: isError ? Colors.red.shade700 : null,
+          backgroundColor: isError
+              ? context.appStatus.error
+              : null,
         ),
       );
   }
@@ -260,7 +263,7 @@ class _TripsScreenState extends State<TripsScreen> {
     // ----------------------------------------------------------
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const TripsScreenShimmer();
     }
 
     // ----------------------------------------------------------
@@ -303,10 +306,6 @@ class _TripsScreenState extends State<TripsScreen> {
   // ============================================================
 
   Widget _buildErrorState() {
-    final statusColors = Theme.of(context).extension<AppStatusColors>();
-    final errorColor = statusColors?.error ?? AppColors.error;
-    final infoColor = statusColors?.info ?? AppColors.info;
-
     return RefreshIndicator(
       onRefresh: _loadTrips,
       child: ListView(
@@ -323,7 +322,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: errorColor.withValues(alpha: 0.08),
+                      color: context.appStatus.error.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -331,7 +330,9 @@ class _TripsScreenState extends State<TripsScreen> {
                           ? Icons.lock_outline
                           : Icons.cloud_off_outlined,
                       size: 42,
-                      color: _isAuthError ? infoColor : errorColor,
+                      color: _isAuthError
+                          ? context.appStatus.info
+                          : context.appStatus.error,
                     ),
                   ),
 
@@ -361,7 +362,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       height: 1.5,
-                      color: Colors.grey.shade700,
+                      color: context.triporaColors.textSecondary,
                     ),
                   ),
 
@@ -429,15 +430,15 @@ class _TripsScreenState extends State<TripsScreen> {
                     decoration: BoxDecoration(
                       gradient: AppColors.brandGradient,
                       shape: BoxShape.circle,
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x332563EB),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                           blurRadius: 24,
-                          offset: Offset(0, 8),
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.flight_takeoff_outlined,
                       size: 52,
                       color: Colors.white,
@@ -454,14 +455,14 @@ class _TripsScreenState extends State<TripsScreen> {
 
                   const SizedBox(height: 10),
 
-                  const Text(
-                    'You haven’t created any trips yet.\n'
+                  Text(
+                    'You haven\'t created any trips yet.\n'
                     'Plan your next adventure with Tripora.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
                       height: 1.5,
-                      color: Colors.grey,
+                      color: context.triporaColors.textMuted,
                     ),
                   ),
 
@@ -505,16 +506,18 @@ class _TripsScreenState extends State<TripsScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ==================================================
-              // DESTINATION + MENU
-              // ==================================================
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.location_on_outlined),
+                  // ==================================================
+                  // DESTINATION + MENU
+                  // ==================================================
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ExcludeSemantics(
+                        child: Icon(Icons.location_on_outlined),
+                      ),
 
-                  const SizedBox(width: 8),
+                      const SizedBox(width: 8),
 
                   Expanded(
                     child: Text(
@@ -650,7 +653,7 @@ class _TripsScreenState extends State<TripsScreen> {
   Widget _infoRow({required IconData icon, required String text}) {
     return Row(
       children: [
-        Icon(icon, size: 18),
+        ExcludeSemantics(child: Icon(icon, size: 18)),
 
         const SizedBox(width: 8),
 

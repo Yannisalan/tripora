@@ -46,7 +46,7 @@ class DestinationCard extends StatelessWidget {
         width: width ?? 300,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.triporaColors.surface,
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
@@ -60,7 +60,7 @@ class DestinationCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Ink(
-            decoration: const BoxDecoration(color: Colors.white),
+            decoration: BoxDecoration(color: context.triporaColors.surface),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -83,17 +83,17 @@ class DestinationCard extends StatelessWidget {
                           }
 
                           return Container(
-                            color: const Color(0xFFE2E8F0),
+                            color: context.triporaColors.border,
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            color: const Color(0xFFE2E8F0),
-                            child: const Center(
+                            color: context.triporaColors.border,
+                            child: Center(
                               child: Icon(
                                 Icons.image_not_supported_outlined,
                                 size: 40,
-                                color: Colors.grey,
+                                color: context.triporaColors.textMuted,
                               ),
                             ),
                           );
@@ -147,10 +147,12 @@ class DestinationCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.location_on_outlined,
-                                  size: 15,
-                                  color: Colors.white,
+                                ExcludeSemantics(
+                                  child: const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 15,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
@@ -187,10 +189,10 @@ class DestinationCard extends StatelessWidget {
                         description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           height: 1.45,
-                          color: AppColors.textMuted,
+                          color: context.triporaColors.textMuted,
                         ),
                       ),
                       if (tags != null && tags!.isNotEmpty) ...[

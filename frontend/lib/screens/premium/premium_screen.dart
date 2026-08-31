@@ -6,6 +6,7 @@ import '../../models/subscription_model.dart';
 import '../../routes/app_routes.dart';
 import '../../services/subscription_service.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/shimmer_loader.dart';
 
 /// Paywall / subscription management screen.
 ///
@@ -89,16 +90,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Tripora Premium')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const PremiumScreenShimmer()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_error != null)
-                    _Banner(text: _error!, color: Colors.red)
+                    _Banner(text: _error!, color: context.appStatus.error)
                   else if (_message != null)
-                    _Banner(text: _message!, color: Colors.green),
+                    _Banner(text: _message!, color: context.appStatus.success),
                   const SizedBox(height: 8),
                   _buildHeroCard(),
                   const SizedBox(height: 20),
@@ -114,13 +115,13 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Widget _buildHeroCard() {
     final sub = _subscription;
     final premium = sub?.isPremium ?? false;
-    final price = sub != null ? sub.priceLabel : '—';
+    final price = sub != null ? sub.priceLabel : '\u2014';
 
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: Container(
         width: double.infinity,
@@ -142,10 +143,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.workspace_premium,
-                    color: Colors.white,
-                    size: 26,
+                  child: const ExcludeSemantics(
+                    child: Icon(
+                      Icons.workspace_premium,
+                      color: Colors.white,
+                      size: 26,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -164,7 +167,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
             const SizedBox(height: 16),
             Text(
               premium
-                  ? 'Ship-shape — you have full access.'
+                  ? 'Ship-shape \u2014 you have full access.'
                   : 'Unlock $price/month in your region',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.95),
@@ -193,35 +196,35 @@ class _PremiumScreenState extends State<PremiumScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
               'Everything in your region, plus:',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: context.triporaColors.textPrimary,
               ),
             ),
-            SizedBox(height: 14),
-            _FeatureRow(
+            const SizedBox(height: 14),
+            const _FeatureRow(
               icon: Icons.flight_takeoff,
               title: 'Flight price checks',
               subtitle: 'See estimated airfare for your routes before booking.',
             ),
-            SizedBox(height: 14),
-            _FeatureRow(
+            const SizedBox(height: 14),
+            const _FeatureRow(
               icon: Icons.wb_sunny_outlined,
               title: 'Day-to-day weather forecast',
               subtitle: 'Daily outlook for your destination through your trip.',
             ),
-            SizedBox(height: 14),
-            _FeatureRow(
+            const SizedBox(height: 14),
+            const _FeatureRow(
               icon: Icons.travel_explore,
               title: 'Live travel search',
               subtitle: 'Search flights, hotels and rental cars in real time.',
@@ -239,7 +242,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -263,9 +266,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ),
             ] else ...[
               if (!_storeIapConfigured) ...[
-                const Text(
+                Text(
                   'In-app purchases aren\'t configured yet in this build.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(color: context.triporaColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 GradientButton(
@@ -316,7 +319,9 @@ class _FeatureRow extends StatelessWidget {
             gradient: AppColors.brandGradient,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: Colors.white, size: 20),
+          child: ExcludeSemantics(
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -325,19 +330,19 @@ class _FeatureRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.triporaColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: AppColors.textMuted,
+                  color: context.triporaColors.textMuted,
                 ),
               ),
             ],
@@ -350,7 +355,7 @@ class _FeatureRow extends StatelessWidget {
 
 class _Banner extends StatelessWidget {
   final String text;
-  final MaterialColor color;
+  final Color color;
 
   const _Banner({required this.text, required this.color});
 
@@ -365,7 +370,7 @@ class _Banner extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
-      child: Text(text, style: TextStyle(color: color.shade700)),
+      child: Text(text, style: TextStyle(color: color)),
     );
   }
 }

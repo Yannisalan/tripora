@@ -132,7 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Email verified successfully. You can now sign in.'),
+            content: const Text('Email verified successfully. You can now sign in.'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Theme.of(context).extension<AppStatusColors>()?.success ??
                 AppColors.success,
@@ -175,16 +175,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.triporaColors.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
+        title: Text(
           'Create Account',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: context.triporaColors.textPrimary,
           ),
         ),
       ),
@@ -200,42 +200,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Center(
                     child: Container(
-                      width: 72,
-                      height: 72,
-                      alignment: Alignment.center,
+                      width: 88,
+                      height: 88,
                       decoration: BoxDecoration(
-                        gradient: AppColors.brandGradient,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x332563EB),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                             blurRadius: 24,
-                            offset: Offset(0, 10),
+                            offset: const Offset(0, 10),
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.explore,
-                        color: Colors.white,
-                        size: 36,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(22),
+                        child: Image.asset(
+                          'assets/logo_new.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                gradient: AppColors.brandGradient,
+                              ),
+                              child: const Icon(
+                                Icons.explore,
+                                color: Colors.white,
+                                size: 36,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     'Create your Tripora account',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Join Tripora and start planning your next adventure.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 15, color: context.triporaColors.textMuted),
                   ),
                   const SizedBox(height: 32),
 
@@ -304,6 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
+                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                         onPressed: () {
                           setState(() {
                             _obscurePassword = !_obscurePassword;
@@ -351,16 +365,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.25),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
                         ),
                       ),
                       child: Text(
                         _statusMessage!,
-                        style: const TextStyle(
-                          color: AppColors.primaryDark,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                           height: 1.4,
                         ),
@@ -443,7 +457,7 @@ class _FieldsDivider extends StatelessWidget {
           child: Text(
             'or with email',
             style: TextStyle(
-              color: AppColors.textMuted,
+              color: context.triporaColors.textMuted,
               fontWeight: FontWeight.w500,
             ),
           ),

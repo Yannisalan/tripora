@@ -94,7 +94,7 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                 _buildForm(),
                 const SizedBox(height: 16),
                 if (_error != null)
-                  _Banner(text: _error!, color: Colors.red)
+                  _Banner(text: _error!, color: context.appStatus.error)
                 else if (_busy)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
@@ -103,10 +103,10 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                 else if (_searched) ...[
                   Text(
                     '${_stays.length} result(s)',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -118,10 +118,10 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                     const SizedBox(height: 16),
                     Text(
                       _disclaimer!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         height: 1.4,
-                        color: AppColors.textMuted,
+                        color: context.triporaColors.textMuted,
                       ),
                     ),
                   ],
@@ -139,7 +139,7 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -290,7 +290,7 @@ class _StayCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -302,13 +302,15 @@ class _StayCard extends StatelessWidget {
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.12),
+                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.hotel_outlined,
-                color: AppColors.secondary,
-                size: 28,
+              child: ExcludeSemantics(
+                child: Icon(
+                  Icons.hotel_outlined,
+                  color: Theme.of(context).colorScheme.secondary,
+                  size: 28,
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -318,28 +320,28 @@ class _StayCard extends StatelessWidget {
                 children: [
                   Text(
                     name.isEmpty ? 'Hotel' : name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   if (place.isNotEmpty)
                     Text(
                       place,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textMuted,
+                        color: context.triporaColors.textMuted,
                       ),
                     ),
                   const SizedBox(height: 8),
                   Text(
                     '$currency${amount.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -357,16 +359,18 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 24),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          Icon(Icons.search_off, size: 40, color: AppColors.textMuted),
-          SizedBox(height: 10),
+          ExcludeSemantics(
+            child: Icon(Icons.search_off, size: 40, color: context.triporaColors.textMuted),
+          ),
+          const SizedBox(height: 10),
           Text(
             'No hotels found. Try adjusting your search.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textMuted),
+            style: TextStyle(color: context.triporaColors.textMuted),
           ),
         ],
       ),
@@ -376,7 +380,7 @@ class _EmptyState extends StatelessWidget {
 
 class _Banner extends StatelessWidget {
   final String text;
-  final MaterialColor color;
+  final Color color;
 
   const _Banner({required this.text, required this.color});
 
@@ -390,7 +394,7 @@ class _Banner extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
-      child: Text(text, style: TextStyle(color: color.shade700)),
+      child: Text(text, style: TextStyle(color: color)),
     );
   }
 }

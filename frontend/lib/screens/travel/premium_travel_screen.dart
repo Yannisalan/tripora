@@ -16,30 +16,30 @@ class PremiumTravelScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Premium Travel')),
       body: ListView(
         padding: const EdgeInsets.all(20),
-        children: const [
-          _Header(),
-          SizedBox(height: 20),
+        children: [
+          const _Header(),
+          const SizedBox(height: 20),
           _TravelTile(
             icon: Icons.flight_takeoff,
             title: 'Flights',
             subtitle: 'Search live fares on routes around the world.',
-            color: Color(0xFF2563EB),
+            color: Theme.of(context).colorScheme.primary,
             route: AppRoutes.travelFlights,
           ),
-          SizedBox(height: 14),
+          const SizedBox(height: 14),
           _TravelTile(
             icon: Icons.hotel_outlined,
             title: 'Hotels',
             subtitle: 'Find stays near your destination.',
-            color: Color(0xFF7C3AED),
+            color: Theme.of(context).colorScheme.tertiary,
             route: AppRoutes.travelStays,
           ),
-          SizedBox(height: 14),
+          const SizedBox(height: 14),
           _TravelTile(
             icon: Icons.directions_car_outlined,
             title: 'Cars',
             subtitle: 'Compare rental cars at pickup and drop-off.',
-            color: Color(0xFFEA580C),
+            color: Theme.of(context).colorScheme.tertiary,
             route: AppRoutes.travelCars,
           ),
         ],
@@ -64,7 +64,9 @@ class _Header extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.travel_explore, color: Colors.white, size: 28),
+              ExcludeSemantics(
+                child: Icon(Icons.travel_explore, color: Colors.white, size: 28),
+              ),
               SizedBox(width: 10),
               Text(
                 'Search the world',
@@ -114,7 +116,7 @@ class _TravelTile extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: const Color(0xFFE5E7EB)),
+        side: BorderSide(color: context.triporaColors.border),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -125,15 +127,17 @@ class _TravelTile extends StatelessWidget {
           padding: const EdgeInsets.all(18),
           child: Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+              ExcludeSemantics(
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
                 ),
-                child: Icon(icon, color: color, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -142,25 +146,27 @@ class _TravelTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: context.triporaColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.4,
-                        color: AppColors.textMuted,
+                        color: context.triporaColors.textMuted,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.textMuted),
+              ExcludeSemantics(
+                child: Icon(Icons.chevron_right, color: context.triporaColors.textMuted),
+              ),
             ],
           ),
         ),
