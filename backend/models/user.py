@@ -1,21 +1,6 @@
-import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from config.database import db
-
-
-# ============================================================
-# EMAIL VERIFICATION HELPERS
-# ============================================================
-
-def generate_verification_token():
-    """Generate a secure 6-digit email verification code."""
-    return f"{secrets.randbelow(1_000_000):06d}"
-
-
-def generate_verification_expiry():
-    """Return an expiration time 10 minutes from now."""
-    return datetime.utcnow() + timedelta(minutes=10)
 
 
 # ============================================================
@@ -30,17 +15,7 @@ class User(db.Model):
         kwargs.setdefault("preferred_language", "en")
         kwargs.setdefault("preferred_currency", "USD")
 
-        # Email verification defaults
-        kwargs.setdefault("email_verified", False)
-
-        # Generate verification token and expiry together.
-        if "verification_token" not in kwargs:
-            kwargs["verification_token"] = generate_verification_token()
-
-        if "verification_token_expires_at" not in kwargs:
-            kwargs["verification_token_expires_at"] = (
-                generate_verification_expiry()
-            )
+        kwargs.setdefault("email_verified", True)
 
         super().__init__(**kwargs)
 

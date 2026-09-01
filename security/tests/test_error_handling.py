@@ -41,7 +41,6 @@ from .helpers import (
     get_user_by_email,
     login,
     register,
-    verify_email,
 )
 
 EVIDENCE = []
@@ -128,8 +127,6 @@ class TestWellFormedErrorsDoNotLeak:
         [
             ("register missing password", lambda c: c.post("/api/auth/register", json={"name": "A", "email": "a@b.com"})),
             ("login missing email", lambda c: c.post("/api/auth/login", json={"password": "x"})),
-            ("verify-email empty token", lambda c: c.post("/api/auth/verify-email", json={"token": ""})),
-            ("resend missing email", lambda c: c.post("/api/auth/resend-verification", json={})),
             ("generate no auth", lambda c: c.get("/api/trips")),
             ("404 unknown path", lambda c: c.get("/api/does-not-exist")),
             ("405 wrong method", lambda c: c.put("/api/auth/register")),
@@ -251,15 +248,6 @@ class TestAuthInputDisclosure:
             assert resp.status_code in (400, 401), (flags, text, resp.status_code)
             assert "SELECT" not in text.upper()
             assert "FROM users" not in text
-
-    def test_verify_email_object_token_no_leak(self, client):
-        # An object `token` is coerced to str then queried; must not leak.
-        resp = client.post("/api/auth/verify-email", json={"token": {"x": 1}})
-        text = _get_text(resp)
-        flags = _flags_for(text)
-        _record("auth-input", "object token", resp.status_code, text, flags)
-        assert resp.status_code in (200, 400, 404, 500)
-        assert not (SEVERE & set(flags)), (flags, text)
 
 
 class TestRouteLevelUnhandledGuards:

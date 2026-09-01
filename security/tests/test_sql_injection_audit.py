@@ -20,7 +20,6 @@ from .helpers import (
     get_user_by_email,
     login,
     register,
-    verify_email,
 )
 
 # Payload families: comment, tautology, stacked, UNION, error-based,
@@ -159,29 +158,18 @@ class TestLoginQueries:
             assert "sql" not in text_.lower()
 
 
-class TestVerifyEmailQueries:
-    """POST /api/auth/verify-email — token drives the lookup query."""
+class TestVerifyEmailQueriesRemoved:
+    """The verify-email/resend endpoints were removed with the email flow."""
 
-    def test_injection_tokens_never_match_other_accounts(self, client):
-        token = create_logged_in_user(client, name="VerifiedOwner")
-        for payload in ALL_PAYLOADS:
-            resp = client.post("/api/auth/verify-email", json={"token": payload})
-            # Payload simply does not match the stored token -> 404.
-            assert resp.status_code in (400, 404), (payload, resp.get_json())
-            _assert_safe_no_sqli(resp)
+    def test_verify_email_endpoint_gone(self, client):
+        assert client.post(
+            "/api/auth/verify-email", json={"token": "anything"}
+        ).status_code in (404, 405)
 
-
-class TestResendVerificationQueries:
-    """POST /api/auth/resend-verification — email drives the lookup query."""
-
-    def test_email_payloads_do_not_enumerate_via_sqli(self, client):
-        create_logged_in_user(client, name="ExistingUser", email="existing2@example.com")
-        for payload in TAUTOLOGY_PAYLOADS + UNION_PAYLOADS:
-            resp = client.post("/api/auth/resend-verification", json={"email": payload})
-            # Must not return '200 already verified' for the OTHER account just
-            # because a tautology matched; result is controlled (400/404).
-            assert resp.status_code in (400, 404), (payload, resp.get_json())
-            _assert_safe_no_sqli(resp)
+    def test_resend_verification_endpoint_gone(self, client):
+        assert client.post(
+            "/api/auth/resend-verification", json={"email": "a@b.com"}
+        ).status_code in (404, 405)
 
 
 class TestMeUpdateQueries:

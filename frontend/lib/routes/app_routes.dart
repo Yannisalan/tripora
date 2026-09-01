@@ -4,8 +4,6 @@ import '../core/config/app_config.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/logger.dart';
 
-import '../screens/verify_email_page.dart';
-
 import '../screens/home/home_screen.dart';
 import '../screens/explore/explore_screen.dart';
 import '../screens/planner/planner_screen.dart';
@@ -37,7 +35,6 @@ class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
-  static const String verifyEmail = '/verify-email';
 
   static const String terms = '/terms';
   static const String privacy = '/privacy';
@@ -82,41 +79,6 @@ class AppRoutes {
       login: (_) => const LoginScreen(),
 
       register: (_) => const RegisterScreen(),
-
-      // --------------------------------------------------------
-      // EMAIL VERIFICATION
-      // --------------------------------------------------------
-      //
-      // RegisterScreen should navigate here with:
-      //
-      // Navigator.pushNamed(
-      //   context,
-      //   AppRoutes.verifyEmail,
-      //   arguments: email,
-      // );
-      //
-      // --------------------------------------------------------
-
-      verifyEmail: (context) {
-        final arguments =
-            ModalRoute.of(context)?.settings.arguments;
-
-        String? email;
-
-        if (arguments is String) {
-          email = arguments;
-        } else if (arguments is Map) {
-          final value = arguments['email'];
-
-          if (value != null) {
-            email = value.toString();
-          }
-        }
-
-        return VerifyEmailPage(
-          email: email,
-        );
-      },
 
       // ========================================================
       // LEGAL

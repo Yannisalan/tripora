@@ -32,7 +32,6 @@ from .helpers import (
     forge_valid_access_token,
     login,
     register,
-    verify_email,
 )
 
 # The test-only secret used to sign/verify tokens. MUST match the dummy
@@ -271,19 +270,11 @@ class TestAuthenticationFlow:
     """Sanity checks that the auth flow itself functions (control group)."""
 
     def test_valid_login_returns_token_and_me_works(self, client):
-        """A properly registered + verified + logged-in user reaches /me."""
+        """A properly registered + logged-in user reaches /me."""
         register(client, name="Dana", email="dana@example.com")
-        verify_email(client, "dana@example.com")
         resp = login(client, "dana@example.com", "supersecret1")
         assert resp.status_code == 200
         token = resp.get_json()["accessToken"]
         me = client.get("/api/auth/me", headers=auth_headers(token))
         assert me.status_code == 200
         assert me.get_json()["user"]["email"] == "dana@example.com"
-
-    def test_unverified_user_cannot_login(self, client):
-        """Registration without email verification cannot obtain a token."""
-        register(client, name="Eve", email="eve@example.com")
-        resp = login(client, "eve@example.com", "supersecret1")
-        assert resp.status_code == 403
-        assert resp.get_json()["success"] is False

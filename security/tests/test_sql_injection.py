@@ -20,7 +20,6 @@ from .helpers import (
     get_user_by_email,
     login,
     register,
-    verify_email,
     create_trip_and_get_id,
 )
 
@@ -102,7 +101,6 @@ class TestInjectionInLogin:
     def test_login_password_payloads_rejected(self, client):
         """Injection sent in the password field (compared, not queried)."""
         register(client, name="Target", email="target-login@example.com")
-        verify_email(client, "target-login@example.com")
         for i, payload in enumerate(NAME_PAYLOADS):
             resp = login(client, "target-login@example.com", payload)
             # Password is never used in a DB query; always a hash comparison.

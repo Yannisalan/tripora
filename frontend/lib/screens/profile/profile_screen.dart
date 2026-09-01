@@ -25,7 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSaving = false;
   bool _isDeleting = false;
   bool _showPasswordFields = false;
-  bool _emailVerified = false;
   String? _errorMessage;
   String? _successMessage;
 
@@ -72,7 +71,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
-      _emailVerified = (user['emailVerified'] ?? false) == true;
       _preferredLanguage = (user['preferredLanguage'] ?? 'en')
           .toString()
           .trim();
@@ -142,7 +140,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
-      _emailVerified = (user['emailVerified'] ?? false) == true;
       _preferredLanguage = (user['preferredLanguage'] ?? 'en')
           .toString()
           .trim();
@@ -395,60 +392,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        _buildSectionTitle(context, 'Email verification'),
-                        const SizedBox(width: 10),
-                        Chip(
-                          label: Text(
-                            _emailVerified ? 'Verified' : 'Unverified',
-                          ),
-                          backgroundColor: _emailVerified
-                              ? context.appStatus.success.withValues(alpha: 0.08)
-                              : context.appStatus.warning.withValues(alpha: 0.08),
-                          avatar: Icon(
-                            _emailVerified
-                                ? Icons.check_circle
-                                : Icons.warning_amber,
-                            color: _emailVerified
-                                ? context.appStatus.success
-                                : context.appStatus.warning,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (!_emailVerified)
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            try {
-                              final result = await _authService
-                                  .resendVerification(
-                                    email: _emailController.text.trim(),
-                                  );
-                              if (!mounted) return;
-                              setState(() {
-                                _successMessage =
-                                    result['message']?.toString() ??
-                                    'Verification email was resent.';
-                              });
-                            } catch (error) {
-                              if (!mounted) return;
-                              setState(() {
-                                _errorMessage = error
-                                    .toString()
-                                    .replaceFirst('Exception: ', '')
-                                    .trim();
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.refresh_outlined),
-                          label: const Text('Resend verification'),
-                        ),
-                      ),
                     const SizedBox(height: 20),
                     _buildSectionTitle(context, 'Preferences'),
                     const SizedBox(height: 12),

@@ -12,7 +12,6 @@ from .helpers import (
     create_trip,
     login,
     register,
-    verify_email,
 )
 
 VALID_LANGUAGES = {"en", "es", "fr", "de", "it", "pt"}

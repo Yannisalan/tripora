@@ -8,7 +8,6 @@ from .helpers import (
     get_user_by_email,
     login,
     register,
-    verify_email,
 )
 
 
@@ -83,10 +82,3 @@ class TestCoreFlow:
         u = patch.get_json()["user"]
         assert u["preferredLanguage"] == "es"
         assert u["preferredCurrency"] == "EUR"
-
-    def test_resend_verification_flow(self, client):
-        register(client, name="RsvUser", email="rsv@example.com")
-        resp = client.post(
-            "/api/auth/resend-verification", json={"email": "rsv@example.com"}
-        )
-        assert resp.status_code == 200, resp.get_json()

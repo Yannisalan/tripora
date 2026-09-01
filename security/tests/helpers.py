@@ -46,14 +46,6 @@ def get_user_by_email(email):
     return User.query.filter_by(email=email).first()
 
 
-def verify_email(client, email):
-    """POST /api/auth/verify-email using the user's DB-stored token."""
-    user = get_user_by_email(email)
-    if user is None:
-        return None
-    return client.post("/api/auth/verify-email", json={"token": user.verification_token})
-
-
 def login(client, email, password):
     """POST /api/auth/login. Returns the Flask response."""
     return client.post("/api/auth/login", json={"email": email, "password": password})
@@ -67,7 +59,7 @@ def create_logged_in_user(
     language="en",
     currency="USD",
 ):
-    """Register, verify, and log in a fresh test user.
+    """Register and log in a fresh test user.
 
     Returns the JWT access token string.
     """
@@ -83,7 +75,6 @@ def create_logged_in_user(
         currency=currency,
     )
     assert reg.status_code == 201, reg.get_json()
-    verify_email(client, email)
     resp = login(client, email, password)
     assert resp.status_code == 200, resp.get_json()
     return resp.get_json()["accessToken"]

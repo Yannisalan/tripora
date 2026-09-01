@@ -74,8 +74,6 @@ def tight_spec_limits():
     limiter.configure_bucket("trips.generate_trip", 5, 600)
     limiter.configure_bucket("auth.login", 10, 600)
     limiter.configure_bucket("auth.register", 10, 600)
-    limiter.configure_bucket("auth.verify_email", 10, 600)
-    limiter.configure_bucket("auth.resend_verification", 10, 600)
     limiter.configure_bucket("trips.update_trip", 30, 600)
     limiter.configure_bucket("trips.delete_trip", 30, 600)
     limiter.configure_bucket("trips.regenerate_trip_itinerary", 30, 600)
@@ -104,8 +102,7 @@ class TestEnvConfiguration:
         assert b["window"] == 600
 
     def test_default_auth_bucket(self):
-        for ep in ("auth.login", "auth.register", "auth.verify_email",
-                   "auth.resend_verification"):
+        for ep in ("auth.login", "auth.register", "auth.social_login"):
             b = Config.rate_limit_buckets()[ep]
             assert b["limit"] == AUTH_LIMIT
             assert b["window"] == 600

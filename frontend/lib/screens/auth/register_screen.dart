@@ -21,12 +21,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _verificationController =
-      TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _showVerification = false;
   bool _acceptedTerms = false;
   bool _acceptedPrivacy = false;
   String? _statusMessage;
@@ -36,7 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _verificationController.dispose();
     super.dispose();
   }
 
@@ -85,13 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-        _showVerification = true;
-        _statusMessage =
-            'Your account was created. A verification code was sent to your email address.';
-      });
-
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -101,90 +90,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             behavior: SnackBarBehavior.floating,
             backgroundColor:
-                Theme.of(context).extension<AppStatusColors>()?.info ??
-                    AppColors.info,
-          ),
-        );
-    } catch (error) {
-      if (!mounted) return;
-
-      String message = error.toString();
-
-      if (message.startsWith('Exception: ')) {
-        message = message.substring(11);
-      }
-
-      setState(() {
-        _isLoading = false;
-        _statusMessage = message;
-      });
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(message),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor:
-                Theme.of(context).extension<AppStatusColors>()?.error ??
-                    AppColors.error,
-          ),
-        );
-    }
-  }
-
-  // ============================================================
-  // VERIFY EMAIL
-  // ============================================================
-
-  Future<void> _verifyEmail() async {
-    final token = _verificationController.text.trim();
-
-    if (token.isEmpty) {
-      setState(() {
-        _statusMessage = 'Please enter the verification token.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _statusMessage = null;
-    });
-
-    try {
-      await _authService.verifyEmail(token: token);
-
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-        _showVerification = false;
-        _statusMessage = 'Email verified successfully. You can now sign in.';
-      });
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Email verified successfully. You can now sign in.',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor:
                 Theme.of(context).extension<AppStatusColors>()?.success ??
                     AppColors.success,
           ),
         );
 
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
-        }
-      });
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
     } catch (error) {
       if (!mounted) return;
 
@@ -554,54 +468,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                           height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // ==================================================
-                  // EMAIL VERIFICATION
-                  // ==================================================
-
-                  if (_showVerification) ...[
-                    const SizedBox(height: 20),
-
-                    const Text(
-                      'Verify your email',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    TextField(
-                      controller: _verificationController,
-                      enabled: !_isLoading,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Verification token',
-                        hintText: 'Enter the code sent to your email',
-                        prefixIcon: Icon(Icons.verified_outlined),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: GradientButton(
-                        onPressed: _isLoading ? null : _verifyEmail,
-                        height: 52,
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text(
-                          'Verify Email',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
                         ),
                       ),
                     ),

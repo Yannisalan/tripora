@@ -119,7 +119,7 @@ class PrivacyContent {
     LegalSection(
       '2. How We Use Your Information',
       'We use your information to provide the Service, create and restore '
-      'your trips, send you verification or account emails, personalize your '
+      'your trips, send you account emails, personalize your '
       'experience, and keep the Service secure. We do not sell your personal '
       'data.',
     ),

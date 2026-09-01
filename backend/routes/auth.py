@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
@@ -18,15 +17,11 @@ from config.database import db
 
 from models.user import (
     User,
-    generate_verification_expiry,
-    generate_verification_token,
 )
 
 from models.activity_log import ActivityLog
 from models.subscription import Subscription
 from models.trip import Trip
-
-from services.email_service import send_verification_email
 
 from services.social_auth_service import (
     SocialAuthError,
@@ -108,24 +103,6 @@ def _user_response(user):
             else None
         ),
     }
-
-
-def _verification_code_expired(user):
-    """Return True when the user's verification code has expired."""
-
-    if user.verification_token_expires_at is None:
-        return True
-
-    return datetime.utcnow() > user.verification_token_expires_at
-
-
-def _generate_new_verification_code(user):
-    """Generate a new verification code and its expiry."""
-
-    user.verification_token = generate_verification_token()
-    user.verification_token_expires_at = (
-        generate_verification_expiry()
-    )
 
 
 # ============================================================
@@ -269,13 +246,6 @@ def register():
         password_hash = generate_password_hash(password)
 
         # ----------------------------------------------------
-        # VERIFICATION CODE + EXPIRY
-        # ----------------------------------------------------
-
-        verification_token = generate_verification_token()
-        verification_expiry = generate_verification_expiry()
-
-        # ----------------------------------------------------
         # CREATE USER
         # ----------------------------------------------------
 
@@ -285,9 +255,7 @@ def register():
             password_hash=password_hash,
             preferred_language=preferred_language,
             preferred_currency=preferred_currency,
-            email_verified=False,
-            verification_token=verification_token,
-            verification_token_expires_at=verification_expiry,
+            email_verified=True,
         )
 
         db.session.add(user)
@@ -298,27 +266,9 @@ def register():
             user.id,
         )
 
-        # ----------------------------------------------------
-        # SEND VERIFICATION EMAIL
-        # ----------------------------------------------------
-
-        email_sent = send_verification_email(
-            user.email,
-            user.verification_token,
-        )
-
-        if not email_sent:
-            logger.warning(
-                "Verification email could not be sent to %s",
-                user.email,
-            )
-
         return jsonify({
             "success": True,
-            "message": (
-                "Registration successful. A verification code "
-                "has been sent to your email address."
-            ),
+            "message": "Registration successful.",
             "user": _user_response(user),
         }), 201
 
@@ -333,194 +283,6 @@ def register():
         return jsonify({
             "success": False,
             "message": "Failed to register user.",
-            "error": "Internal server error.",
-        }), 500
-
-
-# ============================================================
-# VERIFY EMAIL
-# POST /api/auth/verify-email
-# ============================================================
-
-@auth_bp.route("/verify-email", methods=["POST"])
-def verify_email():
-
-    data = request.get_json(silent=True) or {}
-
-    logger.debug(
-        "VERIFY EMAIL REQUEST: %s",
-        _redact_sensitive(data),
-    )
-
-    token = str(
-        data.get("token", "")
-    ).strip()
-
-    if not token:
-        return jsonify({
-            "success": False,
-            "message": "Verification code is required.",
-        }), 400
-
-    try:
-
-        user = User.query.filter_by(
-            verification_token=token
-        ).first()
-
-        if user is None:
-            return jsonify({
-                "success": False,
-                "message": "Invalid or expired verification code.",
-            }), 404
-
-        # ----------------------------------------------------
-        # CHECK EXPIRY
-        # ----------------------------------------------------
-
-        if _verification_code_expired(user):
-
-            user.verification_token = None
-            user.verification_token_expires_at = None
-
-            db.session.commit()
-
-            return jsonify({
-                "success": False,
-                "message": (
-                    "This verification code has expired. "
-                    "Please request a new code."
-                ),
-            }), 400
-
-        # ----------------------------------------------------
-        # VERIFY EMAIL
-        # ----------------------------------------------------
-
-        user.email_verified = True
-
-        # Invalidate code after successful verification.
-        user.verification_token = None
-        user.verification_token_expires_at = None
-
-        db.session.commit()
-
-        logger.info(
-            "Email verified successfully for user: %s",
-            user.id,
-        )
-
-        return jsonify({
-            "success": True,
-            "message": "Email verified successfully.",
-            "user": _user_response(user),
-        }), 200
-
-    except Exception:
-
-        db.session.rollback()
-
-        logger.exception(
-            "Email verification failed"
-        )
-
-        return jsonify({
-            "success": False,
-            "message": "Failed to verify email.",
-            "error": "Internal server error.",
-        }), 500
-
-
-# ============================================================
-# RESEND VERIFICATION
-# POST /api/auth/resend-verification
-# ============================================================
-
-@auth_bp.route("/resend-verification", methods=["POST"])
-def resend_verification():
-
-    data = request.get_json(silent=True) or {}
-
-    email = str(
-        data.get("email", "")
-    ).strip().lower()
-
-    if not email:
-        return jsonify({
-            "success": False,
-            "message": "Email is required.",
-        }), 400
-
-    try:
-
-        user = User.query.filter_by(
-            email=email
-        ).first()
-
-        if user is None:
-            return jsonify({
-                "success": False,
-                "message": "No account was found for that email.",
-            }), 404
-
-        if user.email_verified:
-            return jsonify({
-                "success": True,
-                "message": (
-                    "This email address is already verified."
-                ),
-                "user": _user_response(user),
-            }), 200
-
-        # ----------------------------------------------------
-        # GENERATE NEW CODE + NEW EXPIRY
-        # ----------------------------------------------------
-
-        _generate_new_verification_code(user)
-
-        db.session.commit()
-
-        # ----------------------------------------------------
-        # SEND EMAIL
-        # ----------------------------------------------------
-
-        email_sent = send_verification_email(
-            user.email,
-            user.verification_token,
-        )
-
-        if not email_sent:
-
-            logger.warning(
-                "Verification email could not be sent to %s",
-                user.email,
-            )
-
-            return jsonify({
-                "success": False,
-                "message": "Failed to send verification email.",
-            }), 500
-
-        return jsonify({
-            "success": True,
-            "message": (
-                "A new verification code has been sent "
-                "to your email address."
-            ),
-            "user": _user_response(user),
-        }), 200
-
-    except Exception:
-
-        db.session.rollback()
-
-        logger.exception(
-            "Resend verification failed"
-        )
-
-        return jsonify({
-            "success": False,
-            "message": "Failed to resend verification code.",
             "error": "Internal server error.",
         }), 500
 
@@ -602,20 +364,6 @@ def login():
                 "success": False,
                 "message": "Invalid email or password.",
             }), 401
-
-        # ----------------------------------------------------
-        # EMAIL VERIFICATION
-        # ----------------------------------------------------
-
-        if not user.email_verified:
-
-            return jsonify({
-                "success": False,
-                "message": (
-                    "Please verify your email address "
-                    "before signing in."
-                ),
-            }), 403
 
         # ----------------------------------------------------
         # JWT
@@ -939,8 +687,6 @@ def update_current_user():
         preferred_language = data.get("preferredLanguage")
         preferred_currency = data.get("preferredCurrency")
 
-        email_changed = False
-
         # ----------------------------------------------------
         # UPDATE NAME
         # ----------------------------------------------------
@@ -988,12 +734,6 @@ def update_current_user():
                     }), 409
 
                 user.email = clean_email
-                user.email_verified = False
-
-                # New email = new verification code + new expiry.
-                _generate_new_verification_code(user)
-
-                email_changed = True
 
         # ----------------------------------------------------
         # UPDATE LANGUAGE
@@ -1096,25 +836,6 @@ def update_current_user():
         # ----------------------------------------------------
 
         db.session.commit()
-
-        # ----------------------------------------------------
-        # SEND VERIFICATION EMAIL AFTER EMAIL CHANGE
-        # ----------------------------------------------------
-
-        if email_changed:
-
-            email_sent = send_verification_email(
-                user.email,
-                user.verification_token,
-            )
-
-            if not email_sent:
-
-                logger.warning(
-                    "Verification email could not be sent "
-                    "after email change to %s",
-                    user.email,
-                )
 
         return jsonify({
             "success": True,
