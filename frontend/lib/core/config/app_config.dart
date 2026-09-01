@@ -15,7 +15,7 @@ class AppConfig {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.tripora.example.com',
+    defaultValue: 'https://tripora-4mt3.onrender.com',
   );
 
   // ------------------------------------------------------------

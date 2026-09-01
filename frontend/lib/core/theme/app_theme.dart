@@ -26,7 +26,7 @@ class AppColors {
   static const Color gradientStrongStart = Color(0xFF1E40AF);
   static const Color gradientStrongEnd = Color(0xFF5B21B6);
 
-  static const Color background = Color(0xFFF8FAFC);
+  static const Color background = Color(0xFFF7F3EA);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF334155);
@@ -201,8 +201,8 @@ class AppTheme {
       brightness: Brightness.light,
     ).copyWith(
       surfaceContainerLowest: AppColors.surface,
-      surfaceContainerLow: const Color(0xFFF1F5F9),
-      surfaceContainer: const Color(0xFFEFF6FF),
+      surfaceContainerLow: const Color(0xFFF3EEE2),
+      surfaceContainer: const Color(0xFFEFE8DA),
     );
 
     return _base(scheme, TriporaColors.light);

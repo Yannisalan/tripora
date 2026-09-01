@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/config/app_config.dart';
+import '../core/theme/app_theme.dart';
 import '../core/utils/logger.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/explore/explore_screen.dart';
@@ -488,18 +489,20 @@ class _InvalidTripScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: colors.backgroundColor,
 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
+        title: Text(
           'Tripora',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: Color(0xFF111827),
+            color: colors.textPrimary,
           ),
         ),
       ),
@@ -512,9 +515,9 @@ class _InvalidTripScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 500),
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: colors.border),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -533,7 +536,6 @@ class _InvalidTripScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
                   ),
                 ),
 
@@ -542,10 +544,10 @@ class _InvalidTripScreen extends StatelessWidget {
                 Text(
                   reason,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     height: 1.5,
-                    color: Color(0xFF6B7280),
+                    color: colors.textSecondary,
                   ),
                 ),
 
