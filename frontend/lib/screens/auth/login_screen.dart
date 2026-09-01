@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/utils/logger.dart';
@@ -19,9 +20,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController();
 
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _passwordController =
+      TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -56,10 +59,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // --------------------------------------------------------
-      // LOGIN SUCCESSFUL
-      // --------------------------------------------------------
-
       _goToPlanner();
     } catch (error) {
       appLog('LOGIN ERROR: $error');
@@ -78,8 +77,11 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text(message),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).extension<AppStatusColors>()?.error ??
-                AppColors.error,
+            backgroundColor:
+                Theme.of(context)
+                        .extension<AppStatusColors>()
+                        ?.error ??
+                    AppColors.error,
           ),
         );
     } finally {
@@ -98,7 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void _goToPlanner() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const PlannerScreen()),
+      MaterialPageRoute(
+        builder: (context) => const PlannerScreen(),
+      ),
       (route) => false,
     );
   }
@@ -110,7 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.triporaColors.backgroundColor,
+      backgroundColor:
+          context.triporaColors.backgroundColor,
+
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -129,43 +135,65 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(24),
 
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints:
+                const BoxConstraints(maxWidth: 400),
 
             child: Form(
               key: _formKey,
 
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
 
                 children: [
                   // ==================================================
                   // BRAND MARK
                   // ==================================================
+
                   Center(
                     child: Container(
                       width: 88,
                       height: 88,
+
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius:
+                            BorderRadius.circular(22),
+
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.2),
+
                             blurRadius: 24,
-                            offset: const Offset(0, 10),
+                            offset:
+                                const Offset(0, 10),
                           ),
                         ],
                       ),
+
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius:
+                            BorderRadius.circular(22),
+
                         child: Image.asset(
                           'assets/logo_new.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
+
+                          errorBuilder:
+                              (context, error, stackTrace) {
                             return Container(
-                              alignment: Alignment.center,
-                              decoration: const BoxDecoration(
-                                gradient: AppColors.brandGradient,
+                              alignment:
+                                  Alignment.center,
+
+                              decoration:
+                                  const BoxDecoration(
+                                gradient:
+                                    AppColors
+                                        .brandGradient,
                               ),
+
                               child: const Icon(
                                 Icons.flight_takeoff,
                                 color: Colors.white,
@@ -183,6 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ==================================================
                   // TITLE
                   // ==================================================
+
                   Text(
                     'Welcome back to Tripora',
                     textAlign: TextAlign.center,
@@ -190,7 +219,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: context.triporaColors.textPrimary,
+                      color:
+                          context.triporaColors.textPrimary,
                     ),
                   ),
 
@@ -199,47 +229,64 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Sign in to continue planning your trip.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: context.triporaColors.textMuted),
+
+                    style: TextStyle(
+                      fontSize: 15,
+                      color:
+                          context.triporaColors.textMuted,
+                    ),
                   ),
 
                   const SizedBox(height: 32),
 
                   // ==================================================
-                  // SOCIAL SIGN-IN (GOOGLE / APPLE)
+                  // SOCIAL SIGN-IN
+                  //
+                  // Google + Apple remain implemented for
+                  // Android/iOS but are hidden on Flutter Web.
                   // ==================================================
-                  SocialSignInSection(
-                    onSuccess: () {
-                      if (!mounted) return;
-                      _goToPlanner();
-                    },
-                  ),
 
-                  const SizedBox(height: 24),
+                  if (!kIsWeb) ...[
+                    SocialSignInSection(
+                      onSuccess: () {
+                        if (!mounted) return;
+                        _goToPlanner();
+                      },
+                    ),
 
-                  const _FieldsDivider(),
+                    const SizedBox(height: 24),
 
-                  const SizedBox(height: 24),
+                    const _FieldsDivider(),
+
+                    const SizedBox(height: 24),
+                  ],
 
                   // ==================================================
                   // EMAIL
                   // ==================================================
+
                   TextFormField(
                     controller: _emailController,
 
-                    keyboardType: TextInputType.emailAddress,
+                    keyboardType:
+                        TextInputType.emailAddress,
 
-                    textInputAction: TextInputAction.next,
+                    textInputAction:
+                        TextInputAction.next,
 
                     enabled: !_isLoading,
 
-                    decoration: const InputDecoration(
+                    decoration:
+                        const InputDecoration(
                       labelText: 'Email',
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon:
+                          Icon(Icons.email_outlined),
                     ),
 
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
+                      if (value == null ||
+                          value.trim().isEmpty) {
                         return 'Please enter your email.';
                       }
 
@@ -256,12 +303,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ==================================================
                   // PASSWORD
                   // ==================================================
+
                   TextFormField(
                     controller: _passwordController,
 
-                    obscureText: _obscurePassword,
+                    obscureText:
+                        _obscurePassword,
 
-                    textInputAction: TextInputAction.done,
+                    textInputAction:
+                        TextInputAction.done,
 
                     enabled: !_isLoading,
 
@@ -271,32 +321,47 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                     },
 
-                    decoration: InputDecoration(
+                    decoration:
+                        InputDecoration(
                       labelText: 'Password',
-                      hintText: 'Enter your password',
+                      hintText:
+                          'Enter your password',
 
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon:
+                          const Icon(
+                        Icons.lock_outline,
+                      ),
 
-                      suffixIcon: IconButton(
-                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                        onPressed: _isLoading
-                            ? null
-                            : () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
+                      suffixIcon:
+                          IconButton(
+                        tooltip:
+                            _obscurePassword
+                                ? 'Show password'
+                                : 'Hide password',
+
+                        onPressed:
+                            _isLoading
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _obscurePassword =
+                                          !_obscurePassword;
+                                    });
+                                  },
 
                         icon: Icon(
                           _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? Icons
+                                  .visibility_outlined
+                              : Icons
+                                  .visibility_off_outlined,
                         ),
                       ),
                     ),
 
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
+                      if (value == null ||
+                          value.isEmpty) {
                         return 'Please enter your password.';
                       }
 
@@ -309,46 +374,66 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ==================================================
                   // SIGN IN BUTTON
                   // ==================================================
+
                   SizedBox(
                     height: 52,
 
                     child: GradientButton(
-                      onPressed: _isLoading ? null : _login,
+                      onPressed:
+                          _isLoading ? null : _login,
+
                       height: 52,
+
                       child: _isLoading
                           ? const SizedBox(
                               width: 22,
                               height: 22,
 
-                              child: CircularProgressIndicator(
+                              child:
+                                  CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
                               ),
                             )
+
                           : const Text(
                               'Sign In',
+
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontWeight:
+                                    FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
+
                     children: [
-                      const Text("Don't have an account? "),
+                      const Text(
+                        "Don't have an account? ",
+                      ),
+
                       TextButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () {
-                                Navigator.of(
-                                  context,
-                                ).pushNamed('/register');
-                              },
-                        child: const Text('Sign up'),
+                        onPressed:
+                            _isLoading
+                                ? null
+                                : () {
+                                    Navigator.of(
+                                      context,
+                                    ).pushNamed(
+                                      '/register',
+                                    );
+                                  },
+
+                        child:
+                            const Text('Sign up'),
                       ),
                     ],
                   ),
@@ -362,6 +447,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+// ================================================================
+// SOCIAL FIELDS DIVIDER
+// ================================================================
+
 class _FieldsDivider extends StatelessWidget {
   const _FieldsDivider();
 
@@ -369,18 +458,31 @@ class _FieldsDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider()),
+        const Expanded(
+          child: Divider(),
+        ),
+
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 12,
+          ),
+
           child: Text(
             'or with email',
+
             style: TextStyle(
-              color: context.triporaColors.textMuted,
-              fontWeight: FontWeight.w500,
+              color:
+                  context.triporaColors.textMuted,
+              fontWeight:
+                  FontWeight.w500,
             ),
           ),
         ),
-        const Expanded(child: Divider()),
+
+        const Expanded(
+          child: Divider(),
+        ),
       ],
     );
   }
