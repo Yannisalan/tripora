@@ -259,13 +259,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      'Add Africa to your travel list',
-                      style: TextStyle(
-                        color: context.appStatus.info,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
                   ],
                 ),
               ),
