@@ -103,9 +103,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: context.triporaColors.border,
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                ),
+                                child: const Icon(Icons.image_not_supported),
                               );
                             },
                           ),
@@ -211,6 +209,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  Future<void> _refresh() async {
+    _searchController.clear();
+
+    setState(() {
+      _query = '';
+      _selectedTag = 'All';
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -224,135 +237,104 @@ class _ExploreScreenState extends State<ExploreScreen> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
-      body: ListView(
-        padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 16 : 40,
-          vertical: 24,
-        ),
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      context.triporaColors.surfaceInfo,
-                      context.triporaColors.surfaceSecondary,
-                      context.triporaColors.surfaceAccent,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.18),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.public,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                ),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 16 : 40,
+            vertical: 24,
+          ),
+          children: [
+            Text(
+              'Discover where to go next',
+              style: TextStyle(
+                fontSize: 34,
+                height: 1.1,
+                fontWeight: FontWeight.w900,
+                color: context.triporaColors.textPrimary,
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Discover where to go next',
-            style: TextStyle(
-              fontSize: 34,
-              height: 1.1,
-              fontWeight: FontWeight.w900,
-              color: context.triporaColors.textPrimary,
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'From Cotonou to Seychelles — search by place or mood, then send the destination straight into Planner.',
-            style: TextStyle(
-              fontSize: 16,
-              height: 1.45,
-              color: context.triporaColors.textMuted,
+            const SizedBox(height: 10),
+            Text(
+              'From Cotonou to Seychelles — search by place or mood, then send the destination straight into Planner.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.45,
+                color: context.triporaColors.textMuted,
+              ),
             ),
-          ),
-          const SizedBox(height: 22),
-          TextField(
-            controller: _searchController,
-            onChanged: (value) {
-              setState(() {
-                _query = value.trim();
-              });
-            },
-            decoration: InputDecoration(
-              hintText: 'Search destinations, food, nature, culture...',
-              prefixIcon: const ExcludeSemantics(child: Icon(Icons.search)),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear search',
-                      onPressed: () {
-                        _searchController.clear();
+            const SizedBox(height: 22),
+            TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _query = value.trim();
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Search destinations, food, nature, culture...',
+                prefixIcon: const ExcludeSemantics(child: Icon(Icons.search)),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _query = '';
+                          });
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _tags.map((tag) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(tag),
+                      selected: _selectedTag == tag,
+                      onSelected: (_) {
                         setState(() {
-                          _query = '';
+                          _selectedTag = tag;
                         });
                       },
-                      icon: const Icon(Icons.close),
                     ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _tags.map((tag) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(tag),
-                    selected: _selectedTag == tag,
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedTag = tag;
-                      });
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (filtered.isEmpty)
-            _buildEmptyState()
-          else
-            Wrap(
-              spacing: 18,
-              runSpacing: 18,
-              children: filtered.map((destination) {
-                return SizedBox(
-                  width: isCompact ? double.infinity : 320,
-                  child: DestinationCard(
-                    imageUrl: destination.imageUrl,
-                    city: destination.city,
-                    country: destination.country,
-                    description: destination.description,
-                    footer: destination.tripLength,
-                    tags: destination.tags,
-                    width: double.infinity,
-                    onTap: () => _showDestinationDetails(destination),
-                    onPlan: () => _planDestination(destination),
-                  ),
-                );
-              }).toList(),
-            ),
-        ],
+            const SizedBox(height: 24),
+            if (filtered.isEmpty)
+              _buildEmptyState()
+            else
+              Wrap(
+                spacing: 18,
+                runSpacing: 18,
+                children: filtered.map((destination) {
+                  return SizedBox(
+                    width: isCompact ? double.infinity : 320,
+                    child: DestinationCard(
+                      imageUrl: destination.imageUrl,
+                      city: destination.city,
+                      country: destination.country,
+                      description: destination.description,
+                      footer: destination.tripLength,
+                      tags: destination.tags,
+                      width: double.infinity,
+                      onTap: () => _showDestinationDetails(destination),
+                      onPlan: () => _planDestination(destination),
+                    ),
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
       ),
     );
   }
