@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -5,7 +6,6 @@ import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
 import '../../widgets/social_sign_in_section.dart';
-import '../planner/planner_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,7 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _verificationController = TextEditingController();
+  final TextEditingController _verificationController =
+      TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -39,6 +40,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // ============================================================
+  // REGISTER
+  // ============================================================
+
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
 
@@ -51,6 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _statusMessage =
             'Please accept the Terms & Conditions and Privacy Policy to continue.';
       });
+
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -61,6 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
+
       return;
     }
 
@@ -93,14 +100,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
               response['message']?.toString() ?? 'Account created.',
             ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).extension<AppStatusColors>()?.info ??
-                AppColors.info,
+            backgroundColor:
+                Theme.of(context).extension<AppStatusColors>()?.info ??
+                    AppColors.info,
           ),
         );
     } catch (error) {
       if (!mounted) return;
 
       String message = error.toString();
+
       if (message.startsWith('Exception: ')) {
         message = message.substring(11);
       }
@@ -116,12 +125,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SnackBar(
             content: Text(message),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).extension<AppStatusColors>()?.error ??
-                AppColors.error,
+            backgroundColor:
+                Theme.of(context).extension<AppStatusColors>()?.error ??
+                    AppColors.error,
           ),
         );
     }
   }
+
+  // ============================================================
+  // VERIFY EMAIL
+  // ============================================================
 
   Future<void> _verifyEmail() async {
     final token = _verificationController.text.trim();
@@ -153,24 +167,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: const Text('Email verified successfully. You can now sign in.'),
+            content: const Text(
+              'Email verified successfully. You can now sign in.',
+            ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).extension<AppStatusColors>()?.success ??
-                AppColors.success,
+            backgroundColor:
+                Theme.of(context).extension<AppStatusColors>()?.success ??
+                    AppColors.success,
           ),
         );
 
       Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) {
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/login', (route) => false);
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
+            (route) => false,
+          );
         }
       });
     } catch (error) {
       if (!mounted) return;
 
       String message = error.toString();
+
       if (message.startsWith('Exception: ')) {
         message = message.substring(11);
       }
@@ -186,8 +205,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SnackBar(
             content: Text(message),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Theme.of(context).extension<AppStatusColors>()?.error ??
-                AppColors.error,
+            backgroundColor:
+                Theme.of(context).extension<AppStatusColors>()?.error ??
+                    AppColors.error,
           ),
         );
     }
@@ -197,6 +217,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.triporaColors.backgroundColor,
+
+      // ============================================================
+      // APP BAR
+      // ============================================================
+
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -209,16 +234,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+
+      // ============================================================
+      // BODY
+      // ============================================================
+
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
+
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
+
             child: Form(
               key: _formKey,
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+
                 children: [
+                  // ==================================================
+                  // BRAND LOGO
+                  // ==================================================
+
                   Center(
                     child: Container(
                       width: 88,
@@ -227,7 +265,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.2),
                             blurRadius: 24,
                             offset: const Offset(0, 10),
                           ),
@@ -255,7 +296,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 24),
+
+                  // ==================================================
+                  // TITLE
+                  // ==================================================
+
                   Text(
                     'Create your Tripora account',
                     textAlign: TextAlign.center,
@@ -265,85 +312,129 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: context.triporaColors.textPrimary,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   Text(
                     'Join Tripora and start planning your next adventure.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: context.triporaColors.textMuted),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // ==================================================
-                  // SOCIAL SIGN-IN (GOOGLE / APPLE)
-                  // ==================================================
-                  SocialSignInSection(
-                    onSuccess: () {
-                      if (!mounted) return;
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PlannerScreen(),
-                        ),
-                        (route) => false,
-                      );
-                    },
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: context.triporaColors.textMuted,
+                    ),
                   ),
 
-                  const SizedBox(height: 24),
+                  // ==================================================
+                  // SOCIAL SIGN-IN
+                  // ==================================================
+                  //
+                  // Google and Apple remain implemented for Android/iOS,
+                  // but are hidden on Flutter Web.
+                  // ==================================================
 
-                  const _FieldsDivider(),
+                  if (!kIsWeb) ...[
+                    const SizedBox(height: 32),
 
-                  const SizedBox(height: 24),
+                    SocialSignInSection(
+                      onSuccess: () {
+                        if (!mounted) return;
+
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          '/planner',
+                          (route) => false,
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    const _FieldsDivider(),
+
+                    const SizedBox(height: 24),
+                  ] else ...[
+                    const SizedBox(height: 32),
+                  ],
+
+                  // ==================================================
+                  // NAME
+                  // ==================================================
 
                   TextFormField(
                     controller: _nameController,
                     enabled: !_isLoading,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Name',
+                      hintText: 'Enter your name',
                       prefixIcon: Icon(Icons.person_outline),
                     ),
                     validator: (value) {
                       if ((value ?? '').trim().isEmpty) {
                         return 'Please enter your name.';
                       }
+
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
+                  // ==================================================
+                  // EMAIL
+                  // ==================================================
+
                   TextFormField(
                     controller: _emailController,
                     enabled: !_isLoading,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Email',
+                      hintText: 'Enter your email',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
                       final email = (value ?? '').trim();
+
                       if (email.isEmpty) {
                         return 'Please enter your email.';
                       }
+
                       if (!email.contains('@')) {
                         return 'Please enter a valid email.';
                       }
+
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
+                  // ==================================================
+                  // PASSWORD
+                  // ==================================================
+
                   TextFormField(
                     controller: _passwordController,
                     enabled: !_isLoading,
                     obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
                       labelText: 'Password',
+                      hintText: 'Enter your password',
                       prefixIcon: const Icon(Icons.lock_outline),
+
                       suffixIcon: IconButton(
-                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
+                        tooltip: _obscurePassword
+                            ? 'Show password'
+                            : 'Hide password',
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_outlined
@@ -355,10 +446,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       if ((value ?? '').length < 6) {
                         return 'Password must be at least 6 characters.';
                       }
+
                       return null;
                     },
+                    onFieldSubmitted: (_) {
+                      if (!_isLoading) {
+                        _register();
+                      }
+                    },
                   ),
+
                   const SizedBox(height: 16),
+
+                  // ==================================================
+                  // TERMS & CONDITIONS
+                  // ==================================================
+
                   _ConsentRow(
                     leading: 'I agree to the',
                     label: 'Terms & Conditions',
@@ -366,8 +469,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     value: _acceptedTerms,
                     onChanged: _isLoading
                         ? null
-                        : (value) => setState(() => _acceptedTerms = value),
+                        : (value) {
+                            setState(() {
+                              _acceptedTerms = value;
+                            });
+                          },
                   ),
+
+                  // ==================================================
+                  // PRIVACY POLICY
+                  // ==================================================
+
                   _ConsentRow(
                     leading: 'I have read the',
                     label: 'Privacy Policy',
@@ -375,9 +487,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     value: _acceptedPrivacy,
                     onChanged: _isLoading
                         ? null
-                        : (value) => setState(() => _acceptedPrivacy = value),
+                        : (value) {
+                            setState(() {
+                              _acceptedPrivacy = value;
+                            });
+                          },
                   ),
+
                   const SizedBox(height: 8),
+
+                  // ==================================================
+                  // CREATE ACCOUNT BUTTON
+                  // ==================================================
+
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -395,20 +517,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             )
                           : const Text(
                               'Create Account',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                     ),
                   ),
+
+                  // ==================================================
+                  // STATUS MESSAGE
+                  // ==================================================
+
                   if (_statusMessage != null) ...[
                     const SizedBox(height: 16),
+
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.25),
                         ),
                       ),
                       child: Text(
@@ -421,8 +558,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ],
+
+                  // ==================================================
+                  // EMAIL VERIFICATION
+                  // ==================================================
+
                   if (_showVerification) ...[
                     const SizedBox(height: 20),
+
                     const Text(
                       'Verify your email',
                       style: TextStyle(
@@ -430,16 +573,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     TextField(
                       controller: _verificationController,
-                      decoration: InputDecoration(
+                      enabled: !_isLoading,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
                         labelText: 'Verification token',
                         hintText: 'Enter the code sent to your email',
-                        prefixIcon: const Icon(Icons.verified_outlined),
+                        prefixIcon: Icon(Icons.verified_outlined),
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -449,23 +598,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text(
                           'Verify Email',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ],
+
                   const SizedBox(height: 24),
+
+                  // ==================================================
+                  // LOGIN LINK
+                  // ==================================================
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text('Already have an account? '),
+
                       TextButton(
                         onPressed: _isLoading
                             ? null
                             : () {
-                                Navigator.of(
-                                  context,
-                                ).pushNamedAndRemoveUntil(
+                                Navigator.of(context).pushNamedAndRemoveUntil(
                                   '/login',
                                   (route) => false,
                                 );
@@ -484,6 +641,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
+// ============================================================
+// EMAIL DIVIDER
+// ============================================================
+
 class _FieldsDivider extends StatelessWidget {
   const _FieldsDivider();
 
@@ -491,7 +652,9 @@ class _FieldsDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider()),
+        const Expanded(
+          child: Divider(),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
@@ -502,11 +665,17 @@ class _FieldsDivider extends StatelessWidget {
             ),
           ),
         ),
-        const Expanded(child: Divider()),
+        const Expanded(
+          child: Divider(),
+        ),
       ],
     );
   }
 }
+
+// ============================================================
+// CONSENT ROW
+// ============================================================
 
 class _ConsentRow extends StatelessWidget {
   const _ConsentRow({
@@ -528,10 +697,17 @@ class _ConsentRow extends StatelessWidget {
     final colors = context.triporaColors;
 
     return InkWell(
-      onTap: onChanged == null ? null : () => onChanged!(!value),
+      onTap: onChanged == null
+          ? null
+          : () => onChanged!(!value),
       borderRadius: BorderRadius.circular(8),
+
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 4,
+          vertical: 6,
+        ),
+
         child: Row(
           children: [
             SizedBox(
@@ -545,7 +721,9 @@ class _ConsentRow extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
               ),
             ),
+
             const SizedBox(width: 10),
+
             Expanded(
               child: Text.rich(
                 TextSpan(
@@ -555,21 +733,31 @@ class _ConsentRow extends StatelessWidget {
                     color: colors.textSecondary,
                   ),
                   children: [
-                    TextSpan(text: '$leading '),
+                    TextSpan(
+                      text: '$leading ',
+                    ),
+
                     WidgetSpan(
                       child: GestureDetector(
-                        onTap: () => Navigator.of(context).pushNamed(route),
+                        onTap: () {
+                          Navigator.of(context).pushNamed(route);
+                        },
                         child: Text(
                           label,
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary,
                             fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
                           ),
                         ),
                       ),
                     ),
-                    TextSpan(text: '.'),
+
+                    const TextSpan(
+                      text: '.',
+                    ),
                   ],
                 ),
               ),
