@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../core/config/app_config.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/logger.dart';
+
+import '../screens/verify_email_page.dart';
+
 import '../screens/home/home_screen.dart';
 import '../screens/explore/explore_screen.dart';
 import '../screens/planner/planner_screen.dart';
@@ -14,10 +17,13 @@ import '../screens/travel/premium_travel_screen.dart';
 import '../screens/travel/flight_search_screen.dart';
 import '../screens/travel/stay_search_screen.dart';
 import '../screens/travel/car_search_screen.dart';
+
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+
 import '../screens/legal/legal_screen.dart';
 import '../screens/legal/legal_content.dart';
+
 import '../screens/admin/admin_login_screen.dart';
 import '../screens/admin/admin_screen.dart';
 
@@ -31,22 +37,28 @@ class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String verifyEmail = '/verify-email';
+
   static const String terms = '/terms';
   static const String privacy = '/privacy';
+
   static const String explore = '/explore';
   static const String planner = '/planner';
   static const String itinerary = '/itinerary';
   static const String trips = '/trips';
   static const String profile = '/profile';
+
   static const String premium = '/premium';
+
   static const String travel = '/travel';
   static const String travelFlights = '/travel/flights';
   static const String travelStays = '/travel/stays';
   static const String travelCars = '/travel/cars';
 
   // ============================================================
-  // ADMIN DASHBOARD
+  // ADMIN
   // ============================================================
+
   static const String adminLogin = '/admin/login';
   static const String adminDashboard = '/admin';
 
@@ -56,28 +68,65 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> get routes {
     final result = <String, WidgetBuilder>{
+
       // ========================================================
       // HOME
       // ========================================================
+
       home: (_) => const HomeScreen(),
 
       // ========================================================
-      // LOGIN
+      // AUTH
       // ========================================================
+
       login: (_) => const LoginScreen(),
 
-      // ========================================================
-      // REGISTER
-      // ========================================================
       register: (_) => const RegisterScreen(),
 
+      // --------------------------------------------------------
+      // EMAIL VERIFICATION
+      // --------------------------------------------------------
+      //
+      // RegisterScreen should navigate here with:
+      //
+      // Navigator.pushNamed(
+      //   context,
+      //   AppRoutes.verifyEmail,
+      //   arguments: email,
+      // );
+      //
+      // --------------------------------------------------------
+
+      verifyEmail: (context) {
+        final arguments =
+            ModalRoute.of(context)?.settings.arguments;
+
+        String? email;
+
+        if (arguments is String) {
+          email = arguments;
+        } else if (arguments is Map) {
+          final value = arguments['email'];
+
+          if (value != null) {
+            email = value.toString();
+          }
+        }
+
+        return VerifyEmailPage(
+          email: email,
+        );
+      },
+
       // ========================================================
-      // LEGAL (TERMS & PRIVACY)
+      // LEGAL
       // ========================================================
+
       terms: (_) => const LegalScreen(
             title: TermsContent.title,
             sections: TermsContent.sections,
           ),
+
       privacy: (_) => const LegalScreen(
             title: PrivacyContent.title,
             sections: PrivacyContent.sections,
@@ -86,13 +135,16 @@ class AppRoutes {
       // ========================================================
       // EXPLORE
       // ========================================================
+
       explore: (_) => const ExploreScreen(),
 
       // ========================================================
       // PLANNER
       // ========================================================
+
       planner: (context) {
-        final arguments = ModalRoute.of(context)?.settings.arguments;
+        final arguments =
+            ModalRoute.of(context)?.settings.arguments;
 
         String? destination;
 
@@ -100,14 +152,18 @@ class AppRoutes {
           destination = arguments;
         }
 
-        return PlannerScreen(initialDestination: destination);
+        return PlannerScreen(
+          initialDestination: destination,
+        );
       },
 
       // ========================================================
       // ITINERARY
       // ========================================================
+
       itinerary: (context) {
-        final arguments = ModalRoute.of(context)?.settings.arguments;
+        final arguments =
+            ModalRoute.of(context)?.settings.arguments;
 
         return _buildItineraryRoute(arguments);
       },
@@ -115,35 +171,41 @@ class AppRoutes {
       // ========================================================
       // MY TRIPS
       // ========================================================
+
       trips: (_) => const TripsScreen(),
 
       // ========================================================
       // PROFILE
       // ========================================================
+
       profile: (_) => const ProfileScreen(),
 
       // ========================================================
-      // ADMIN DASHBOARD (TOKEN-GATED)
+      // ADMIN
       // ========================================================
+
       adminLogin: (_) => const AdminLoginScreen(),
+
       adminDashboard: (_) => const AdminScreen(),
     };
 
     // ============================================================
-    // PREMIUM + PREMIUM TRAVEL (FREEMIUM)
+    // PREMIUM + PREMIUM TRAVEL
     // ============================================================
-    //
-    // v1 ships free-only: these routes are registered only when the
-    // `PREMIUM_ENABLED` build flag is set (see AppConfig.premiumEnabled). With
-    // the flag off there is no way to navigate to the paywall or the
-    // premium travel search, so the app exposes no premium surface.
-    // ------------------------------------------------------------
+
     if (AppConfig.premiumEnabled) {
       result[premium] = (_) => const PremiumScreen();
+
       result[travel] = (_) => const PremiumTravelScreen();
-      result[travelFlights] = (_) => const FlightSearchScreen();
-      result[travelStays] = (_) => const StaySearchScreen();
-      result[travelCars] = (_) => const CarSearchScreen();
+
+      result[travelFlights] =
+          (_) => const FlightSearchScreen();
+
+      result[travelStays] =
+          (_) => const StaySearchScreen();
+
+      result[travelCars] =
+          (_) => const CarSearchScreen();
     }
 
     return result;
@@ -154,31 +216,10 @@ class AppRoutes {
   // ============================================================
 
   static Widget _buildItineraryRoute(dynamic arguments) {
-    // ----------------------------------------------------------
-    // STEP 1
-    //
-    // The PlannerScreen currently sends:
-    //
-    // Navigator.pushNamed(
-    //   context,
-    //   '/itinerary',
-    //   arguments: tripMap,
-    // );
-    //
-    // Therefore tripMap itself is the argument.
-    //
-    // We ALSO support this format:
-    //
-    // {
-    //   "trip": {...},
-    //   "itinerary": [...],
-    //   "estimatedCost": {...}
-    // }
-    //
-    // ----------------------------------------------------------
-
     if (arguments == null) {
-      return const _InvalidTripScreen(reason: 'No trip data was provided.');
+      return const _InvalidTripScreen(
+        reason: 'No trip data was provided.',
+      );
     }
 
     if (arguments is! Map) {
@@ -187,19 +228,8 @@ class AppRoutes {
       );
     }
 
-    final argumentsMap = Map<String, dynamic>.from(arguments);
-
-    // ----------------------------------------------------------
-    // STEP 2
-    //
-    // Determine where the actual trip object is.
-    //
-    // If arguments contains "trip" and it is a Map:
-    //     use arguments["trip"]
-    //
-    // Otherwise:
-    //     arguments itself IS the trip.
-    // ----------------------------------------------------------
+    final argumentsMap =
+        Map<String, dynamic>.from(arguments);
 
     Map<String, dynamic> trip;
 
@@ -211,9 +241,9 @@ class AppRoutes {
       trip = argumentsMap;
     }
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // DEBUG
-    // ----------------------------------------------------------
+    // ==========================================================
 
     appLog('');
     appLog('================================================');
@@ -229,21 +259,25 @@ class AppRoutes {
     appLog('BUDGET: ${trip['budget']}');
     appLog('TRAVEL STYLE: ${trip['travelStyle']}');
     appLog('INTERESTS: ${trip['interests']}');
+
     appLog(
       'ESTIMATED COST TYPE: '
       '${trip['estimatedCost']?.runtimeType}',
     );
+
     appLog(
       'ITINERARY TYPE: '
       '${trip['itinerary']?.runtimeType}',
     );
+
     appLog('================================================');
 
     // ==========================================================
     // DESTINATION
     // ==========================================================
 
-    final destination = _readString(trip['destination']);
+    final destination =
+        _readString(trip['destination']);
 
     if (destination == null || destination.isEmpty) {
       return const _InvalidTripScreen(
@@ -255,7 +289,8 @@ class AppRoutes {
     // START DATE
     // ==========================================================
 
-    final startDate = _readDate(trip['startDate']);
+    final startDate =
+        _readDate(trip['startDate']);
 
     if (startDate == null) {
       return const _InvalidTripScreen(
@@ -267,17 +302,14 @@ class AppRoutes {
     // END DATE
     // ==========================================================
 
-    final endDate = _readDate(trip['endDate']);
+    final endDate =
+        _readDate(trip['endDate']);
 
     if (endDate == null) {
       return const _InvalidTripScreen(
         reason: 'The end date is missing or invalid.',
       );
     }
-
-    // ----------------------------------------------------------
-    // Make sure dates are logical.
-    // ----------------------------------------------------------
 
     if (endDate.isBefore(startDate)) {
       return const _InvalidTripScreen(
@@ -289,20 +321,26 @@ class AppRoutes {
     // BUDGET
     // ==========================================================
 
-    final budget = _readString(trip['budget']);
+    final budget =
+        _readString(trip['budget']);
 
     if (budget == null || budget.isEmpty) {
-      return const _InvalidTripScreen(reason: 'The trip budget is missing.');
+      return const _InvalidTripScreen(
+        reason: 'The trip budget is missing.',
+      );
     }
 
     // ==========================================================
     // TRAVEL STYLE
     // ==========================================================
 
-    final travelStyle = _readString(trip['travelStyle']);
+    final travelStyle =
+        _readString(trip['travelStyle']);
 
     if (travelStyle == null || travelStyle.isEmpty) {
-      return const _InvalidTripScreen(reason: 'The travel style is missing.');
+      return const _InvalidTripScreen(
+        reason: 'The travel style is missing.',
+      );
     }
 
     // ==========================================================
@@ -311,20 +349,20 @@ class AppRoutes {
 
     Map<String, dynamic>? estimatedCost;
 
-    // First, look inside the trip.
     final tripCost = trip['estimatedCost'];
 
     if (tripCost is Map) {
-      estimatedCost = Map<String, dynamic>.from(tripCost);
+      estimatedCost =
+          Map<String, dynamic>.from(tripCost);
     }
 
-    // If it wasn't inside the trip, look at the
-    // outer arguments.
     if (estimatedCost == null) {
-      final outerCost = argumentsMap['estimatedCost'];
+      final outerCost =
+          argumentsMap['estimatedCost'];
 
       if (outerCost is Map) {
-        estimatedCost = Map<String, dynamic>.from(outerCost);
+        estimatedCost =
+            Map<String, dynamic>.from(outerCost);
       }
     }
 
@@ -332,32 +370,14 @@ class AppRoutes {
     // ITINERARY
     // ==========================================================
 
-    dynamic itineraryData;
+    dynamic itineraryData =
+        trip['itinerary'];
 
-    // ----------------------------------------------------------
-    // FIRST:
-    //
-    // Read itinerary directly from the trip.
-    //
-    // This is the format your current generated trip uses.
-    // ----------------------------------------------------------
+    itineraryData ??=
+        argumentsMap['itinerary'];
 
-    itineraryData = trip['itinerary'];
-
-    // ----------------------------------------------------------
-    // SECOND:
-    //
-    // If there is no itinerary inside the trip,
-    // check the outer arguments.
-    // ----------------------------------------------------------
-
-    itineraryData ??= argumentsMap['itinerary'];
-
-    // ----------------------------------------------------------
-    // Convert itinerary safely.
-    // ----------------------------------------------------------
-
-    final generatedItinerary = _readItinerary(itineraryData);
+    final generatedItinerary =
+        _readItinerary(itineraryData);
 
     // ==========================================================
     // ITINERARY DEBUG
@@ -368,19 +388,23 @@ class AppRoutes {
     appLog('ITINERARY DATA');
     appLog('================================================');
     appLog('TYPE: ${itineraryData.runtimeType}');
-    appLog('NUMBER OF DAYS: ${generatedItinerary.length}');
+    appLog(
+      'NUMBER OF DAYS: ${generatedItinerary.length}',
+    );
 
-    for (int i = 0; i < generatedItinerary.length; i++) {
-      final day = generatedItinerary[i];
+    for (int i = 0;
+        i < generatedItinerary.length;
+        i++) {
 
-      final activities = day['activities'];
+      final day =
+          generatedItinerary[i];
+
+      final activities =
+          day['activities'];
 
       appLog('DAY ${i + 1}');
-
       appLog('  day: ${day['day']}');
-
       appLog('  date: ${day['date']}');
-
       appLog('  title: ${day['title']}');
 
       appLog(
@@ -398,19 +422,12 @@ class AppRoutes {
     appLog('');
 
     // ==========================================================
-    // IMPORTANT
-    //
-    // DO NOT reject the itinerary here just because its length
-    // is unexpected.
-    //
-    // The backend is responsible for generating it.
-    // The ItineraryScreen is responsible for displaying it.
-    //
-    // This prevents a valid saved trip from being incorrectly
-    // rejected by the Flutter route.
+    // RETURN ITINERARY
     // ==========================================================
 
-    return ItineraryScreen(tripData: argumentsMap);
+    return ItineraryScreen(
+      tripData: argumentsMap,
+    );
   }
 
   // ============================================================
@@ -422,7 +439,8 @@ class AppRoutes {
       return null;
     }
 
-    final result = value.toString().trim();
+    final result =
+        value.toString().trim();
 
     if (result.isEmpty) {
       return null;
@@ -444,7 +462,8 @@ class AppRoutes {
       return value;
     }
 
-    final stringValue = value.toString().trim();
+    final stringValue =
+        value.toString().trim();
 
     if (stringValue.isEmpty) {
       return null;
@@ -457,8 +476,11 @@ class AppRoutes {
   // READ ITINERARY
   // ============================================================
 
-  static List<Map<String, dynamic>> _readItinerary(dynamic value) {
-    final result = <Map<String, dynamic>>[];
+  static List<Map<String, dynamic>> _readItinerary(
+      dynamic value) {
+
+    final result =
+        <Map<String, dynamic>>[];
 
     if (value == null) {
       return result;
@@ -470,7 +492,9 @@ class AppRoutes {
 
     for (final item in value) {
       if (item is Map) {
-        result.add(Map<String, dynamic>.from(item));
+        result.add(
+          Map<String, dynamic>.from(item),
+        );
       }
     }
 
@@ -485,19 +509,25 @@ class AppRoutes {
 class _InvalidTripScreen extends StatelessWidget {
   final String reason;
 
-  const _InvalidTripScreen({this.reason = 'Invalid trip data.'});
+  const _InvalidTripScreen({
+    this.reason = 'Invalid trip data.',
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.triporaColors;
+    final colors =
+        context.triporaColors;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor:
+          colors.backgroundColor,
 
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor:
+            Colors.transparent,
         elevation: 0,
-        surfaceTintColor: Colors.transparent,
+        surfaceTintColor:
+            Colors.transparent,
         title: Text(
           'Tripora',
           style: TextStyle(
@@ -512,16 +542,26 @@ class _InvalidTripScreen extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Container(
             width: double.infinity,
-            constraints: const BoxConstraints(maxWidth: 500),
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
+            constraints:
+                const BoxConstraints(
+              maxWidth: 500,
+            ),
+            padding:
+                const EdgeInsets.all(28),
+            decoration:
+                BoxDecoration(
               color: colors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.border),
+              borderRadius:
+                  BorderRadius.circular(20),
+              border: Border.all(
+                color: colors.border,
+              ),
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize:
+                  MainAxisSize.min,
               children: [
+
                 const Icon(
                   Icons.error_outline,
                   size: 52,
@@ -532,10 +572,12 @@ class _InvalidTripScreen extends StatelessWidget {
 
                 const Text(
                   'Invalid Trip Data',
-                  textAlign: TextAlign.center,
+                  textAlign:
+                      TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.w800,
+                    fontWeight:
+                        FontWeight.w800,
                   ),
                 ),
 
@@ -543,11 +585,13 @@ class _InvalidTripScreen extends StatelessWidget {
 
                 Text(
                   reason,
-                  textAlign: TextAlign.center,
+                  textAlign:
+                      TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
                     height: 1.5,
-                    color: colors.textSecondary,
+                    color:
+                        colors.textSecondary,
                   ),
                 ),
 
@@ -555,19 +599,35 @@ class _InvalidTripScreen extends StatelessWidget {
 
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child:
+                      ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(
+                        context,
+                      );
                     },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    style:
+                        ElevatedButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        vertical: 15,
+                      ),
+                      shape:
+                          RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(
+                          12,
+                        ),
                       ),
                     ),
-                    child: const Text(
+                    child:
+                        const Text(
                       'Go Back',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style:
+                          TextStyle(
+                        fontWeight:
+                            FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),

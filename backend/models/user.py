@@ -1,56 +1,82 @@
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config.database import db
 
 
-def generate_verification_token():
-    return secrets.token_urlsafe(32)
+# ============================================================
+# EMAIL VERIFICATION HELPERS
+# ============================================================
 
+def generate_verification_token():
+    """Generate a secure 6-digit email verification code."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def generate_verification_expiry():
+    """Return an expiration time 10 minutes from now."""
+    return datetime.utcnow() + timedelta(minutes=10)
+
+
+# ============================================================
+# USER MODEL
+# ============================================================
 
 class User(db.Model):
     __tablename__ = "users"
 
     def __init__(self, **kwargs):
-        if "preferred_language" not in kwargs:
-            kwargs["preferred_language"] = "en"
-        if "preferred_currency" not in kwargs:
-            kwargs["preferred_currency"] = "USD"
-        if "email_verified" not in kwargs:
-            kwargs["email_verified"] = False
+        # Default preferences
+        kwargs.setdefault("preferred_language", "en")
+        kwargs.setdefault("preferred_currency", "USD")
+
+        # Email verification defaults
+        kwargs.setdefault("email_verified", False)
+
+        # Generate verification token and expiry together.
         if "verification_token" not in kwargs:
             kwargs["verification_token"] = generate_verification_token()
+
+        if "verification_token_expires_at" not in kwargs:
+            kwargs["verification_token_expires_at"] = (
+                generate_verification_expiry()
+            )
+
         super().__init__(**kwargs)
 
-    # ============================================================
+    # ========================================================
     # PRIMARY KEY
-    # ============================================================
+    # ========================================================
 
     id = db.Column(
         db.Integer,
-        primary_key=True
+        primary_key=True,
     )
 
-    # ============================================================
+    # ========================================================
     # USER DETAILS
-    # ============================================================
+    # ========================================================
 
     name = db.Column(
         db.String(100),
-        nullable=False
+        nullable=False,
     )
 
     email = db.Column(
         db.String(255),
         unique=True,
         nullable=False,
-        index=True
+        index=True,
     )
 
     password_hash = db.Column(
         db.String(255),
-        nullable=True
+        nullable=True,
     )
+
+    # ========================================================
+    # EMAIL VERIFICATION
+    # ========================================================
 
     email_verified = db.Column(
         db.Boolean,
@@ -62,12 +88,16 @@ class User(db.Model):
         db.String(255),
         unique=True,
         nullable=True,
-        default=generate_verification_token,
     )
 
-    # ============================================================
+    verification_token_expires_at = db.Column(
+        db.DateTime,
+        nullable=True,
+    )
+
+    # ========================================================
     # SOCIAL AUTH
-    # ============================================================
+    # ========================================================
 
     auth_provider = db.Column(
         db.String(20),
@@ -79,6 +109,10 @@ class User(db.Model):
         nullable=True,
         index=True,
     )
+
+    # ========================================================
+    # PREFERENCES
+    # ========================================================
 
     preferred_language = db.Column(
         db.String(10),
@@ -92,18 +126,19 @@ class User(db.Model):
         default="USD",
     )
 
-    # Region (ISO 3166-1 alpha-2 country code) used to resolve the
-    # subscription price tier. Derived from the account/locale; may be
-    # empty until a signing/platform region is resolved.
+    # ========================================================
+    # REGION
+    # ========================================================
+
     region_country = db.Column(
         db.String(2),
         nullable=True,
         index=True,
     )
 
-    # ============================================================
+    # ========================================================
     # SUBSCRIPTION
-    # ============================================================
+    # ========================================================
 
     subscription = db.relationship(
         "Subscription",
@@ -112,22 +147,22 @@ class User(db.Model):
         cascade="all, delete-orphan",
     )
 
-    # ============================================================
+    # ========================================================
     # CREATED AT
-    # ============================================================
+    # ========================================================
 
     created_at = db.Column(
         db.DateTime,
         default=datetime.utcnow,
-        nullable=False
+        nullable=False,
     )
 
-    # ============================================================
+    # ========================================================
     # TRIPS
-    # ============================================================
+    # ========================================================
 
     trips = db.relationship(
         "Trip",
         back_populates="user",
-        lazy=True
+        lazy=True,
     )

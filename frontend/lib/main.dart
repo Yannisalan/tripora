@@ -24,7 +24,7 @@ class _TriporaAppState extends State<TriporaApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = widget.themeMode ?? ThemeMode.system;
+    final themeMode = widget.themeMode ?? ThemeMode.light;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,

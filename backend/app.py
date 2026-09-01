@@ -17,7 +17,6 @@ from routes.premium import premium_bp
 from routes.travel import travel_bp
 from routes.admin import admin_bp
 from services.rate_limiter import limiter, RateLimitExceeded
-
 logger = logging.getLogger(__name__)
 
 

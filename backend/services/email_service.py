@@ -1,31 +1,20 @@
 """Email delivery for Tripora (verification codes).
 
-Uses SMTP from the Python standard library (``smtplib``/``email``), so no extra
-dependency is required. Everything is configured through server-side
-environment variables (never the client).
+Uses Resend for transactional email delivery.
 
-Configuration (all optional; when unset the module falls back to a log-only
-placeholder so local dev / tests keep working without a mail server):
+Configuration:
+    RESEND_API_KEY      Resend API key (server-side only)
+    RESEND_FROM_EMAIL   Sender address, e.g. onboarding@resend.dev
+    RESEND_FROM_NAME    Optional sender display name (default: Tripora)
 
-    MAIL_HOST           SMTP host, e.g. ``smtp-relay.brevo.com``
-    MAIL_PORT           SMTP port, e.g. ``587`` (STARTTLS) or ``465`` (SSL)
-    MAIL_USER           SMTP username/login (e.g. Brevo SMTP key part)
-    MAIL_PASSWORD       SMTP password/secret (e.g. Brevo SMTP key)
-    MAIL_FROM           Sender address, e.g. ``you@gmail.com``
-                        (must be a confirmed sender in the provider)
-    MAIL_FROM_NAME      Optional display name (default "Tripora")
-    MAIL_USE_TLS        "tls" / "true" for STARTTLS on 587 (default when
-                        port != 465), "ssl" for implicit SSL on 465
-
-The "from" address can be a personal email now and swapped to a domain sender
-later — only ``MAIL_FROM`` changes; no code changes are needed.
+The Resend API key must NEVER be exposed to the Flutter client or committed
+to source control.
 """
 
 import logging
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+import resend
 
 logger = logging.getLogger(__name__)
 
@@ -35,100 +24,73 @@ def _env(name, default=""):
 
 
 def _email_configured():
-    return bool(_env("MAIL_HOST") and _env("MAIL_PASSWORD"))
+    return bool(_env("RESEND_API_KEY") and _env("RESEND_FROM_EMAIL"))
 
 
-def _build_message(to_email, token):
-    subject = "Verify your Tripora account"
-
-    body = (
-        "Hi,\n\n"
-        "Welcome to Tripora! Use the code below to verify your email "
-        "address and finish setting up your account:\n\n"
-        f"{token}\n\n"
-        "This code expires soon. If you did not create a Tripora account, "
-        "you can safely ignore this email.\n\n"
-        "– The Tripora team"
-    )
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["To"] = to_email
-    msg["From"] = "%s <%s>" % (
-        _env("MAIL_FROM_NAME", "Tripora"),
-        _env("MAIL_FROM", ""),
-    )
-    msg.attach(MIMEText(body, "plain"))
-
-    html_body = (
-        "<div style='font-family:Arial,Helvetica,sans-serif;max-width:480px'>"
+def _build_html(token):
+    return (
+        "<div style='font-family:Arial,Helvetica,sans-serif;"
+        "max-width:480px;margin:0 auto;padding:24px'>"
         "<h2 style='color:#111827'>Verify your Tripora account</h2>"
         "<p>Welcome to Tripora! Use the code below to verify your email "
         "address:</p>"
-        "<p style='font-size:20px;font-weight:bold;letter-spacing:2px;"
-        "background:#F3F4F6;padding:12px 16px;border-radius:8px'>"
-        f"{token}</p>"
-        "<p style='color:#6B7280'>This code expires soon. If you did not "
-        "create a Tripora account, you can safely ignore this email.</p>"
+        "<p style='font-size:24px;font-weight:bold;letter-spacing:4px;"
+        "background:#F3F4F6;padding:16px;text-align:center;"
+        "border-radius:8px'>"
+        f"{token}"
+        "</p>"
+        "<p style='color:#6B7280'>"
+        "This code expires soon. If you did not create a Tripora account, "
+        "you can safely ignore this email."
+        "</p>"
         "<p style='color:#9CA3AF'>– The Tripora team</p>"
         "</div>"
     )
-    msg.attach(MIMEText(html_body, "html"))
-
-    return msg
 
 
 def send_verification_email(to_email, token):
-    """Send the email verification code to the user.
+    """Send an email verification code using Resend.
 
     Args:
-        to_email (str): The recipient's email address.
-        token (str): The verification token/code for the user.
+        to_email (str): Recipient email address.
+        token (str): Verification token/code.
 
     Returns:
-        bool: True when the email was sent (or queued) successfully,
+        bool: True when the email was sent successfully,
               False when delivery failed.
     """
+
     if not _email_configured():
         logger.info(
-            "[EMAIL-PLACEHOLDER] Verification code generated for %s "
-            "(SMTP not configured)",
+            "[EMAIL-PLACEHOLDER] Verification email requested for %s "
+            "(Resend not configured)",
             to_email,
         )
-        # NEVER log the raw token: it is the account's verification secret and
-        # must stay out of logs/stdout even in the local placeholder path (it
-        # is conveyed to the user out-of-band, via their inbox).
+
+        # Never log the verification token.
         return True
 
-    msg = _build_message(to_email, token)
-    host = _env("MAIL_HOST")
-    port_raw = _env("MAIL_PORT", "")
-    try:
-        port = int(port_raw) if port_raw else (465 if _env("MAIL_USE_TLS", "tls").lower() == "ssl" else 587)
-    except (TypeError, ValueError):
-        port = 587
+    resend.api_key = _env("RESEND_API_KEY")
 
-    use_ssl = _env("MAIL_USE_TLS", "").lower() in ("ssl", "tls_ssl") or port == 465
+    from_name = _env("RESEND_FROM_NAME", "Tripora")
+    from_email = _env("RESEND_FROM_EMAIL")
+
+    sender = f"{from_name} <{from_email}>"
 
     try:
-        if use_ssl:
-            with smtplib.SMTP_SSL(host, port, timeout=30) as server:
-                server.login(_env("MAIL_USER"), _env("MAIL_PASSWORD"))
-                server.sendmail(_env("MAIL_FROM"), [to_email], msg.as_string())
-        else:
-            with smtplib.SMTP(host, port, timeout=30) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(_env("MAIL_USER"), _env("MAIL_PASSWORD"))
-                server.sendmail(_env("MAIL_FROM"), [to_email], msg.as_string())
+        resend.Emails.send({
+            "from": sender,
+            "to": [to_email],
+            "subject": "Verify your Tripora account",
+            "html": _build_html(token),
+        })
 
         logger.info("Verification email sent to %s", to_email)
         return True
 
     except Exception:
-        # Log the full traceback for diagnostics. Do NOT re-raise: a transient
-        # mail outage should not prevent registration or trigger a 500. The
-        # caller can fall back to the user resending the code later.
-        logger.exception("Failed to send verification email to %s", to_email)
+        logger.exception(
+            "Failed to send verification email to %s",
+            to_email,
+        )
         return False
