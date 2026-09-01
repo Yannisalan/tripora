@@ -85,8 +85,11 @@ def _set_rls_context():
         return
     try:
         db.session.execute(
-            text("SET LOCAL request.jwt.claims.sub TO :sub"),
-            {"sub": identity},
+            # ``SET LOCAL`` cannot take bind parameters on PostgreSQL, so use
+            # ``set_config(..., is_local=true)`` which is transaction-scoped in
+            # the same way as ``SET LOCAL``.
+            text("SELECT set_config('request.jwt.claims.sub', :sub, true)"),
+            {"sub": str(identity)},
         )
     except Exception:
         logger.exception("Failed to set RLS context")
