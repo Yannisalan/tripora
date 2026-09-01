@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/utils/logger.dart';
 import '../../core/theme/app_theme.dart';
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
 import '../../widgets/social_sign_in_section.dart';
-import '../planner/planner_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      _goToPlanner();
+      _goToHome();
     } catch (error) {
       appLog('LOGIN ERROR: $error');
 
@@ -94,15 +94,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ============================================================
-  // NAVIGATE TO PLANNER
+  // NAVIGATE TO HOME
   // ============================================================
 
-  void _goToPlanner() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const PlannerScreen(),
-      ),
+  void _goToHome() {
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.home,
       (route) => false,
     );
   }
@@ -250,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SocialSignInSection(
                       onSuccess: () {
                         if (!mounted) return;
-                        _goToPlanner();
+                        _goToHome();
                       },
                     ),
 

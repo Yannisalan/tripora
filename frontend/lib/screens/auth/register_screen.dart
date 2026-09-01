@@ -254,7 +254,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (!mounted) return;
 
                         Navigator.of(context).pushNamedAndRemoveUntil(
-                          '/planner',
+                          AppRoutes.home,
                           (route) => false,
                         );
                       },
