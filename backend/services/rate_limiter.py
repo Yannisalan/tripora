@@ -41,6 +41,7 @@ DEFAULT_BUCKETS = {
     "auth.verify_email": {"limit": None, "window": 600},
     "auth.resend_verification": {"limit": None, "window": 600},
     "auth.update_current_user": {"limit": None, "window": 600},
+    "auth.delete_current_user": {"limit": None, "window": 600},
     "premium.verify_receipt": {"limit": None, "window": 600},
     "premium.dev_activate": {"limit": None, "window": 600},
     "premium.flight_price": {"limit": None, "window": 60},

@@ -22,6 +22,10 @@ from models.user import (
     generate_verification_token,
 )
 
+from models.activity_log import ActivityLog
+from models.subscription import Subscription
+from models.trip import Trip
+
 from services.email_service import send_verification_email
 
 from services.social_auth_service import (
@@ -1129,5 +1133,77 @@ def update_current_user():
         return jsonify({
             "success": False,
             "message": "Failed to update account.",
+            "error": "Internal server error.",
+        }), 500
+
+
+# ============================================================
+# DELETE CURRENT USER (ACCOUNT DELETION)
+# DELETE /api/auth/account
+# ============================================================
+#
+# Permanently deletes the authenticated user and all of their
+# owned data. There is no DB-level ON DELETE CASCADE in this
+# schema, so child rows (activity logs, trips, subscriptions)
+# are removed explicitly here, in dependency order, before the
+# user row itself. The whole operation is transactional.
+#
+# Note: the account is deleted immediately; the returned table
+# of contents is intentionally minimal since the row is gone.
+
+@auth_bp.route("/account", methods=["DELETE"])
+@jwt_required()
+def delete_current_user():
+
+    try:
+
+        user_id = get_jwt_identity()
+
+        user = db.session.get(
+            User,
+            int(user_id),
+        )
+
+        if user is None:
+            return jsonify({
+                "success": False,
+                "message": "User not found.",
+            }), 404
+
+        # ------------------------------------------------------
+        # Delete the user's owned data (no DB-level cascade).
+        # ------------------------------------------------------
+
+        ActivityLog.query.filter_by(user_id=user.id).delete(
+            synchronize_session=False
+        )
+        Trip.query.filter_by(user_id=user.id).delete(
+            synchronize_session=False
+        )
+        Subscription.query.filter_by(user_id=user.id).delete(
+            synchronize_session=False
+        )
+
+        db.session.delete(user)
+        db.session.commit()
+
+        logger.info("Account deleted: %s", user.id)
+
+        return jsonify({
+            "success": True,
+            "message": "Account deleted successfully.",
+        }), 200
+
+    except Exception:
+
+        db.session.rollback()
+
+        logger.exception(
+            "Delete current user failed"
+        )
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to delete account.",
             "error": "Internal server error.",
         }), 500

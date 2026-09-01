@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isDeleting = false;
   bool _showPasswordFields = false;
   bool _emailVerified = false;
   String? _errorMessage;
@@ -173,6 +174,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
 
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
+  // ============================================================
+  // DELETE ACCOUNT
+  // ============================================================
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently deletes your account, trips, and data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isDeleting = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
+
+    try {
+      await _authService.deleteAccount();
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isDeleting = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '').trim();
+      });
+    }
   }
 
   @override
@@ -553,6 +611,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: Text(
                           _isSaving ? 'Saving...' : 'Save Changes',
                           style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: _isDeleting ? null : _confirmDeleteAccount,
+                        icon: _isDeleting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.delete_outline),
+                        label: Text(
+                          _isDeleting ? 'Deleting...' : 'Delete my account',
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
                         ),
                       ),
                     ),

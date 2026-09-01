@@ -340,6 +340,35 @@ class AuthService {
   }
 
   // ============================================================
+  // DELETE CURRENT USER (ACCOUNT DELETION)
+  // ============================================================
+
+  Future<void> deleteAccount() async {
+    final headers = await getAuthHeaders();
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/auth/account'),
+      headers: headers,
+    );
+
+    final decoded = _decodeResponse(response);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Could not delete your account.',
+      );
+    }
+
+    if (decoded['success'] != true) {
+      throw Exception('Could not delete your account.');
+    }
+
+    // The account is gone; drop the local session.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+  }
+
+  // ============================================================
   // DECODE RESPONSE
   // ============================================================
 

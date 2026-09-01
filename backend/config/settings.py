@@ -257,6 +257,7 @@ class Config:
             "auth.verify_email": cls._bucket(A, A_W, 10, 600),
             "auth.resend_verification": cls._bucket(A, A_W, 10, 600),
             "auth.update_current_user": cls._bucket(W, W_W, 30, 600),
+            "auth.delete_current_user": cls._bucket(A, A_W, 5, 600),
             # ---- premium / IAP endpoints ----
             "premium.verify_receipt": cls._bucket(W, W_W, 30, 600),
             "premium.dev_activate": cls._bucket(W, W_W, 30, 600),
