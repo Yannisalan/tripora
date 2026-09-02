@@ -146,8 +146,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Museums', 'Food', 'Nightlife'],
   ),
   DestinationModel(
-    imageUrl:
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTR4jmMVuJRaohENKuJepG8vATpLx2qy9uzugNtwbxvgQ&s=10',
+    imageUrl: 'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b',
     city: 'Cancún',
     country: 'Mexico',
     description:
@@ -157,8 +156,7 @@ const List<DestinationModel> destinations = [
     tags: ['Beach', 'History', 'Adventure', 'Relaxation'],
   ),
   DestinationModel(
-    imageUrl:
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8Y5D2xWAUlPLCUQa2NUxBCk1UcA0Y2Q4CnqM10wSysQ&s=10',
+    imageUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827',
     city: 'Toronto',
     country: 'Canada',
     description:
