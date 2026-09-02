@@ -19,6 +19,16 @@ from routes.admin import admin_bp
 from services.rate_limiter import limiter, RateLimitExceeded
 logger = logging.getLogger(__name__)
 
+# Diagnostic: confirm whether the Travelpayouts token reached the process,
+# without ever logging the secret itself. The key name and length are enough
+# to tell us if Render's env var is being read.
+_tp = os.getenv("TRAVELPAYOUTS_API_KEY", "") or ""
+logger.info(
+    "TRAVELPAYOUTS_API_KEY present=%s len=%d",
+    bool(_tp),
+    len(_tp),
+)
+
 
 def _configure_logging():
     """Configure root logging for the application.
