@@ -115,6 +115,7 @@ class Config:
         "http://127.0.0.1:5000",
         "https://api.tripora.example.com",
         "https://tripora.example.com",
+        "https://tripora-iota.vercel.app",
     ]
 
     @classmethod
