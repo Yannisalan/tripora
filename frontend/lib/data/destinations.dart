@@ -91,8 +91,7 @@ const List<DestinationModel> destinations = [
   // AFRICA
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl:
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQe0isWFKceZEmYNzyrsWXShp8me_WAPq_tm_aloGRJ489yvbQ7cofoEcs&s=10',
+    imageUrl: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21',
     city: 'Cotonou',
     country: 'Benin',
     description:
