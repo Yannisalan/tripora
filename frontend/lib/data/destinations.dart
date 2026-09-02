@@ -146,7 +146,8 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Museums', 'Food', 'Nightlife'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b',
+    imageUrl:
+        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTR4jmMVuJRaohENKuJepG8vATpLx2qy9uzugNtwbxvgQ&s=10',
     city: 'Cancún',
     country: 'Mexico',
     description:
@@ -156,7 +157,8 @@ const List<DestinationModel> destinations = [
     tags: ['Beach', 'History', 'Adventure', 'Relaxation'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827',
+    imageUrl:
+        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8Y5D2xWAUlPLCUQa2NUxBCk1UcA0Y2Q4CnqM10wSysQ&s=10',
     city: 'Toronto',
     country: 'Canada',
     description:
@@ -260,48 +262,5 @@ const List<DestinationModel> destinations = [
     bestFor: 'Honeymoons, luxury, snorkeling',
     tripLength: '5-7 days',
     tags: ['Beach', 'Luxury', 'Relaxation', 'Romance'],
-  ),
-  // --------------------------------------------------------------
-  // ANTARCTICA
-  // --------------------------------------------------------------
-  DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e',
-    city: 'Ushuaia',
-    country: 'Argentina',
-    description:
-        'The world’s southernmost city and the gateway port for Antarctica cruises, with snowy peaks behind.',
-    bestFor: 'Adventure, wildlife, cruises',
-    tripLength: '6-10 days',
-    tags: ['Adventure', 'Nature', 'Wildlife', 'History'],
-  ),
-  DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083',
-    city: 'Antarctic Peninsula',
-    country: 'Antarctica',
-    description:
-        'Iceberg alley, penguin colonies, whale sightings, and towering frozen landscapes.',
-    bestFor: 'Wildlife, expedition cruises',
-    tripLength: '10-14 days',
-    tags: ['Wildlife', 'Nature', 'Adventure', 'History'],
-  ),
-  DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1517824806704-9040b037703b',
-    city: 'South Georgia',
-    country: 'South Georgia',
-    description:
-        'Mountain-backed fjords, huge king penguin rookeries, and historic whaling stations.',
-    bestFor: 'Wildlife, photography',
-    tripLength: '14-20 days',
-    tags: ['Wildlife', 'Nature', 'Photography', 'Adventure'],
-  ),
-  DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6',
-    city: 'South Shetland Islands',
-    country: 'Antarctica',
-    description:
-        'Volcanic beaches, steaming vents, chinstrap penguins, and research stations on the Antarctic edge.',
-    bestFor: 'Wildlife, expedition cruises',
-    tripLength: '10-12 days',
-    tags: ['Wildlife', 'Nature', 'Adventure', 'History'],
   ),
 ];
