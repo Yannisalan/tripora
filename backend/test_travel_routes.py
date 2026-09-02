@@ -297,9 +297,33 @@ def test_flight_prices_requires_origin_destination(client):
     assert resp.status_code == 400
 
 
-def test_flight_prices_rejects_bad_iata(client):
+def test_flight_prices_requires_origin(client):
     resp = client.post("/api/travel/flights/prices", json={
-        "origin": "NEWYORK", "destination": "LHR", "departDate": "2026-10-01",
+        "destination": "LHR", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 400
+    assert resp.get_json()["message"] == "An origin is required."
+
+
+def test_flight_prices_accepts_city_names(client):
+    """City names are accepted (resolved to IATA inside the service)."""
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "New York", "destination": "London", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
+
+
+def test_flight_prices_accepts_lowercase_codes(client):
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "jfk", "destination": "lhr", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 200
+
+
+def test_flight_prices_rejects_same_place(client):
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "London", "destination": "london", "departDate": "2026-10-01",
     })
     assert resp.status_code == 400
 
@@ -325,3 +349,78 @@ def test_flight_prices_provider_error_maps_to_502(monkeypatch):
     })
     assert resp.status_code == 502
     assert resp.get_json()["code"] == "PROVIDER_ERROR"
+
+
+# ------------------------------------------------------------
+# resolve_city_to_iata (city name / code -> IATA city code)
+# ------------------------------------------------------------
+
+class _FakeResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+def _autocomplete(fake, monkeypatch):
+    import services.travelpayouts_service as svc
+
+    monkeypatch.setattr(svc.requests, "get", lambda *a, **k: fake)
+    return svc
+
+
+def test_resolve_accepts_existing_code(monkeypatch):
+    svc = _autocomplete(_FakeResponse([]), monkeypatch)
+    assert svc.resolve_city_to_iata(" JFK ") == "JFK"
+
+
+def test_resolve_accepts_lowercase_code(monkeypatch):
+    svc = _autocomplete(_FakeResponse([]), monkeypatch)
+    assert svc.resolve_city_to_iata("jfk") == "JFK"
+
+
+def test_resolve_maps_city_name_to_code(monkeypatch):
+    payload = [
+        {"name": "London", "code": "LON", "type": "city"},
+        {"name": "London Heathrow Airport", "code": "LHR", "city_code": "LON"},
+    ]
+    svc = _autocomplete(_FakeResponse(payload), monkeypatch)
+    assert svc.resolve_city_to_iata("London") == "LON"
+
+
+def test_resolve_falls_back_to_exact_match_any_type(monkeypatch):
+    payload = [
+        {"name": "New York", "code": "NYC", "type": "city"},
+    ]
+    svc = _autocomplete(_FakeResponse(payload), monkeypatch)
+    assert svc.resolve_city_to_iata("New York") == "NYC"
+
+
+def test_resolve_substring_match(monkeypatch):
+    payload = [{"name": "Los Angeles", "code": "LAX", "type": "city"}]
+    svc = _autocomplete(_FakeResponse(payload), monkeypatch)
+    assert svc.resolve_city_to_iata("los ang") == "LAX"
+
+
+def test_resolve_unknown_raises(monkeypatch):
+    from services.travelpayouts_service import TravelpayoutsError
+
+    svc = _autocomplete(_FakeResponse([]), monkeypatch)
+    with pytest.raises(TravelpayoutsError):
+        svc.resolve_city_to_iata("zzzznotacity")
+
+
+def test_resolve_autocomplete_downstream_failure_raises(monkeypatch):
+    from services.travelpayouts_service import TravelpayoutsError
+
+    class _Bad:
+        def raise_for_status(self):
+            raise OSError("down")
+
+    svc = _autocomplete(_Bad(), monkeypatch)
+    with pytest.raises(TravelpayoutsError):
+        svc.resolve_city_to_iata("London")

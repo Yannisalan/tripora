@@ -51,19 +51,98 @@ def _api_token():
     return None
 
 
+def is_iata_code(value):
+    """True if ``value`` already looks like a 3-letter IATA code."""
+    return len(value) == 3 and value.isalpha()
+
+
+def _looks_like_code(value):
+    # Also treat a short all-caps token (2-3 letters) as a code the user typed.
+    return len(value) <= 3 and value.isalpha()
+
+
+def _autocomplete_url(term):
+    return (
+        "https://autocomplete.travelpayouts.com/places2"
+        "?locale=en&types[]=city&term=" + _urlencode(term)
+    )
+
+
+def _urlencode(value):
+    from urllib.parse import quote
+    return quote(str(value), safe="")
+
+
+def resolve_city_to_iata(value):
+    """Convert a city/airport name or code to an IATA *city* code.
+
+    If ``value`` already looks like a 2-3 letter code it is returned as-is
+    (upper-cased). Otherwise the public Travelpayouts autocomplete endpoint is
+    queried (no auth required) and the best-matching city IATA code is returned.
+
+    Raises ``TravelpayoutsError`` if nothing credible can be resolved or the
+    autocomplete service is unreachable. This keeps the lookups fail-closed.
+    """
+    text = (value or "").strip()
+    if not text:
+        raise TravelpayoutsError("An origin/destination is required.")
+    up = text.upper()
+    if _looks_like_code(up):
+        return up
+
+    try:
+        response = requests.get(
+            _autocomplete_url(text),
+            headers={"Accept": "application/json"},
+            timeout=TRAVELPAYOUTS_TIMEOUT,
+        )
+        response.raise_for_status()
+        places = response.json()
+    except (requests.RequestException, OSError, ValueError) as error:
+        logger.warning("Travelpayouts autocomplete failed: %s", error)
+        raise TravelpayoutsError(
+            "Could not look up that city. Please use its 3-letter code."
+        )
+
+    if not isinstance(places, list):
+        raise TravelpayoutsError(
+            "Could not look up that city. Please use its 3-letter code."
+        )
+
+    needle = text.lower()
+    best = None
+    for place in places:
+        name = str(place.get("name") or "").lower()
+        code = place.get("code")
+        if name == needle:
+            best = str(code or "").upper()
+            break
+        if not best and needle in name:
+            best = str(code or "").upper()
+    if not best:
+        raise TravelpayoutsError(
+            "Could not find that city. Check the spelling or use its 3-letter code."
+        )
+    return best
+
+
 def search_flight_prices(*, origin, destination, depart_date, currency="USD"):
     """Look up real flight prices for a route/date via the prices/latest API.
 
-    ``origin``/``destination`` are IATA *city* codes (3 letters). Returns a
-    Tripora-shaped dict with a ``results`` list of normalized prices.
+    ``origin``/``destination`` accept an IATA *city* code (3 letters) or a
+    city name (e.g. "New York", "London") which is resolved to its IATA code.
+    Returns a Tripora-shaped dict with a ``results`` list of normalized prices.
     """
     token = _api_token()
     if not token:
         raise TravelpayoutsError(NOT_CONFIGURED_MESSAGE)
 
+    origin_code = resolve_city_to_iata(origin)
+    destination_code = resolve_city_to_iata(destination)
+
     params = {
-        "origin": origin,
-        "destination": destination,
+        "origin": origin_code,
+        "destination": destination_code,
         "departure_at": depart_date,
         "currency": currency.lower(),
         "one_way": "true",

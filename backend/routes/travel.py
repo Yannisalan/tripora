@@ -162,21 +162,23 @@ def search_flights_route():
 def flight_prices_route():
     data = _body()
 
-    origin = (data.get("origin") or "").strip().upper()
-    destination = (data.get("destination") or "").strip().upper()
+    origin = (data.get("origin") or "").strip()
+    destination = (data.get("destination") or "").strip()
     depart_date_raw = (data.get("departDate") or "").strip()
 
-    if len(origin) != 3 or not origin.isalpha():
+    # Either a 3-letter IATA code or a city name is accepted. Resolving a
+    # name to its IATA code happens inside search_flight_prices.
+    if not origin:
         return jsonify({
             "success": False,
-            "message": "Origin must be a 3-letter IATA code.",
+            "message": "An origin is required.",
         }), 400
-    if len(destination) != 3 or not destination.isalpha():
+    if not destination:
         return jsonify({
             "success": False,
-            "message": "Destination must be a 3-letter IATA code.",
+            "message": "A destination is required.",
         }), 400
-    if origin == destination:
+    if origin.upper() == destination.upper():
         return jsonify({
             "success": False,
             "message": "Origin and destination must be different.",

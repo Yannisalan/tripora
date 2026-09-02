@@ -59,8 +59,8 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
     });
     try {
       final results = await _service.searchFlightPrices(
-        origin: _origin.text.trim().toUpperCase(),
-        destination: _destination.text.trim().toUpperCase(),
+        origin: _origin.text.trim(),
+        destination: _destination.text.trim(),
         departDate: _depart.text.trim(),
       );
       if (!mounted) return;
@@ -185,24 +185,24 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
           children: [
             TextFormField(
               controller: _origin,
-              textCapitalization: TextCapitalization.characters,
+              textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                labelText: 'From (IATA)',
-                hintText: 'JFK',
+                labelText: 'From',
+                hintText: 'City or code, e.g. Paris or CDG',
                 prefixIcon: Icon(Icons.flight_takeoff),
               ),
-              validator: _iataValidator('origin'),
+              validator: _placeValidator('origin'),
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _destination,
-              textCapitalization: TextCapitalization.characters,
+              textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                labelText: 'To (IATA)',
-                hintText: 'LHR',
+                labelText: 'To',
+                hintText: 'City or code, e.g. London or LHR',
                 prefixIcon: Icon(Icons.location_on_outlined),
               ),
-              validator: _iataValidator('destination'),
+              validator: _placeValidator('destination'),
             ),
             const SizedBox(height: 14),
             TextFormField(
@@ -240,11 +240,11 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
     );
   }
 
-  String? Function(String?) _iataValidator(String field) {
+  String? Function(String?) _placeValidator(String field) {
     return (v) {
-      final value = (v ?? '').trim().toUpperCase();
-      if (value.length != 3 || !RegExp(r'^[A-Z]{3}$').hasMatch(value)) {
-        return 'Enter a 3-letter IATA code';
+      final value = (v ?? '').trim();
+      if (value.isEmpty) {
+        return 'Enter a city name or 3-letter code';
       }
       return null;
     };
