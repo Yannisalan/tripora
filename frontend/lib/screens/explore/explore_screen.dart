@@ -100,6 +100,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           Image.network(
                             destination.imageUrl,
                             fit: BoxFit.cover,
+                            cacheWidth: 900,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: context.triporaColors.border,

@@ -5,7 +5,7 @@ const List<DestinationModel> destinations = [
   // EUROPE
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34',
+    imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=60',
     city: 'Paris',
     country: 'France',
     description:
@@ -15,7 +15,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Food', 'Museums', 'Romance'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1533929736458-ca588d08c8be',
+    imageUrl: 'https://images.unsplash.com/photo-1533929736458-ca588d08c8be?auto=format&fit=crop&w=900&q=60',
     city: 'London',
     country: 'United Kingdom',
     description:
@@ -25,7 +25,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Museums', 'Food', 'History'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9',
+    imageUrl: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=900&q=60',
     city: 'Venice',
     country: 'Italy',
     description:
@@ -35,7 +35,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Food', 'Romance', 'History'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5',
+    imageUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=900&q=60',
     city: 'Rome',
     country: 'Italy',
     description:
@@ -48,7 +48,7 @@ const List<DestinationModel> destinations = [
   // ASIA
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf',
+    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=60',
     city: 'Tokyo',
     country: 'Japan',
     description:
@@ -58,7 +58,7 @@ const List<DestinationModel> destinations = [
     tags: ['Food', 'Shopping', 'Culture', 'Nightlife'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c',
+    imageUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=900&q=60',
     city: 'Dubai',
     country: 'United Arab Emirates',
     description:
@@ -68,7 +68,7 @@ const List<DestinationModel> destinations = [
     tags: ['Luxury', 'Shopping', 'Adventure', 'Beach'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4',
+    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=900&q=60',
     city: 'Bali',
     country: 'Indonesia',
     description:
@@ -78,7 +78,7 @@ const List<DestinationModel> destinations = [
     tags: ['Nature', 'Relaxation', 'Adventure', 'Culture'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed',
+    imageUrl: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?auto=format&fit=crop&w=900&q=60',
     city: 'Bangkok',
     country: 'Thailand',
     description:
@@ -91,7 +91,7 @@ const List<DestinationModel> destinations = [
   // AFRICA
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21',
+    imageUrl: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=900&q=60',
     city: 'Cotonou',
     country: 'Benin',
     description:
@@ -112,7 +112,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Food', 'Nightlife', 'City'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1636110026885-8950fbdd3e74',
+    imageUrl: 'https://images.unsplash.com/photo-1636110026885-8950fbdd3e74?auto=format&fit=crop&w=900&q=60',
     city: 'Seychelles',
     country: 'Seychelles',
     description:
@@ -122,7 +122,7 @@ const List<DestinationModel> destinations = [
     tags: ['Beach', 'Nature', 'Relaxation', 'Adventure'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99',
+    imageUrl: 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=900&q=60',
     city: 'Cape Town',
     country: 'South Africa',
     description:
@@ -135,7 +135,7 @@ const List<DestinationModel> destinations = [
   // NORTH AMERICA
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9',
+    imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=900&q=60',
     city: 'New York',
     country: 'United States',
     description:
@@ -145,7 +145,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Museums', 'Food', 'Nightlife'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1449034446853-66c86144b0ad',
+    imageUrl: 'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?auto=format&fit=crop&w=900&q=60',
     city: 'San Francisco',
     country: 'United States',
     description:
@@ -158,7 +158,7 @@ const List<DestinationModel> destinations = [
   // SOUTH AMERICA
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325',
+    imageUrl: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=900&q=60',
     city: 'Rio de Janeiro',
     country: 'Brazil',
     description:
@@ -168,7 +168,7 @@ const List<DestinationModel> destinations = [
     tags: ['Beach', 'Nature', 'Nightlife', 'Adventure'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1518391846015-55a9cc003b25',
+    imageUrl: 'https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=900&q=60',
     city: 'Buenos Aires',
     country: 'Argentina',
     description:
@@ -178,7 +178,7 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Food', 'Nightlife', 'Shopping'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1526392060635-9d6019884377',
+    imageUrl: 'https://images.unsplash.com/photo-1526392060635-9d6019884377?auto=format&fit=crop&w=900&q=60',
     city: 'Cusco',
     country: 'Peru',
     description:
@@ -188,7 +188,7 @@ const List<DestinationModel> destinations = [
     tags: ['History', 'Adventure', 'Culture', 'Nature'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07',
+    imageUrl: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&w=900&q=60',
     city: 'Cartagena',
     country: 'Colombia',
     description:
@@ -201,7 +201,7 @@ const List<DestinationModel> destinations = [
   // OCEANIA
   // --------------------------------------------------------------
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071',
+    imageUrl: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=900&q=60',
     city: 'Sydney',
     country: 'Australia',
     description:
@@ -211,7 +211,7 @@ const List<DestinationModel> destinations = [
     tags: ['Beach', 'City', 'Nature', 'Food'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1546971587-02375cbbdade',
+    imageUrl: 'https://images.unsplash.com/photo-1546971587-02375cbbdade?auto=format&fit=crop&w=900&q=60',
     city: 'Queenstown',
     country: 'New Zealand',
     description:
@@ -221,7 +221,7 @@ const List<DestinationModel> destinations = [
     tags: ['Adventure', 'Nature', 'Relaxation', 'Food'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1573790387438-4da905039392',
+    imageUrl: 'https://images.unsplash.com/photo-1573790387438-4da905039392?auto=format&fit=crop&w=900&q=60',
     city: 'Fiji',
     country: 'Fiji',
     description:
@@ -231,7 +231,7 @@ const List<DestinationModel> destinations = [
     tags: ['Beach', 'Relaxation', 'Nature', 'Adventure'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1602002418082-a4443e081dd1',
+    imageUrl: 'https://images.unsplash.com/photo-1602002418082-a4443e081dd1?auto=format&fit=crop&w=900&q=60',
     city: 'Bora Bora',
     country: 'French Polynesia',
     description:

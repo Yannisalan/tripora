@@ -77,6 +77,11 @@ class DestinationCard extends StatelessWidget {
                       Image.network(
                         imageUrl,
                         fit: BoxFit.cover,
+                        // Decode to a small texture so scrolling through many
+                        // cards never exhausts WebGL memory on iOS Safari
+                        // (which crashes the page when it runs out of GPU
+                        // texture slots).
+                        cacheWidth: 900,
                         loadingBuilder: (context, child, progress) {
                           if (progress == null) {
                             return child;
