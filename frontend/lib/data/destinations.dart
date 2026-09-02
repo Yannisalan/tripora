@@ -146,26 +146,6 @@ const List<DestinationModel> destinations = [
     tags: ['Culture', 'Museums', 'Food', 'Nightlife'],
   ),
   DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b',
-    city: 'Cancún',
-    country: 'Mexico',
-    description:
-        'Caribbean beaches, Mayan ruins, cenotes, coral reefs, and all-inclusive ease.',
-    bestFor: 'Beaches, families, nightlife',
-    tripLength: '4-7 days',
-    tags: ['Beach', 'History', 'Adventure', 'Relaxation'],
-  ),
-  DestinationModel(
-    imageUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827',
-    city: 'Toronto',
-    country: 'Canada',
-    description:
-        'Lakefront skyline, multicultural food, galleries, islands, and nearby Niagara Falls.',
-    bestFor: 'City breaks, food, families',
-    tripLength: '3-5 days',
-    tags: ['Food', 'Culture', 'City', 'Museums'],
-  ),
-  DestinationModel(
     imageUrl: 'https://images.unsplash.com/photo-1449034446853-66c86144b0ad',
     city: 'San Francisco',
     country: 'United States',
