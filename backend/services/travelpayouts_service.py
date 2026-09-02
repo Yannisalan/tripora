@@ -36,7 +36,19 @@ class TravelpayoutsError(Exception):
 
 
 def _api_token():
-    return os.getenv("TRAVELPAYOUTS_API_KEY", "") or None
+    # Trust the canonical name, but also tolerate a trailing newline/space
+    # from a copy-paste and a couple of common alternate spellings so a small
+    # "not configured" paste doesn't silently disable the feature.
+    for name in (
+        "TRAVELPAYOUTS_API_KEY",
+        "TRAVELPAYOUTS_API_TOKEN",
+        "TRAVELPAYOUTS_TOKEN",
+        "TRAVELPAYOUTS_KEY",
+    ):
+        value = (os.getenv(name, "") or "").strip()
+        if value:
+            return value
+    return None
 
 
 def search_flight_prices(*, origin, destination, depart_date, currency="USD"):
