@@ -60,7 +60,10 @@ class DuffelService {
       final code = (decoded['code'] ?? '').toString();
       final message =
           decoded['message']?.toString() ?? 'The travel search failed.';
-      throw PremiumRequiredException(message, premiumRequired: code == 'PREMIUM_REQUIRED');
+      throw PremiumRequiredException(
+        message,
+        premiumRequired: code == 'PREMIUM_REQUIRED',
+      );
     }
 
     if (decoded['results'] is! Map) {
@@ -89,6 +92,27 @@ class DuffelService {
       if (returnDate != null && returnDate.isNotEmpty) 'returnDate': returnDate,
       'passengers': passengers,
       'cabinClass': cabinClass,
+    });
+  }
+
+  // ============================================================
+  // FLIGHT PRICES
+  // POST /api/travel/flights/prices
+  //
+  // Open to any logged-in user (no premium gate).
+  // ============================================================
+
+  Future<Map<String, dynamic>> searchFlightPrices({
+    required String origin,
+    required String destination,
+    required String departDate,
+    String currency = 'USD',
+  }) async {
+    return _post('/api/travel/flights/prices', {
+      'origin': origin,
+      'destination': destination,
+      'departDate': departDate,
+      'currency': currency,
     });
   }
 

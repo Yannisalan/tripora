@@ -161,6 +161,18 @@ class Config:
     DUFFEL_API_TOKEN = os.getenv("DUFFEL_API_TOKEN", "")
 
     # ============================================================
+    # TRAVELPAYOUTS FLIGHT PRICES (ANY LOGGED-IN USER)
+    # ============================================================
+    #
+    # Server-only API token for the Travelpayouts (Aviasales) flight price
+    # lookups shown on the generated itinerary. It is never exposed to the
+    # client and is read at request time by ``services.travelpayouts_service``.
+    # An empty/unset value makes the endpoint fail closed.
+    # ------------------------------------------------------------
+
+    TRAVELPAYOUTS_API_KEY = os.getenv("TRAVELPAYOUTS_API_KEY", "")
+
+    # ============================================================
     # RATE LIMITING
     # ============================================================
     #

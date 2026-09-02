@@ -15,18 +15,29 @@ import pytest
 from flask import Flask
 import services.duffel_service as duffel_module
 import services.subscription_service as subscription_module
+import services.travelpayouts_service as travelpayouts_module
 
 
 def _stub_results(kind):
     return {"count": 1, kind: [{"id": "x"}], "disclaimer": "d"}
 
 
+def _stub_prices(**kwargs):
+    return {
+        "count": 1,
+        "results": [{"id": "p"}],
+        "disclaimer": "d",
+        "provider": "travelpayouts",
+    }
+
+
 def _load_app_with_guards(monkeypatch, premium_decorator, flights=None,
-                          stays=None, cars=None):
+                          stays=None, cars=None, prices=None):
     """Build a fresh Flask app with the patrol-guard seams replaced.
 
     ``premium_decorator`` is the function used in place of ``require_premium``
-    (the real one needs a DB). ``flights/stays/cars`` stub the Duffel calls.
+    (the real one needs a DB). ``flights/stays/cars`` stub the Duffel calls and
+    ``prices`` stub the Travelpayouts call.
     """
     # jwt_required is used as a *factory* in the routes (``@jwt_required()``),
     # so replacing it with ``lambda: (lambda fn: fn)`` makes the factory return
@@ -52,6 +63,11 @@ def _load_app_with_guards(monkeypatch, premium_decorator, flights=None,
         duffel_module,
         "search_cars",
         cars or (lambda **kwargs: _stub_results("cars")),
+    )
+    monkeypatch.setattr(
+        travelpayouts_module,
+        "search_flight_prices",
+        prices or _stub_prices,
     )
 
     # Import fresh (dropping any cached copy) so the patched decorators get
@@ -248,3 +264,64 @@ def test_free_user_receives_403(monkeypatch):
     body = resp.get_json()
     assert body["success"] is False
     assert body["code"] == "PREMIUM_REQUIRED"
+
+
+# ------------------------------------------------------------
+# Flight prices (open to all logged-in users, no premium gate)
+# ------------------------------------------------------------
+
+def test_flight_prices_success(client):
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    assert body["results"]["count"] == 1
+    assert body["results"]["provider"] == "travelpayouts"
+
+
+def test_flight_prices_accepts_no_premium(monkeypatch):
+    """The prices endpoint must NOT be premium-gated (free users get 200)."""
+    client = _load_app_with_guards(monkeypatch, _pass_through)
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 200
+
+
+def test_flight_prices_requires_origin_destination(client):
+    resp = client.post("/api/travel/flights/prices", json={
+        "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 400
+
+
+def test_flight_prices_rejects_bad_iata(client):
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "NEWYORK", "destination": "LHR", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 400
+
+
+def test_flight_prices_rejects_missing_date(client):
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "JFK", "destination": "LHR",
+    })
+    assert resp.status_code == 400
+    assert resp.get_json()["message"] == "A 'departDate' is required."
+
+
+def test_flight_prices_provider_error_maps_to_502(monkeypatch):
+    from services.travelpayouts_service import TravelpayoutsError
+
+    def boom(**kwargs):
+        raise TravelpayoutsError("provider down")
+
+    client = _load_app_with_guards(monkeypatch, _pass_through, prices=boom)
+
+    resp = client.post("/api/travel/flights/prices", json={
+        "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
+    })
+    assert resp.status_code == 502
+    assert resp.get_json()["code"] == "PROVIDER_ERROR"

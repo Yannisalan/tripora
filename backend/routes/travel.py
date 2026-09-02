@@ -22,6 +22,10 @@ from services.duffel_service import (
     search_stays,
 )
 from services.subscription_service import require_premium
+from services.travelpayouts_service import (
+    TravelpayoutsError,
+    search_flight_prices,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +145,66 @@ def search_flights_route():
     return jsonify({
         "success": True,
         "message": "Flight search results (premium).",
+        "results": results,
+    }), 200
+
+
+# ============================================================
+# FLIGHT PRICES
+# POST /api/travel/flights/prices
+#
+# NOTE: This endpoint is intentionally NOT premium-gated -- any logged-in
+# user can check real flight prices for their generated trip.
+# ============================================================
+
+@travel_bp.route("/flights/prices", methods=["POST"])
+@jwt_required()
+def flight_prices_route():
+    data = _body()
+
+    origin = (data.get("origin") or "").strip().upper()
+    destination = (data.get("destination") or "").strip().upper()
+    depart_date_raw = (data.get("departDate") or "").strip()
+
+    if len(origin) != 3 or not origin.isalpha():
+        return jsonify({
+            "success": False,
+            "message": "Origin must be a 3-letter IATA code.",
+        }), 400
+    if len(destination) != 3 or not destination.isalpha():
+        return jsonify({
+            "success": False,
+            "message": "Destination must be a 3-letter IATA code.",
+        }), 400
+    if origin == destination:
+        return jsonify({
+            "success": False,
+            "message": "Origin and destination must be different.",
+        }), 400
+
+    depart_date, err = _iso_date(depart_date_raw, "Depart date")
+    if err:
+        return jsonify({"success": False, "message": err}), 400
+    if depart_date is None:
+        return jsonify({
+            "success": False,
+            "message": "A 'departDate' is required.",
+        }), 400
+
+    currency = (data.get("currency") or "USD").strip().upper()
+    try:
+        results = search_flight_prices(
+            origin=origin,
+            destination=destination,
+            depart_date=depart_date.isoformat(),
+            currency=currency,
+        )
+    except TravelpayoutsError as error:
+        return _db_error_response(error)
+
+    return jsonify({
+        "success": True,
+        "message": "Flight price results.",
         "results": results,
     }), 200
 

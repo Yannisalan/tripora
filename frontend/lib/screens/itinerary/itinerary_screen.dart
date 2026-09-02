@@ -3,14 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
   final Map<String, dynamic> tripData;
 
-  const ItineraryScreen({
-    super.key,
-    required this.tripData,
-  });
+  const ItineraryScreen({super.key, required this.tripData});
 
   // ============================================================
   // SAFE VALUE HELPERS
@@ -78,10 +76,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   String get destination {
-    return _stringValue(
-      trip['destination'],
-      'Your Destination',
-    );
+    return _stringValue(trip['destination'], 'Your Destination');
   }
 
   // ============================================================
@@ -89,10 +84,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   DateTime get startDate {
-    final date = _dateValue(
-      trip['startDate'] ??
-          trip['start_date'],
-    );
+    final date = _dateValue(trip['startDate'] ?? trip['start_date']);
 
     return date ?? DateTime.now();
   }
@@ -102,10 +94,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   DateTime get endDate {
-    final date = _dateValue(
-      trip['endDate'] ??
-          trip['end_date'],
-    );
+    final date = _dateValue(trip['endDate'] ?? trip['end_date']);
 
     return date ?? startDate;
   }
@@ -115,10 +104,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   int get travelers {
-    return _intValue(
-      trip['travelers'],
-      1,
-    );
+    return _intValue(trip['travelers'], 1);
   }
 
   // ============================================================
@@ -126,10 +112,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   String get budget {
-    return _stringValue(
-      trip['budget'],
-      'Moderate',
-    );
+    return _stringValue(trip['budget'], 'Moderate');
   }
 
   // ============================================================
@@ -138,8 +121,7 @@ class ItineraryScreen extends StatelessWidget {
 
   String get travelStyle {
     return _stringValue(
-      trip['travelStyle'] ??
-          trip['travel_style'],
+      trip['travelStyle'] ?? trip['travel_style'],
       'Balanced',
     );
   }
@@ -149,40 +131,27 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Set<String> get interests {
-    final value =
-        trip['interests'];
+    final value = trip['interests'];
 
     if (value is List) {
       return value
-          .map(
-            (item) => item.toString(),
-          )
-          .where(
-            (item) => item.isNotEmpty,
-          )
+          .map((item) => item.toString())
+          .where((item) => item.isNotEmpty)
           .toSet();
     }
 
-    if (value is String &&
-        value.isNotEmpty) {
+    if (value is String && value.isNotEmpty) {
       try {
-        final decoded =
-            jsonDecode(value);
+        final decoded = jsonDecode(value);
 
         if (decoded is List) {
           return decoded
-              .map(
-                (item) => item.toString(),
-              )
-              .where(
-                (item) => item.isNotEmpty,
-              )
+              .map((item) => item.toString())
+              .where((item) => item.isNotEmpty)
               .toSet();
         }
       } catch (_) {
-        return {
-          value,
-        };
+        return {value};
       }
     }
 
@@ -194,9 +163,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Map<String, dynamic>? get estimatedCost {
-    dynamic value =
-        trip['estimatedCost'] ??
-            trip['estimated_cost'];
+    dynamic value = trip['estimatedCost'] ?? trip['estimated_cost'];
 
     // Sometimes estimated cost may be
     // returned outside the nested trip object.
@@ -204,9 +171,7 @@ class ItineraryScreen extends StatelessWidget {
     value ??= tripData['estimated_cost'];
 
     if (value is Map) {
-      return Map<String, dynamic>.from(
-        value,
-      );
+      return Map<String, dynamic>.from(value);
     }
 
     return null;
@@ -225,8 +190,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   List<Map<String, dynamic>> get itinerary {
-    dynamic value =
-        trip['itinerary'];
+    dynamic value = trip['itinerary'];
 
     // ----------------------------------------------------------
     // Already a List
@@ -240,16 +204,12 @@ class ItineraryScreen extends StatelessWidget {
     // JSON string
     // ----------------------------------------------------------
 
-    if (value is String &&
-        value.trim().isNotEmpty) {
+    if (value is String && value.trim().isNotEmpty) {
       try {
-        final decoded =
-            jsonDecode(value);
+        final decoded = jsonDecode(value);
 
         if (decoded is List) {
-          return _parseItineraryList(
-            decoded,
-          );
+          return _parseItineraryList(decoded);
         }
       } catch (_) {
         return [];
@@ -263,19 +223,12 @@ class ItineraryScreen extends StatelessWidget {
   // PARSE ITINERARY
   // ============================================================
 
-  List<Map<String, dynamic>> _parseItineraryList(
-    List value,
-  ) {
-    final result =
-        <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _parseItineraryList(List value) {
+    final result = <Map<String, dynamic>>[];
 
     for (final item in value) {
       if (item is Map) {
-        result.add(
-          Map<String, dynamic>.from(
-            item,
-          ),
-        );
+        result.add(Map<String, dynamic>.from(item));
       }
     }
 
@@ -287,28 +240,21 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   int get numberOfDays {
-    final difference =
-        endDate.difference(startDate).inDays;
+    final difference = endDate.difference(startDate).inDays;
 
-    return difference >= 0
-        ? difference + 1
-        : 1;
+    return difference >= 0 ? difference + 1 : 1;
   }
 
   // ============================================================
   // FORMAT DATE
   // ============================================================
 
-  String _formatDate(
-    String? dateString,
-  ) {
-    if (dateString == null ||
-        dateString.isEmpty) {
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) {
       return '';
     }
 
-    final date =
-        DateTime.tryParse(dateString);
+    final date = DateTime.tryParse(dateString);
 
     if (date == null) {
       return dateString;
@@ -338,11 +284,8 @@ class ItineraryScreen extends StatelessWidget {
   // ACTIVITY ICON
   // ============================================================
 
-  IconData _getActivityIcon(
-    String? category,
-  ) {
-    switch (
-        category?.toLowerCase()) {
+  IconData _getActivityIcon(String? category) {
+    switch (category?.toLowerCase()) {
       case 'food':
       case 'dining':
       case 'restaurant':
@@ -396,23 +339,17 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          context.triporaColors.backgroundColor,
+      backgroundColor: context.triporaColors.backgroundColor,
 
       // ========================================================
       // APP BAR
       // ========================================================
-
       appBar: AppBar(
-        backgroundColor:
-            Colors.transparent,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        surfaceTintColor:
-            Colors.transparent,
+        surfaceTintColor: Colors.transparent,
 
         leading: IconButton(
           tooltip: 'Go back',
@@ -437,143 +374,90 @@ class ItineraryScreen extends StatelessWidget {
       // ========================================================
       // BODY
       // ========================================================
-
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
-            constraints:
-                const BoxConstraints(
-              maxWidth: 900,
-            ),
+            constraints: const BoxConstraints(maxWidth: 900),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 30,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   // ==================================================
                   // TRIP HEADER
                   // ==================================================
-
                   Container(
-                    width:
-                        double.infinity,
-                    padding:
-                        const EdgeInsets.all(
-                      28,
-                    ),
-                    decoration:
-                        BoxDecoration(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
                       color: context.triporaColors.surface,
-                      borderRadius:
-                          BorderRadius.circular(
-                        20,
-                      ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
                         Text(
                           '\u2726 Your AI Travel Plan',
-                          style:
-                              TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.primary,
-                            fontWeight:
-                                FontWeight
-                                    .w700,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
                         ),
 
-                        const SizedBox(
-                          height: 12,
-                        ),
+                        const SizedBox(height: 12),
 
                         Text(
                           destination,
-                          style:
-                              TextStyle(
+                          style: TextStyle(
                             fontSize: 36,
-                            fontWeight:
-                                FontWeight
-                                    .w800,
-                            color:
-                                context.triporaColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                            color: context.triporaColors.textPrimary,
                           ),
                         ),
 
-                        const SizedBox(
-                          height: 20,
-                        ),
+                        const SizedBox(height: 20),
 
                         Wrap(
                           spacing: 20,
                           runSpacing: 12,
                           children: [
-
                             _buildInfo(
                               context,
-                              Icons
-                                  .calendar_month_outlined,
+                              Icons.calendar_month_outlined,
                               '$numberOfDays days',
                             ),
 
                             _buildInfo(
                               context,
-                              Icons
-                                  .people_outline,
+                              Icons.people_outline,
                               '$travelers traveler'
                               '${travelers == 1 ? '' : 's'}',
                             ),
 
                             _buildInfo(
                               context,
-                              Icons
-                                  .account_balance_wallet_outlined,
+                              Icons.account_balance_wallet_outlined,
                               budget,
                             ),
 
                             _buildInfo(
                               context,
-                              Icons
-                                  .explore_outlined,
+                              Icons.explore_outlined,
                               travelStyle,
                             ),
                           ],
                         ),
 
-                        if (interests
-                            .isNotEmpty) ...[
-                          const SizedBox(
-                            height: 20,
-                          ),
+                        if (interests.isNotEmpty) ...[
+                          const SizedBox(height: 20),
 
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children:
-                                interests
-                                    .map(
-                              (
-                                interest,
-                              ) {
-                                return Chip(
-                                  label:
-                                      Text(
-                                    interest,
-                                  ),
-                                );
-                              },
-                            ).toList(),
+                            children: interests.map((interest) {
+                              return Chip(label: Text(interest));
+                            }).toList(),
                           ),
                         ],
                       ],
@@ -583,174 +467,126 @@ class ItineraryScreen extends StatelessWidget {
                   // ==================================================
                   // COST
                   // ==================================================
-
-                  if (estimatedCost !=
-                      null) ...[
-                    const SizedBox(
-                      height: 30,
-                    ),
+                  if (estimatedCost != null) ...[
+                    const SizedBox(height: 30),
 
                     _buildCostCard(context),
                   ],
 
-                  const SizedBox(
-                    height: 40,
-                  ),
+                  const SizedBox(height: 40),
 
                   // ==================================================
                   // ITINERARY TITLE
                   // ==================================================
-
                   Text(
                     'Your Itinerary',
                     style: TextStyle(
                       fontSize: 30,
-                      fontWeight:
-                          FontWeight.w800,
-                      color:
-                          context.triporaColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      color: context.triporaColors.textPrimary,
                     ),
                   ),
 
-                  const SizedBox(
-                    height: 10,
-                  ),
+                  const SizedBox(height: 10),
 
                   Text(
                     'A suggested plan based on your preferences.',
                     style: TextStyle(
                       fontSize: 16,
-                      color:
-                          context.triporaColors.textSecondary,
+                      color: context.triporaColors.textSecondary,
                     ),
                   ),
 
-                  const SizedBox(
-                    height: 30,
-                  ),
+                  const SizedBox(height: 30),
 
                   // ==================================================
                   // ITINERARY
                   // ==================================================
-
                   if (itinerary.isEmpty)
                     Container(
-                      width:
-                          double.infinity,
-                      padding:
-                          const EdgeInsets
-                              .all(
-                        24,
-                      ),
-                      decoration:
-                          BoxDecoration(
-                        color:
-                            context.triporaColors.surface,
-                        borderRadius:
-                            BorderRadius
-                                .circular(
-                          18,
-                        ),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: context.triporaColors.surface,
+                        borderRadius: BorderRadius.circular(18),
                       ),
                       child: Text(
                         'No itinerary was generated.',
-                        style:
-                            TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          color:
-                              context.triporaColors.textSecondary,
+                          color: context.triporaColors.textSecondary,
                         ),
                       ),
                     ),
 
-                  ...itinerary.map(
-                    (day) {
-                      return Padding(
-                        padding:
-                            const EdgeInsets
-                                .only(
-                          bottom: 20,
-                        ),
-                        child:
-                            _buildDayCard(
-                          context: context,
-                          day: _intValue(
-                            day['day'],
-                            1,
-                          ),
-                          date:
-                              day['date']
-                                  ?.toString(),
-                          title:
-                              _stringValue(
-                            day['title'],
-                            'Travel Day',
-                          ),
-                          activities:
-                              _parseActivities(
-                            day[
-                                'activities'],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  ...itinerary.map((day) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: _buildDayCard(
+                        context: context,
+                        day: _intValue(day['day'], 1),
+                        date: day['date']?.toString(),
+                        title: _stringValue(day['title'], 'Travel Day'),
+                        activities: _parseActivities(day['activities']),
+                      ),
+                    );
+                  }),
 
-                  const SizedBox(
-                    height: 40,
-                  ),
+                  const SizedBox(height: 40),
 
                   // ==================================================
                   // EDIT TRIP
                   // ==================================================
-
                   SizedBox(
-                    width:
-                        double.infinity,
-                    child:
-                        OutlinedButton.icon(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
                       onPressed: () {
-                        Navigator.pop(
-                          context,
-                        );
+                        Navigator.pop(context);
                       },
-                      icon: const Icon(
-                        Icons
-                            .edit_outlined,
-                      ),
+                      icon: const Icon(Icons.edit_outlined),
                       label: const Text(
                         'Edit Trip',
-                        style:
-                            TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          fontWeight:
-                              FontWeight
-                                  .w600,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      style:
-                          OutlinedButton
-                              .styleFrom(
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
-                          vertical: 18,
-                        ),
-                        shape:
-                            RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            14,
-                          ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(
-                    height: 30,
+                  const SizedBox(height: 16),
+
+                  // ==================================================
+                  // CHECK FLIGHT PRICES
+                  // ==================================================
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _openFlightPrices(context),
+                      icon: const Icon(Icons.flight_takeoff),
+                      label: const Text(
+                        'Check flight prices',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
                   ),
+
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -761,47 +597,54 @@ class ItineraryScreen extends StatelessWidget {
   }
 
   // ============================================================
+  // OPEN FLIGHT PRICES
+  // ============================================================
+
+  void _openFlightPrices(BuildContext context) {
+    final d = destination;
+    // The itinerary doesn't know the traveller's home airport, so we leave
+    // the origin blank and prefill only the destination + date. The user can
+    // type their origin airport on the price screen.
+    Navigator.pushNamed(
+      context,
+      AppRoutes.checkFlightPrices,
+      arguments: <String, dynamic>{
+        if (d.isNotEmpty) 'destination': d,
+        'departDate': _dateIso(startDate),
+      },
+    );
+  }
+
+  String _dateIso(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // ============================================================
   // PARSE ACTIVITIES
   // ============================================================
 
-  List<_Activity> _parseActivities(
-    dynamic activities,
-  ) {
-    final result =
-        <_Activity>[];
+  List<_Activity> _parseActivities(dynamic activities) {
+    final result = <_Activity>[];
 
     if (activities is! List) {
       return result;
     }
 
-    for (final activity
-        in activities) {
+    for (final activity in activities) {
       if (activity is! Map) {
         continue;
       }
 
-      final category =
-          activity['category']
-              ?.toString();
+      final category = activity['category']?.toString();
 
       result.add(
         _Activity(
-          icon: _getActivityIcon(
-            category,
-          ),
-          time:
-              _stringValue(
-            activity['time'],
-          ),
-          title:
-              _stringValue(
-            activity['title'],
-            'Activity',
-          ),
-          description:
-              _stringValue(
-            activity['description'],
-          ),
+          icon: _getActivityIcon(category),
+          time: _stringValue(activity['time']),
+          title: _stringValue(activity['title'], 'Activity'),
+          description: _stringValue(activity['description']),
         ),
       );
     }
@@ -813,37 +656,26 @@ class ItineraryScreen extends StatelessWidget {
   // INFO ITEM
   // ============================================================
 
-  Widget _buildInfo(
-    BuildContext context,
-    IconData icon,
-    String text,
-  ) {
+  Widget _buildInfo(BuildContext context, IconData icon, String text) {
     return Row(
-      mainAxisSize:
-          MainAxisSize.min,
+      mainAxisSize: MainAxisSize.min,
       children: [
         ExcludeSemantics(
           child: Icon(
             icon,
             size: 19,
-            color:
-                Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
 
-        const SizedBox(
-          width: 7,
-        ),
+        const SizedBox(width: 7),
 
         Text(
           text,
-          style:
-              TextStyle(
+          style: TextStyle(
             fontSize: 15,
-            fontWeight:
-                FontWeight.w600,
-            color:
-                context.triporaColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            color: context.triporaColors.textSecondary,
           ),
         ),
       ],
@@ -855,156 +687,95 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildCostCard(BuildContext context) {
-    final cost =
-        estimatedCost!;
+    final cost = estimatedCost!;
 
-    final currency =
-        _stringValue(
-      cost['currency'],
-      'USD',
-    );
+    final currency = _stringValue(cost['currency'], 'USD');
 
-    final total =
-        cost['estimatedTotal'] ??
-            cost['estimated_total'] ??
-            0;
+    final total = cost['estimatedTotal'] ?? cost['estimated_total'] ?? 0;
 
-    final breakdown =
-        cost['breakdown'];
+    final breakdown = cost['breakdown'];
 
-    final Map<String, dynamic>
-        costs =
-        breakdown is Map
-            ? Map<String, dynamic>
-                .from(
-                breakdown,
-              )
-            : {};
+    final Map<String, dynamic> costs = breakdown is Map
+        ? Map<String, dynamic>.from(breakdown)
+        : {};
 
     return Container(
-      width:
-          double.infinity,
-      padding:
-          const EdgeInsets.all(
-        28,
-      ),
-      decoration:
-          BoxDecoration(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
         color: context.triporaColors.surface,
-        borderRadius:
-            BorderRadius.circular(
-          20,
-        ),
-        border: Border.all(
-          color:
-              context.triporaColors.border,
-        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.triporaColors.border),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment
-                .start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Row(
             children: [
               Icon(
-                Icons
-                    .account_balance_wallet_outlined,
-                color:
-                    Theme.of(context).colorScheme.primary,
+                Icons.account_balance_wallet_outlined,
+                color: Theme.of(context).colorScheme.primary,
               ),
 
-              const SizedBox(
-                width: 10,
-              ),
+              const SizedBox(width: 10),
 
               Text(
                 'Estimated Trip Cost',
-                style:
-                    TextStyle(
+                style: TextStyle(
                   fontSize: 22,
-                  fontWeight:
-                      FontWeight.w800,
-                  color:
-                      context.triporaColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  color: context.triporaColors.textPrimary,
                 ),
               ),
             ],
           ),
 
-          const SizedBox(
-            height: 18,
-          ),
+          const SizedBox(height: 18),
 
           Text(
             '$currency $total',
-            style:
-                TextStyle(
+            style: TextStyle(
               fontSize: 38,
-              fontWeight:
-                  FontWeight.w800,
-              color:
-                  Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
 
-          const SizedBox(
-            height: 8,
-          ),
+          const SizedBox(height: 8),
 
           Text(
             'Approximate cost for your trip. '
             'Actual prices may vary.',
-            style:
-                TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color:
-                  context.triporaColors.textSecondary,
+              color: context.triporaColors.textSecondary,
             ),
           ),
 
           if (costs.isNotEmpty) ...[
-            const SizedBox(
-              height: 25,
-            ),
+            const SizedBox(height: 25),
 
             const Divider(),
 
-            const SizedBox(
-              height: 18,
-            ),
+            const SizedBox(height: 18),
 
             _buildCostRow(
               context,
               'Accommodation',
-              costs[
-                  'accommodation'],
+              costs['accommodation'],
               currency,
             ),
 
-            _buildCostRow(
-              context,
-              'Food',
-              costs['food'],
-              currency,
-            ),
+            _buildCostRow(context, 'Food', costs['food'], currency),
 
             _buildCostRow(
               context,
               'Transportation',
-              costs[
-                  'transportation'],
+              costs['transportation'],
               currency,
             ),
 
-            _buildCostRow(
-              context,
-              'Activities',
-              costs[
-                  'activities'],
-              currency,
-            ),
+            _buildCostRow(context, 'Activities', costs['activities'], currency),
           ],
         ],
       ),
@@ -1022,34 +793,25 @@ class ItineraryScreen extends StatelessWidget {
     String currency,
   ) {
     return Padding(
-      padding:
-          const EdgeInsets.only(
-        bottom: 14,
-      ),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-
           Expanded(
             child: Text(
               label,
-              style:
-                  TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color:
-                    context.triporaColors.textSecondary,
+                color: context.triporaColors.textSecondary,
               ),
             ),
           ),
 
           Text(
             '$currency ${value ?? 0}',
-            style:
-                TextStyle(
+            style: TextStyle(
               fontSize: 16,
-              fontWeight:
-                  FontWeight.w700,
-              color:
-                  context.triporaColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              color: context.triporaColors.textPrimary,
             ),
           ),
         ],
@@ -1066,127 +828,78 @@ class ItineraryScreen extends StatelessWidget {
     required int day,
     required String? date,
     required String title,
-    required List<_Activity>
-        activities,
+    required List<_Activity> activities,
   }) {
     return Container(
-      width:
-          double.infinity,
-      padding:
-          const EdgeInsets.all(
-        24,
-      ),
-      decoration:
-          BoxDecoration(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
         color: context.triporaColors.surface,
-        borderRadius:
-            BorderRadius.circular(
-          18,
-        ),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment
-                .start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // ------------------------------------------------------
           // DAY HEADER
           // ------------------------------------------------------
-
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment
-                    .start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Container(
                 width: 48,
                 height: 48,
-                alignment:
-                    Alignment.center,
-                decoration:
-                    BoxDecoration(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
                   gradient: AppColors.brandGradient,
-                  borderRadius:
-                      BorderRadius
-                          .circular(
-                    14,
-                  ),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   '$day',
-                  style:
-                      const TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
-                    fontWeight:
-                        FontWeight
-                            .w800,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
               ),
 
-              const SizedBox(
-                width: 16,
-              ),
+              const SizedBox(width: 16),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment
-                          .start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     Text(
                       'Day $day',
-                      style:
-                          TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color:
-                            context.triporaColors.textMuted,
-                        fontWeight:
-                            FontWeight
-                                .w600,
+                        color: context.triporaColors.textMuted,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
 
-                    if (date != null &&
-                        date.isNotEmpty) ...[
-                      const SizedBox(
-                        height: 3,
-                      ),
+                    if (date != null && date.isNotEmpty) ...[
+                      const SizedBox(height: 3),
 
                       Text(
-                        _formatDate(
-                          date,
-                        ),
-                        style:
-                            TextStyle(
+                        _formatDate(date),
+                        style: TextStyle(
                           fontSize: 14,
-                          color:
-                              Theme.of(context).colorScheme.primary,
-                          fontWeight:
-                              FontWeight
-                                  .w600,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
 
-                    const SizedBox(
-                      height: 5,
-                    ),
+                    const SizedBox(height: 5),
 
                     Text(
                       title,
-                      style:
-                          TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
-                        fontWeight:
-                            FontWeight
-                                .w700,
-                        color:
-                            context.triporaColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        color: context.triporaColors.textPrimary,
                       ),
                     ),
                   ],
@@ -1195,120 +908,75 @@ class ItineraryScreen extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(
-            height: 24,
-          ),
+          const SizedBox(height: 24),
 
           // ------------------------------------------------------
           // ACTIVITIES
           // ------------------------------------------------------
-
           if (activities.isEmpty)
             Text(
               'No activities available for this day.',
-              style:
-                  TextStyle(
-                color:
-                    context.triporaColors.textMuted,
-              ),
+              style: TextStyle(color: context.triporaColors.textMuted),
             ),
 
-          ...activities.map(
-            (activity) {
-              return Padding(
-                padding:
-                    const EdgeInsets
-                        .only(
-                  bottom: 20,
-                ),
-                child: Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment
-                          .start,
-                  children: [
-
-                    ExcludeSemantics(
-                      child: Icon(
-                        activity.icon,
-                        size: 22,
-                        color:
-                            Theme.of(context).colorScheme.primary,
-                      ),
+          ...activities.map((activity) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ExcludeSemantics(
+                    child: Icon(
+                      activity.icon,
+                      size: 22,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                  ),
 
-                    const SizedBox(
-                      width: 14,
-                    ),
+                  const SizedBox(width: 14),
 
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment
-                                .start,
-                        children: [
-
-                          if (activity
-                              .time
-                              .isNotEmpty)
-                            Text(
-                              activity
-                                  .time,
-                              style:
-                                  TextStyle(
-                                fontSize:
-                                    12,
-                                fontWeight:
-                                    FontWeight
-                                        .w600,
-                                color:
-                                    Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-
-                          const SizedBox(
-                            height: 3,
-                          ),
-
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (activity.time.isNotEmpty)
                           Text(
-                            activity
-                                .title,
-                            style:
-                                TextStyle(
-                              fontSize:
-                                  16,
-                              fontWeight:
-                                  FontWeight
-                                      .w700,
-                              color:
-                                  context.triporaColors.textPrimary,
+                            activity.time,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
 
-                          const SizedBox(
-                            height: 5,
-                          ),
+                        const SizedBox(height: 3),
 
-                          Text(
-                            activity
-                                .description,
-                            style:
-                                TextStyle(
-                              fontSize:
-                                  14,
-                              height:
-                                  1.5,
-                              color:
-                                  context.triporaColors.textSecondary,
-                            ),
+                        Text(
+                          activity.title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: context.triporaColors.textPrimary,
                           ),
-                        ],
-                      ),
+                        ),
+
+                        const SizedBox(height: 5),
+
+                        Text(
+                          activity.description,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: context.triporaColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
