@@ -4,7 +4,7 @@ import '../core/config/app_config.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/logger.dart';
 
-import '../screens/home/home_screen.dart';
+import '../screens/main_shell.dart';
 import '../screens/explore/explore_screen.dart';
 import '../screens/planner/planner_screen.dart';
 import '../screens/itinerary/itinerary_screen.dart';
@@ -70,9 +70,9 @@ class AppRoutes {
   static Map<String, WidgetBuilder> get routes {
     final result = <String, WidgetBuilder>{
       // ========================================================
-      // HOME
+      // HOME (bottom-tab shell)
       // ========================================================
-      home: (_) => const HomeScreen(),
+      home: (_) => const MainShell(),
 
       // ========================================================
       // AUTH

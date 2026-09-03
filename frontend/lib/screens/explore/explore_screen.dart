@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../data/destinations.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/destination_model.dart';

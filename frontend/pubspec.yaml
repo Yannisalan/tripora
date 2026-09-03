@@ -40,6 +40,7 @@ dependencies:
   google_sign_in: ^7.2.0
   sign_in_with_apple: ^8.2.0
   crypto: ^3.0.7
+  add_2_calendar: ^3.1.1
 
 dev_dependencies:
   flutter_test:

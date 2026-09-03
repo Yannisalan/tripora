@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
@@ -155,6 +156,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isSaving = false;
         _successMessage = 'Your account was updated successfully.';
       });
+
+      HapticFeedback.mediumImpact();
     } catch (error) {
       if (!mounted) return;
 

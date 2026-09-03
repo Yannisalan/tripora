@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -586,6 +587,32 @@ class ItineraryScreen extends StatelessWidget {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // ==================================================
+                  // ADD TO CALENDAR
+                  // ==================================================
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _addToCalendar(context),
+                      icon: const Icon(Icons.event_outlined),
+                      label: const Text(
+                        'Add to calendar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 30),
                 ],
               ),
@@ -613,6 +640,36 @@ class ItineraryScreen extends StatelessWidget {
         'departDate': _dateIso(startDate),
       },
     );
+  }
+
+  // ============================================================
+  // ADD TO CALENDAR
+  // ============================================================
+
+  Future<void> _addToCalendar(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final event = Event(
+        title: 'Trip to $destination',
+        description: budget.isNotEmpty ? 'Budget: $budget' : null,
+        location: destination,
+        startDate: startDate,
+        endDate: endDate,
+        allDay: true,
+      );
+
+      final added = await Add2Calendar.addEvent2Cal(event);
+    } catch (error) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: const Text('Could not open the calendar.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
   }
 
   String _dateIso(DateTime date) {

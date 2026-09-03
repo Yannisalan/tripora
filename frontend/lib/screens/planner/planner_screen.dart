@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/trip_model.dart';
@@ -356,6 +357,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
       if (!mounted) {
         return;
       }
+
+      // Success feedback: light haptic tap on the generate action.
+      HapticFeedback.mediumImpact();
 
       await Navigator.pushNamed(context, '/itinerary', arguments: tripMap);
     } catch (error) {

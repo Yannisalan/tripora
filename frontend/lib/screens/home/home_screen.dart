@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/destinations.dart';
@@ -58,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openPlanner([String? destination]) {
+    HapticFeedback.lightImpact();
     Navigator.pushNamed(context, AppRoutes.planner, arguments: destination);
   }
 
@@ -67,10 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openTrips() {
     Navigator.pushNamed(context, AppRoutes.trips).then((_) => _loadTrips());
-  }
-
-  void _openProfile() {
-    Navigator.pushNamed(context, AppRoutes.profile);
   }
 
   void _openTrip(TripModel trip) {
@@ -92,21 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Explore',
-            onPressed: _openExplore,
-            icon: const Icon(Icons.explore_outlined),
-          ),
-          IconButton(
-            tooltip: 'My Trips',
-            onPressed: _openTrips,
-            icon: const Icon(Icons.card_travel_outlined),
-          ),
-          IconButton(
-            tooltip: 'Profile',
-            onPressed: _openProfile,
-            icon: const Icon(Icons.person_outline),
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GradientButton(

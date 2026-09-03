@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from datetime import date, timedelta
 
 from dotenv import load_dotenv
@@ -9,6 +10,17 @@ from google.genai import types
 
 
 logger = logging.getLogger(__name__)
+
+
+# Gemini models used for itinerary generation, in priority order. The primary
+# model can intermittently return 503 UNAVAILABLE ("experiencing high
+# demand"); if it stays down we fall back to the next capable model so a
+# transient capacity spike never fails the user's request.
+GEMINI_MODELS = [
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.6-flash-lite",
+]
 
 
 load_dotenv()
@@ -252,6 +264,33 @@ def _validate_itinerary(
 # GENERATE ITINERARY
 # ============================================================
 
+def _is_transient_error(error):
+    """Best-effort check for a transient, retry-friendly Gemini API error.
+
+    The google-genai SDK wraps HTTP failures in exceptions whose ``__str__``
+    includes the status code (e.g. ``503 UNAVAILABLE``). We also honour
+    ``google.api_core.exceptions`` statuses when the rich error object is
+    available. Anything else (auth, invalid argument) is treated as permanent.
+    """
+    message = str(error).upper()
+    if any(code in message for code in ("429", "503", "500", "502", "504")):
+        return True
+    try:
+        from google.api_core import exceptions as gax
+        return isinstance(
+            error,
+            (
+                gax.ResourceExhausted,
+                gax.ServiceUnavailable,
+                gax.DeadlineExceeded,
+                gax.InternalServerError,
+                gax.TooManyRequests,
+            ),
+        )
+    except Exception:
+        return False
+
+
 def generate_itinerary(
     destination,
     start_date,
@@ -266,9 +305,16 @@ def generate_itinerary(
     # NUMBER OF GENERATION ATTEMPTS
     # ========================================================
 
-    max_attempts = 3
+    max_attempts = 4
 
     last_error = None
+
+    # Track which Gemini model we are on and how many consecutive times it has
+    # failed with a transient/unavailable error, so we can fall back to the
+    # next model instead of retrying an overloaded one forever.
+    model_index = 0
+    model = GEMINI_MODELS[model_index]
+    model_transient_errors = 0
 
     # ========================================================
     # GENERATION LOOP
@@ -404,7 +450,7 @@ REQUIREMENTS:
         try:
 
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model=model,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -473,13 +519,34 @@ REQUIREMENTS:
         except Exception as error:
 
             logger.error(
-                "GEMINI API ERROR (attempt %s/%s): %s",
+                "GEMINI API ERROR (attempt %s/%s, model %s): %s",
                 attempt,
                 max_attempts,
+                model,
                 error,
             )
 
             last_error = str(error)
+
+            # The Gemini client surfaces HTTP status codes in the message.
+            # A 429/5xx (notably 503 UNAVAILABLE under high demand) is
+            # transient, so back off briefly and, if the model stays down,
+            # fall back to the next capable model.
+            transient = _is_transient_error(error)
+            if transient:
+                model_transient_errors += 1
+                if (
+                    model_transient_errors >= 2
+                    and model_index < len(GEMINI_MODELS) - 1
+                ):
+                    model_index += 1
+                    model = GEMINI_MODELS[model_index]
+                    model_transient_errors = 0
+                    logger.warning(
+                        "Falling back to Gemini model %s after transient error.",
+                        model,
+                    )
+                time.sleep(2 * model_transient_errors)
 
             continue
 
