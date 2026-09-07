@@ -1,4 +1,4 @@
-"""Tests for the premium-only travel search endpoints.
+"""Tests for the live travel search endpoints.
 
 The routes decorate their views with ``@jwt_required()`` (a factory) and
 ``@require_premium`` at import time, so we patch the *source* symbols before
@@ -238,10 +238,10 @@ def test_flights_provider_error_maps_to_502(monkeypatch):
 
 
 # ------------------------------------------------------------
-# Premium gating
+# Flight search access
 # ------------------------------------------------------------
 
-def test_free_user_receives_403(monkeypatch):
+def test_free_user_can_search_flights(monkeypatch):
     import functools
     from flask import jsonify
 
@@ -260,10 +260,8 @@ def test_free_user_receives_403(monkeypatch):
     resp = client.post("/api/travel/flights/search", json={
         "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
     })
-    assert resp.status_code == 403
-    body = resp.get_json()
-    assert body["success"] is False
-    assert body["code"] == "PREMIUM_REQUIRED"
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
 
 
 # ------------------------------------------------------------

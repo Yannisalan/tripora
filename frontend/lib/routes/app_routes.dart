@@ -147,6 +147,9 @@ class AppRoutes {
         return CheckFlightPricesScreen(prefill: prefill);
       },
 
+      // Flight search is open to all logged-in users.
+      travelFlights: (_) => const FlightSearchScreen(),
+
       // ========================================================
       // ADMIN
       // ========================================================
@@ -163,8 +166,6 @@ class AppRoutes {
       result[premium] = (_) => const PremiumScreen();
 
       result[travel] = (_) => const PremiumTravelScreen();
-
-      result[travelFlights] = (_) => const FlightSearchScreen();
 
       result[travelStays] = (_) => const StaySearchScreen();
 

@@ -1,9 +1,9 @@
-"""Premium-only live travel search endpoints (flights, stays, cars).
+"""Live travel search endpoints (flights, stays, cars).
 
-These endpoints proxy Duffel searches for subscribers. Entitlement is enforced
-server-side with ``@require_premium`` (HTTP 403 for non-subscribers), so the
-client flag is only a UI convenience. Provider credentials are read from the
-server environment inside the service, never sent to or from the client.
+Stay and car searches proxy Duffel searches for subscribers and enforce
+entitlement server-side with ``@require_premium``. Flight search is available
+to every authenticated user. Provider credentials are read from the server
+environment inside the service, never sent to or from the client.
 
 Free users keep all existing features; itinerary generation is unaffected.
 This module only adds live travel *search* (no booking, payments, or checkout).
@@ -69,7 +69,6 @@ def _iso_date(value, label):
 
 @travel_bp.route("/flights/search", methods=["POST"])
 @jwt_required()
-@require_premium
 def search_flights_route():
     data = _body()
 
@@ -144,7 +143,7 @@ def search_flights_route():
 
     return jsonify({
         "success": True,
-        "message": "Flight search results (premium).",
+        "message": "Flight search results.",
         "results": results,
     }), 200
 

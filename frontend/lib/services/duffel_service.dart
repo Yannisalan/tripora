@@ -5,10 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
 
-/// Talks to the premium-only live travel-search endpoints.
+/// Talks to the live travel-search endpoints.
 ///
-/// These endpoints are gated server-side by [require_premium]; a free user
-/// gets a 403 (```PREMIUM_REQUIRED```) which the UI surfaces as the paywall.
 /// All results are display-only search data -- no booking or checkout.
 class DuffelService {
   static const String baseUrl = AppConfig.apiBaseUrl;

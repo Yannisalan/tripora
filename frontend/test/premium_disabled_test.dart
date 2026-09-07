@@ -8,7 +8,7 @@ void main() {
     final routes = AppRoutes.routes;
     expect(routes.containsKey(AppRoutes.premium), isFalse);
     expect(routes.containsKey(AppRoutes.travel), isFalse);
-    expect(routes.containsKey(AppRoutes.travelFlights), isFalse);
+    expect(routes.containsKey(AppRoutes.travelFlights), isTrue);
     expect(routes.containsKey(AppRoutes.travelStays), isFalse);
     expect(routes.containsKey(AppRoutes.travelCars), isFalse);
     // Core app routes remain.

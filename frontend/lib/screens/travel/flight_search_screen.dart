@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
-import 'premium_gate.dart';
 
-/// Premium flight search screen (live results, display only).
+/// Flight search screen (live results, display only).
 class FlightSearchScreen extends StatefulWidget {
   const FlightSearchScreen({super.key});
 
@@ -57,9 +56,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       if (!mounted) return;
       final flights = (results['flights'] is List)
           ? (results['flights'] as List)
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList()
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
           : <Map<String, dynamic>>[];
       setState(() {
         _flights = flights;
@@ -67,8 +66,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         _disclaimer = results['disclaimer']?.toString();
         _busy = false;
       });
-    } on PremiumRequiredException catch (e) {
-      _fail(e.message);
     } catch (e) {
       _fail(e.toString().replaceFirst('Exception: ', '').trim());
     }
@@ -86,51 +83,49 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Flight Search')),
-      body: PremiumGate(
-        builder: (_) => SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildForm(),
-                const SizedBox(height: 16),
-                if (_error != null)
-                  _Banner(text: _error!, color: context.appStatus.error)
-                else if (_busy)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_searched) ...[
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildForm(),
+              const SizedBox(height: 16),
+              if (_error != null)
+                _Banner(text: _error!, color: context.appStatus.error)
+              else if (_busy)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_searched) ...[
+                Text(
+                  '${_flights.length} result(s)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: context.triporaColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_flights.isEmpty)
+                  const _EmptyState()
+                else
+                  ..._flights.map(_FlightCard.new),
+                if (_disclaimer != null) ...[
+                  const SizedBox(height: 16),
                   Text(
-                    '${_flights.length} result(s)',
+                    _disclaimer!,
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: context.triporaColors.textPrimary,
+                      fontSize: 12,
+                      height: 1.4,
+                      color: context.triporaColors.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (_flights.isEmpty)
-                    const _EmptyState()
-                  else
-                    ..._flights.map(_FlightCard.new),
-                  if (_disclaimer != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _disclaimer!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.4,
-                        color: context.triporaColors.textMuted,
-                      ),
-                    ),
-                  ],
                 ],
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -234,12 +229,18 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                       prefixIcon: Icon(Icons.airline_seat_recline_extra),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'economy', child: Text('Economy')),
+                      DropdownMenuItem(
+                        value: 'economy',
+                        child: Text('Economy'),
+                      ),
                       DropdownMenuItem(
                         value: 'premium_economy',
                         child: Text('Premium economy'),
                       ),
-                      DropdownMenuItem(value: 'business', child: Text('Business')),
+                      DropdownMenuItem(
+                        value: 'business',
+                        child: Text('Business'),
+                      ),
                       DropdownMenuItem(value: 'first', child: Text('First')),
                     ],
                     onChanged: (v) {
@@ -356,7 +357,11 @@ class _FlightCard extends StatelessWidget {
             Row(
               children: [
                 ExcludeSemantics(
-                  child: Icon(Icons.flight, color: context.appStatus.info, size: 20),
+                  child: Icon(
+                    Icons.flight,
+                    color: context.appStatus.info,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -397,11 +402,7 @@ class _FlightCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                _TimeColumn(
-                  code: destCode,
-                  time: arrive,
-                  alignEnd: true,
-                ),
+                _TimeColumn(code: destCode, time: arrive, alignEnd: true),
               ],
             ),
           ],
@@ -426,8 +427,9 @@ class _TimeColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = time.isEmpty ? '\u2014' : time.replaceFirst('T', ' ');
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
           code,
@@ -440,7 +442,10 @@ class _TimeColumn extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: context.triporaColors.textMuted),
+          style: TextStyle(
+            fontSize: 12,
+            color: context.triporaColors.textMuted,
+          ),
         ),
       ],
     );
@@ -457,7 +462,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         children: [
           ExcludeSemantics(
-            child: Icon(Icons.search_off, size: 40, color: context.triporaColors.textMuted),
+            child: Icon(
+              Icons.search_off,
+              size: 40,
+              color: context.triporaColors.textMuted,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
