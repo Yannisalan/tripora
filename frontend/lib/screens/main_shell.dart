@@ -4,6 +4,7 @@ import '../core/theme/app_theme.dart';
 import '../screens/explore/explore_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/travel/flight_search_screen.dart';
 import '../screens/trips/trips_screen.dart';
 
 /// Root shell that hosts the app's primary sections in a bottom navigation
@@ -23,6 +24,7 @@ class _MainShellState extends State<MainShell> {
   static const List<Widget> _pages = [
     HomeScreen(),
     ExploreScreen(),
+    FlightSearchScreen(),
     TripsScreen(),
     ProfileScreen(),
   ];
@@ -30,10 +32,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
@@ -54,6 +53,11 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.explore_outlined),
             selectedIcon: Icon(Icons.explore),
             label: 'Explore',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.flight_takeoff_outlined),
+            selectedIcon: Icon(Icons.flight_takeoff),
+            label: 'Flights',
           ),
           NavigationDestination(
             icon: Icon(Icons.card_travel_outlined),

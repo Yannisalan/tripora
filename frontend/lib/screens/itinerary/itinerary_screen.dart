@@ -660,6 +660,19 @@ class ItineraryScreen extends StatelessWidget {
       );
 
       final added = await Add2Calendar.addEvent2Cal(event);
+
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              added
+                  ? 'Trip added to calendar'
+                  : 'Could not open the calendar.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     } catch (error) {
       messenger
         ..hideCurrentSnackBar()
