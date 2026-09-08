@@ -18,7 +18,6 @@ from flask_jwt_extended import jwt_required
 from services.duffel_service import (
     DuffelError,
     search_cars,
-    search_flights,
     search_stays,
 )
 from services.subscription_service import require_premium
@@ -63,9 +62,38 @@ def _iso_date(value, label):
     return parsed, None
 
 
+def _flight_price_results_to_flights(results):
+    """Adapt Travelpayouts price records to the flight-card response shape."""
+    flights = []
+    for result in results.get("results", []):
+        origin = result.get("origin", "")
+        destination = result.get("destination", "")
+        flights.append({
+            "id": f"{result.get('flightNumber', '')}-{result.get('departureTime', '')}",
+            "airline": result.get("airline", ""),
+            "price": result.get("price", {}),
+            "segments": [{
+                "stops": result.get("stops", 0),
+                "departureAirport": {"code": origin},
+                "arrivalAirport": {"code": destination},
+                "departureTime": result.get("departureTime", ""),
+                "arrivalTime": "",
+            }],
+            "legs": [],
+        })
+    return {
+        "flights": flights,
+        "count": len(flights),
+        "estimated": results.get("estimated", False),
+        "provider": results.get("provider", "travelpayouts"),
+        "disclaimer": results.get("disclaimer", ""),
+    }
+
+
 # ============================================================
 # FLIGHTS
 # POST /api/travel/flights/search
+# Travelpayouts provides the live price data for this endpoint.
 # ============================================================
 
 @travel_bp.route("/flights/search", methods=["POST"])
@@ -141,15 +169,13 @@ def search_flights_route():
         }), 400
 
     try:
-        results = search_flights(
+        results = search_flight_prices(
             origin=origin,
             destination=destination,
             depart_date=depart_date.isoformat(),
-            return_date=return_date.isoformat() if return_date else None,
-            passengers=passengers,
-            cabin_class=cabin_class,
         )
-    except DuffelError as error:
+        results = _flight_price_results_to_flights(results)
+    except TravelpayoutsError as error:
         return _db_error_response(error)
 
     return jsonify({

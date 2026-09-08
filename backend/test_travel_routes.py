@@ -22,22 +22,13 @@ def _stub_results(kind):
     return {"count": 1, kind: [{"id": "x"}], "disclaimer": "d"}
 
 
-def _stub_prices(**kwargs):
-    return {
-        "count": 1,
-        "results": [{"id": "p"}],
-        "disclaimer": "d",
-        "provider": "travelpayouts",
-    }
-
-
-def _load_app_with_guards(monkeypatch, premium_decorator, flights=None,
-                          stays=None, cars=None, prices=None):
+def _load_app_with_guards(monkeypatch, premium_decorator, stays=None,
+                          cars=None, prices=None):
     """Build a fresh Flask app with the patrol-guard seams replaced.
 
     ``premium_decorator`` is the function used in place of ``require_premium``
-    (the real one needs a DB). ``flights/stays/cars`` stub the Duffel calls and
-    ``prices`` stub the Travelpayouts call.
+    (the real one needs a DB). ``stays/cars`` stub the Duffel calls and
+    ``prices`` stubs the Travelpayouts call.
     """
     # jwt_required is used as a *factory* in the routes (``@jwt_required()``),
     # so replacing it with ``lambda: (lambda fn: fn)`` makes the factory return
@@ -50,9 +41,9 @@ def _load_app_with_guards(monkeypatch, premium_decorator, flights=None,
     monkeypatch.setattr(subscription_module, "require_premium", premium_decorator)
 
     monkeypatch.setattr(
-        duffel_module,
-        "search_flights",
-        flights or (lambda **kwargs: _stub_results("flights")),
+        travelpayouts_module,
+        "search_flight_prices",
+        prices or (lambda **kwargs: _stub_results("results")),
     )
     monkeypatch.setattr(
         duffel_module,
@@ -63,11 +54,6 @@ def _load_app_with_guards(monkeypatch, premium_decorator, flights=None,
         duffel_module,
         "search_cars",
         cars or (lambda **kwargs: _stub_results("cars")),
-    )
-    monkeypatch.setattr(
-        travelpayouts_module,
-        "search_flight_prices",
-        prices or _stub_prices,
     )
 
     # Import fresh (dropping any cached copy) so the patched decorators get
@@ -232,12 +218,12 @@ def test_cars_rejects_invalid_datetime(client):
 # ------------------------------------------------------------
 
 def test_flights_provider_error_maps_to_502(monkeypatch):
-    from services.duffel_service import DuffelError
+    from services.travelpayouts_service import TravelpayoutsError
 
     def boom(**kwargs):
-        raise DuffelError("provider down")
+        raise TravelpayoutsError("provider down")
 
-    client = _load_app_with_guards(monkeypatch, _pass_through, flights=boom)
+    client = _load_app_with_guards(monkeypatch, _pass_through, prices=boom)
 
     resp = client.post("/api/travel/flights/search", json={
         "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
