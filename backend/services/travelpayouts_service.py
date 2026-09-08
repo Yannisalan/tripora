@@ -1,9 +1,10 @@
 """Live flight-price lookups for a generated trip via Travelpayouts (Aviasales).
 
 This service hits the Travelpayouts "Data Access API" (``/v2/prices/latest``)
-which returns real, cached airline prices for a route/date pair. It is open to
-any logged-in user -- there is no premium gate on this endpoint. The API token
-is read from ``TRAVELPAYOUTS_API_KEY`` at request time (never from the client).
+which returns real, cached airline prices for a route and date range. It is
+open to any logged-in user -- there is no premium gate on this endpoint. The
+API token is read from ``TRAVELPAYOUTS_API_KEY`` at request time (never from
+the client).
 
 Like the Duffel/IAP services, this module FAILS CLOSED: if the token is not
 configured, every lookup raises ``TravelpayoutsError`` and no data is returned.
@@ -150,13 +151,8 @@ def search_flight_prices(*, origin, destination, depart_date, currency="USD"):
         "limit": 15,
         "page": 1,
     }
-    if len(depart_date) == 7:
-        params["month"] = depart_date
-        endpoint = "/v2/prices/monthly"
-    else:
-        params["departure_at"] = depart_date
-        endpoint = "/v2/prices/latest"
-    url = TRAVELPAYOUTS_API_URL.rstrip("/") + endpoint
+    params["departure_at"] = depart_date
+    url = TRAVELPAYOUTS_API_URL.rstrip("/") + "/v2/prices/latest"
     try:
         response = requests.get(
             url,
@@ -190,6 +186,9 @@ def search_flight_prices(*, origin, destination, depart_date, currency="USD"):
         items = [item for day in data.values() for item in _as_list(day)]
     for item in items:
         if not isinstance(item, dict):
+            continue
+        departure = str(item.get("depart_date") or item.get("departure_at") or "")
+        if not departure.startswith(depart_date):
             continue
         parsed = _parse(result := _as_dict(item))
         if parsed is not None:
