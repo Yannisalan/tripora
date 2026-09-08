@@ -149,13 +149,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _origin,
-                    textCapitalization: TextCapitalization.characters,
                     decoration: const InputDecoration(
-                      labelText: 'From (IATA)',
-                      hintText: 'JFK',
+                      labelText: 'From city or airport',
+                      hintText: 'New York or JFK',
                       prefixIcon: Icon(Icons.flight_takeoff),
                     ),
-                    validator: _iataValidator('origin'),
+                    validator: _locationValidator,
                   ),
                 ),
               ],
@@ -163,13 +162,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _destination,
-              textCapitalization: TextCapitalization.characters,
               decoration: const InputDecoration(
-                labelText: 'To (IATA)',
-                hintText: 'LHR',
+                labelText: 'To city or airport',
+                hintText: 'London or LHR',
                 prefixIcon: Icon(Icons.location_on_outlined),
               ),
-              validator: _iataValidator('destination'),
+              validator: _locationValidator,
             ),
             const SizedBox(height: 14),
             Row(
@@ -274,14 +272,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     );
   }
 
-  String? Function(String?) _iataValidator(String field) {
-    return (v) {
-      final value = (v ?? '').trim().toUpperCase();
-      if (value.length != 3 || !RegExp(r'^[A-Z]{3}$').hasMatch(value)) {
-        return 'Enter a 3-letter IATA code';
-      }
-      return null;
-    };
+  String? _locationValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Enter a city or airport';
+    }
+    return null;
   }
 
   Future<void> _pickDate(TextEditingController controller) async {

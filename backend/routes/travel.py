@@ -24,6 +24,7 @@ from services.duffel_service import (
 from services.subscription_service import require_premium
 from services.travelpayouts_service import (
     TravelpayoutsError,
+    resolve_city_to_iata,
     search_flight_prices,
 )
 
@@ -72,25 +73,35 @@ def _iso_date(value, label):
 def search_flights_route():
     data = _body()
 
-    origin = (data.get("origin") or "").strip().upper()
-    destination = (data.get("destination") or "").strip().upper()
+    origin_input = (data.get("origin") or "").strip()
+    destination_input = (data.get("destination") or "").strip()
     depart_date_raw = (data.get("departDate") or "").strip()
     return_date_raw = (data.get("returnDate") or "").strip()
 
-    if len(origin) != 3 or not origin.isalpha():
+    if not origin_input:
         return jsonify({
             "success": False,
-            "message": "Origin must be a 3-letter IATA airport code.",
+            "message": "An origin city or airport is required.",
         }), 400
-    if len(destination) != 3 or not destination.isalpha():
+    if not destination_input:
         return jsonify({
             "success": False,
-            "message": "Destination must be a 3-letter IATA airport code.",
+            "message": "A destination city or airport is required.",
         }), 400
+
+    try:
+        origin = resolve_city_to_iata(origin_input)
+        destination = resolve_city_to_iata(destination_input)
+    except TravelpayoutsError as error:
+        return jsonify({
+            "success": False,
+            "message": str(error),
+        }), 400
+
     if origin == destination:
         return jsonify({
             "success": False,
-            "message": "Origin and destination must be different.",
+            "message": "Origin and destination must be different cities or airports.",
         }), 400
 
     depart_date, err = _iso_date(depart_date_raw, "Depart date")

@@ -111,11 +111,20 @@ def test_flights_requires_origin_and_destination(client):
     assert resp.get_json()["success"] is False
 
 
-def test_flights_rejects_bad_iata(client):
+def test_flights_accepts_city_or_airport_names(monkeypatch):
+    monkeypatch.setattr(
+        travelpayouts_module,
+        "resolve_city_to_iata",
+        lambda value: {"New York": "JFK", "London Heathrow": "LHR"}[value],
+    )
+    client = _load_app_with_guards(monkeypatch, _pass_through)
     resp = client.post("/api/travel/flights/search", json={
-        "origin": "NEWY", "destination": "LHR", "departDate": "2026-10-01",
+        "origin": "New York",
+        "destination": "London Heathrow",
+        "departDate": "2026-10-01",
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
 
 
 def test_flights_rejects_same_airport(client):

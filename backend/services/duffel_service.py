@@ -1,8 +1,8 @@
 """Live travel-search integration with the Duffel API (flights, stays, cars).
 
-Premium-only travel search is proxied through Duffel so Tripora never stores
-third-party data and never exposes credentials to the client. The token is
-read from ``DUFFEL_API_TOKEN`` at request time (never from the client).
+Travel search is proxied through Duffel so Tripora never stores third-party
+data and never exposes credentials to the client. The token is read from
+``DUFFEL_API_TOKEN`` at request time (never from the client).
 
 Like the IAP service, this module FAILS CLOSED: if ``DUFFEL_API_TOKEN`` is not
 configured, every search raises ``DuffelError`` and no data is returned. This

@@ -64,7 +64,7 @@ def _looks_like_code(value):
 def _autocomplete_url(term):
     return (
         "https://autocomplete.travelpayouts.com/places2"
-        "?locale=en&types[]=city&term=" + _urlencode(term)
+        "?locale=en&types[]=city&types[]=airport&term=" + _urlencode(term)
     )
 
 
@@ -74,11 +74,12 @@ def _urlencode(value):
 
 
 def resolve_city_to_iata(value):
-    """Convert a city/airport name or code to an IATA *city* code.
+    """Convert a city/airport name or code to an IATA code.
 
     If ``value`` already looks like a 2-3 letter code it is returned as-is
     (upper-cased). Otherwise the public Travelpayouts autocomplete endpoint is
-    queried (no auth required) and the best-matching city IATA code is returned.
+    queried (no auth required) and the best-matching city or airport IATA code
+    is returned.
 
     Raises ``TravelpayoutsError`` if nothing credible can be resolved or the
     autocomplete service is unreachable. This keeps the lookups fail-closed.
@@ -101,12 +102,12 @@ def resolve_city_to_iata(value):
     except (requests.RequestException, OSError, ValueError) as error:
         logger.warning("Travelpayouts autocomplete failed: %s", error)
         raise TravelpayoutsError(
-            "Could not look up that city. Please use its 3-letter code."
+            "Could not look up that location. Check the spelling and try again."
         )
 
     if not isinstance(places, list):
         raise TravelpayoutsError(
-            "Could not look up that city. Please use its 3-letter code."
+            "Could not look up that location. Check the spelling and try again."
         )
 
     needle = text.lower()
@@ -121,7 +122,7 @@ def resolve_city_to_iata(value):
             best = str(code or "").upper()
     if not best:
         raise TravelpayoutsError(
-            "Could not find that city. Check the spelling or use its 3-letter code."
+            "Could not find that location. Check the spelling or enter its airport code."
         )
     return best
 
