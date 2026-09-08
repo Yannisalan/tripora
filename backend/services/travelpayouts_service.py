@@ -144,14 +144,19 @@ def search_flight_prices(*, origin, destination, depart_date, currency="USD"):
     params = {
         "origin": origin_code,
         "destination": destination_code,
-        "departure_at": depart_date,
         "currency": currency.lower(),
         "one_way": "true",
         "sorting": "price",
         "limit": 15,
         "page": 1,
     }
-    url = TRAVELPAYOUTS_API_URL.rstrip("/") + "/v2/prices/latest"
+    if len(depart_date) == 7:
+        params["month"] = depart_date
+        endpoint = "/v2/prices/monthly"
+    else:
+        params["departure_at"] = depart_date
+        endpoint = "/v2/prices/latest"
+    url = TRAVELPAYOUTS_API_URL.rstrip("/") + endpoint
     try:
         response = requests.get(
             url,
@@ -180,7 +185,10 @@ def search_flight_prices(*, origin, destination, depart_date, currency="USD"):
         data = body.get("prices")
 
     results = []
-    for item in _as_list(data):
+    items = _as_list(data)
+    if isinstance(data, dict):
+        items = [item for day in data.values() for item in _as_list(day)]
+    for item in items:
         if not isinstance(item, dict):
             continue
         parsed = _parse(result := _as_dict(item))

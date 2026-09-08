@@ -10,6 +10,7 @@ This module only adds live travel *search* (no booking, payments, or checkout).
 """
 
 import logging
+import re
 from datetime import date
 
 from flask import Blueprint, jsonify, request
@@ -60,6 +61,17 @@ def _iso_date(value, label):
     except ValueError:
         return None, f"{label} must be an ISO date (YYYY-MM-DD)."
     return parsed, None
+
+
+def _departure_date(value, label):
+    """Validate an exact date or a whole month for Travelpayouts."""
+    text = (value or "").strip()
+    if re.fullmatch(r"\d{4}-\d{2}", text):
+        month = int(text[-2:])
+        if 1 <= month <= 12:
+            return text, None
+    parsed, error = _iso_date(text, label)
+    return (parsed.isoformat(), None) if parsed else (None, error)
 
 
 def _flight_price_results_to_flights(results):
@@ -132,7 +144,7 @@ def search_flights_route():
             "message": "Origin and destination must be different cities or airports.",
         }), 400
 
-    depart_date, err = _iso_date(depart_date_raw, "Depart date")
+    depart_date, err = _departure_date(depart_date_raw, "Depart date")
     if err:
         return jsonify({"success": False, "message": err}), 400
     if depart_date is None:
@@ -144,7 +156,7 @@ def search_flights_route():
     return_date, err = _iso_date(return_date_raw, "Return date")
     if err:
         return jsonify({"success": False, "message": err}), 400
-    if return_date is not None and return_date < depart_date:
+    if return_date is not None and len(depart_date) == 10 and return_date.isoformat() < depart_date:
         return jsonify({
             "success": False,
             "message": "Return date cannot be before the departure date.",
@@ -172,7 +184,7 @@ def search_flights_route():
         results = search_flight_prices(
             origin=origin,
             destination=destination,
-            depart_date=depart_date.isoformat(),
+            depart_date=depart_date,
         )
         results = _flight_price_results_to_flights(results)
     except TravelpayoutsError as error:

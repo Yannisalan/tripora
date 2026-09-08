@@ -22,6 +22,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
   int _passengers = 1;
   String _cabin = 'economy';
+  String _dateMode = 'date';
 
   bool _busy = false;
   bool _searched = false;
@@ -170,15 +171,29 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               validator: _locationValidator,
             ),
             const SizedBox(height: 14),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'date', label: Text('Exact date')),
+                ButtonSegment(value: 'month', label: Text('Whole month')),
+              ],
+              selected: {_dateMode},
+              onSelectionChanged: (selection) {
+                setState(() {
+                  _dateMode = selection.first;
+                  _depart.clear();
+                });
+              },
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: TextFormField(
                     controller: _depart,
                     readOnly: true,
-                    onTap: () => _pickDate(_depart),
+                    onTap: () => _pickDepart(),
                     decoration: const InputDecoration(
-                      labelText: 'Depart date',
+                      labelText: 'Depart date or month',
                       prefixIcon: Icon(Icons.calendar_today_outlined),
                     ),
                     validator: (v) =>
@@ -294,6 +309,27 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           '${picked.year.toString().padLeft(4, '0')}-'
           '${picked.month.toString().padLeft(2, '0')}-'
           '${picked.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  Future<void> _pickDepart() {
+    if (_dateMode == 'month') return _pickMonth(_depart);
+    return _pickDate(_depart);
+  }
+
+  Future<void> _pickMonth(TextEditingController controller) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(now.year, now.month),
+      lastDate: now.add(const Duration(days: 365)),
+      helpText: 'Select any date in your travel month',
+    );
+    if (picked != null) {
+      controller.text =
+          '${picked.year.toString().padLeft(4, '0')}-'
+          '${picked.month.toString().padLeft(2, '0')}';
     }
   }
 }

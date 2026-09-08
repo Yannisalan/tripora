@@ -91,6 +91,25 @@ def test_flights_search_success(client):
     assert body["results"]["count"] == 1
 
 
+def test_flights_search_accepts_whole_month(monkeypatch):
+    captured = {}
+
+    def prices(**kwargs):
+        captured.update(kwargs)
+        return _stub_results("results")
+
+    client = _load_app_with_guards(
+        monkeypatch,
+        _pass_through,
+        prices=prices,
+    )
+    resp = client.post("/api/travel/flights/search", json={
+        "origin": "JFK", "destination": "LHR", "departDate": "2026-10",
+    })
+    assert resp.status_code == 200
+    assert captured["depart_date"] == "2026-10"
+
+
 def test_flights_requires_origin_and_destination(client):
     resp = client.post("/api/travel/flights/search", json={"departDate": "2026-10-01"})
     assert resp.status_code == 400
