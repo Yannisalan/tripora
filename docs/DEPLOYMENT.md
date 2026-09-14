@@ -50,6 +50,24 @@ Free-tier production stack:
    - `FLASK_APP` = `app` — needed for the `flask db` migration CLI
    - (`DUFFEL_API_TOKEN` — leave **unset** for the free-only v1; the premium travel
      search is disabled behind a build flag and this token is only read server-side.)
+
+### Trip Vault document storage (S3-compatible object store)
+
+Trip documents are stored in an S3-compatible object store, **not** on Render's
+local filesystem (that resets on every redeploy). Create a private bucket (e.g.
+on **Cloudflare R2**, **Backblaze B2**, or **AWS S3**), then add:
+
+| Env var | Example | Notes |
+|---------|---------|-------|
+| `STORAGE_BACKEND` | `s3` | Explicit; also auto-selected when `S3_BUCKET`+`S3_ACCESS_KEY`+`S3_SECRET_KEY` are set. |
+| `S3_BUCKET` | `tripora-vault` | Private bucket name |
+| `S3_REGION` | `auto` | Region; for B2/R2 use the provider's value (R2: `auto`) |
+| `S3_ACCESS_KEY` | `…` | Access key ID (R2/B2 API token) |
+| `S3_SECRET_KEY` | `…` | Secret access key |
+| `S3_ENDPOINT_URL` | `https://<accountid>.r2.cloudflarestorage.com` | **Required** for R2/B2/MinIO; omit for AWS S3 |
+
+`STORAGE_LOCAL_DIR` is only used when `STORAGE_BACKEND=local` (local dev/tests).
+
 5. On first deploy, run migrations **once** against the production DB. Do this
    **after** the web service is up. Either:
    - **From Render's Shell tab** (your service → **Shell**), then:
@@ -73,16 +91,29 @@ Free-tier production stack:
 - Row-Level Security: a migration (`f0e9d8c7b6a5`) enables Postgres RLS with
   per-user ownership policies on `trips` and `subscriptions` (forced) and a
   per-user policy on `users` (not forced, so unauthenticated flows still work).
-  The app sets the authenticated user id into the `request.jwt.claims.sub` GUC
-  per request (`SET LOCAL`) so the database enforces ownership too. RLS fails
-  closed whenever the GUC is unset. Applying the migration via `flask db upgrade`
-  is required for the constraints to take effect.
+  The Vault migration (`b2c3d4e5f6a7`) extends the same protection to
+  `trip_documents`. The feature migration (`3e2d1c0b9a87`) adds the Expense
+  tracker (`trip_expenses`, RLS-owned), Place-coordinate cache
+  (`place_coordinates`), the password-reset columns on `users`, and
+  `trips.budget_amount`. The app sets the authenticated user id into the
+  `request.jwt.claims.sub` GUC per request (`SET LOCAL`) so the database
+  enforces ownership too. RLS fails closed whenever the GUC is unset. Applying
+  the migrations via `flask db upgrade` is required for the constraints to take
+  effect.
 
-### Email verification (optional, server-side only)
+### Email + password reset (server-side only)
 
-Verification emails are sent over **SMTP** using the Python standard library
-(`services/email_service.py`) — no extra dependency. When the SMTP env vars are
-unset, the app logs the code instead of sending (fine for local dev/tests).
+Verification **and password-reset** emails are sent over **SMTP** using the
+Python standard library (`services/email_service.py`) — no extra dependency.
+When the SMTP env vars are unset, the app logs the code instead of sending
+(fine for local dev/tests).
+
+The forgot-password flow (`/api/auth/forgot-password` → code → verify → reset)
+uses a **6-digit code** (15 min, max 5 attempts with lockout) followed by a
+one-time `resetToken` (30 min). Codes and tokens are stored **hashed**; the API
+always answers with the same generic message so it cannot be used to probe
+which accounts exist. The flow depends on working SMTP — if you leave it in
+log-only mode, reset codes never leave the server log.
 
 | Env var | Example | Notes |
 |---------|---------|-------|
@@ -90,7 +121,7 @@ unset, the app logs the code instead of sending (fine for local dev/tests).
 | `MAIL_PORT` | `587` | `587` = STARTTLS, `465` = implicit SSL |
 | `MAIL_USER` | your SMTP login / key | e.g. Brevo SMTP key |
 | `MAIL_PASSWORD` | your SMTP key/secret | |
-| `MAIL_FROM` | `you@gmail.com` | Sender address — must be **confirmed** in the provider. Use a personal email during testing, a domain sender later. |
+| `MAIL_FROM` | `gotripora@gmail.com` | Sender address — must be **confirmed** in the provider. Use a personal email during testing, a domain sender later. |
 | `MAIL_FROM_NAME` | `Tripora` | Optional display name |
 | `MAIL_USE_TLS` | `tls` | `tls` (587) or `ssl` (465); defaults infer from port |
 
@@ -98,6 +129,21 @@ unset, the app logs the code instead of sending (fine for local dev/tests).
 > **confirmed personal email** without owning a custom domain. To use another
 > provider, only change `MAIL_HOST`/`MAIL_PORT`/`MAIL_USER`/`MAIL_PASSWORD`/
 > `MAIL_FROM` — no code changes needed.
+
+### Interactive trip map (geocoding + routing)
+
+The Travel Map resolves the itinerary's free-text `location` fields through
+**Nominatim** and draws routes through **OSRM** — both proxied by the backend
+(`routes/places.py`) so keys are never exposed to the client and upstream
+ratelimits are absorbed by an in-DB cache (`place_coordinates`). No env vars
+are required. If the external services are down the map degrades gracefully
+(markers still plot from cache; routing simply draws no line).
+
+### Expense tracker
+
+`Trip.budget_amount` and the user's `preferred_currency` drive the in-app
+Expense tracker. No server config is required. Expense rows are RLS-protected
+and owned by the trip's owner.
 
 ---
 
@@ -116,6 +162,11 @@ unset, the app logs the code instead of sending (fine for local dev/tests).
    - `API_BASE_URL` → your Render backend URL, e.g. `https://tripora-api.onrender.com`
    - `PREMIUM_ENABLED` → leave unset / `false` for the free-only **v1**
      (defaults to `false`). A future freemium build sets it to `true`.
+   - `HOTEL_FEATURE_ENABLED` → leave unset / `false` (default). Hotels shipping
+     is **hidden** (removed from the trip deck) until a build explicitly sets
+     `--dart-define=HOTEL_FEATURE_ENABLED=true`. The backend hotel routes stay
+     intact; the frontend entry points are simply gated. **Packing was removed
+     entirely.**
    - (Optional) Google web OAuth ID for Google sign-in on web: `GOOGLE_WEB_CLIENT_ID`
 
    > Note: `--dart-define` values are baked in at build time, so set these in the

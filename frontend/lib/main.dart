@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/auth/auth_guard.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/route_tracker.dart';
 import 'routes/app_routes.dart';
@@ -24,7 +25,7 @@ class _TriporaAppState extends State<TriporaApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = widget.themeMode ?? ThemeMode.light;
+    final themeMode = widget.themeMode ?? ThemeMode.system;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -35,6 +36,7 @@ class _TriporaAppState extends State<TriporaApp> {
       initialRoute: AppRoutes.home,
       routes: AppRoutes.routes,
       navigatorObservers: [_routeTracker],
+      navigatorKey: AuthGuard.navigatorKey,
     );
   }
 }

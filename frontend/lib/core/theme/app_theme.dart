@@ -1,115 +1,162 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// ---------------------------------------------------------------------
+/// Nocturne Voyage design tokens
+///
+/// Ported from the "Nocturne Voyage" design system: editorial-minimal
+/// travel UI built on Midnight Indigo, Aerosphere Blue and Sunset Amber,
+/// with Noto Serif display type over Manrope body/label type.
+/// ---------------------------------------------------------------------
 
 /// Semantic brand palette (light).
-///
-/// Accent values are chosen to meet WCAG AA contrast (>= 4.5:1) when used as
-/// filled status surfaces with white foreground, and >= 3:1 for large/UI.
 class AppColors {
   AppColors._();
 
-  static const Color primary = Color(0xFF2563EB);
-  static const Color primaryDark = Color(0xFF1D4ED8);
-  static const Color secondary = Color(0xFF0F766E);
-  static const Color tertiary = Color(0xFFC2410C);
-  static const Color success = Color(0xFF15803D);
-  static const Color warning = Color(0xFFB45309);
-  static const Color error = Color(0xFFB91C1C);
-  static const Color info = Color(0xFF1D4ED8);
+  // Brand accents — see "Palette Roles & Distribution" in the design spec.
+  static const Color primary = Color(0xFF1E1B4B); // Midnight Indigo
+  static const Color primaryDark = Color(0xFF14123A);
+  static const Color secondary = Color(0xFF3B82F6); // Aerosphere Blue
+  static const Color tertiary = Color(0xFFF59E0B); // Sunset Amber
+  static const Color success = Color(0xFF10B981); // Highland Emerald
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFBA1A1A);
+  static const Color info = Color(0xFF3B82F6);
 
-  // Vibrant brand gradient endpoints for a premium, modern travel look.
-  // Darker endpoints improve contrast for white label text on the gradient.
-  static const Color gradientStart = Color(0xFF1D4ED8);
-  static const Color gradientMid = Color(0xFF6D28D9);
-  static const Color gradientEnd = Color(0xFF0E7490);
+  // Kept for any screens still referencing a brand gradient, but the
+  // Nocturne Voyage system favors flat, solid accents over gradients —
+  // prefer `primary` / `secondary` directly for new components.
+  static const Color gradientStart = Color(0xFF1E1B4B);
+  static const Color gradientMid = Color(0xFF3B5BDB);
+  static const Color gradientEnd = Color(0xFF3B82F6);
 
-  // Deeper gradient for buttons / primary actions (white text AA-compliant).
-  static const Color gradientStrongStart = Color(0xFF1E40AF);
-  static const Color gradientStrongEnd = Color(0xFF5B21B6);
+  static const Color gradientStrongStart = Color(0xFF1E1B4B);
+  static const Color gradientStrongEnd = Color(0xFF3B82F6);
 
-  static const Color background = Color(0xFFF7F3EA);
+  // Neutral canvas — "Crisp Porcelain & Pure White".
+  static const Color background = Color(0xFFF8FAFC);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF334155);
-  static const Color textMuted = Color(0xFF64748B);
+  static const Color textPrimary = Color(0xFF191C1E); // on-surface
+  static const Color textSecondary = Color(0xFF47464F); // on-surface-variant
+  static const Color textMuted = Color(0xFF64748B); // muted slate icons
   static const Color border = Color(0xFFE2E8F0);
+  static const Color borderStrong = Color(0xFFCBD5E1);
   static const Color overlay = Color(0x66000000);
 
-  // Light surface tints used for info/feature cards.
+  // Light surface tints for info/feature cards.
   static const Color surfaceInfo = Color(0xFFEFF6FF);
-  static const Color surfaceSecondary = Color(0xFFF5F3FF);
-  static const Color surfaceAccent = Color(0xFFECFEFF);
+  static const Color surfaceSecondary = Color(0xFFF1F5F9);
+  static const Color surfaceAccent = Color(0xFFFFF7ED);
 
-  // Convenient reusable brand gradients.
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      gradientStart,
-      gradientMid,
-      gradientEnd,
-    ],
+    colors: [gradientStart, gradientMid, gradientEnd],
   );
 
   static const LinearGradient brandStrongGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      gradientStrongStart,
-      gradientStrongEnd,
-    ],
+    colors: [gradientStrongStart, gradientStrongEnd],
   );
 }
 
-/// Semantic palette used in dark theme.
+/// Semantic palette used in dark theme. The spec itself is light-first
+/// ("porcelain" canvas), so the dark variant inverts the surface
+/// stratification while keeping the same brand accents, lifted in
+/// value so they stay AA-legible on a near-black indigo canvas.
 class AppColorsDark {
   AppColorsDark._();
 
-  static const Color primary = Color(0xFF93C5FD);
-  static const Color primaryDark = Color(0xFFBFDBFE);
-  static const Color secondary = Color(0xFF5EEAD4);
-  static const Color tertiary = Color(0xFFFDBA74);
+  static const Color primary = Color(0xFFC4C1FB); // inverse-primary
+  static const Color primaryDark = Color(0xFFE3DFFF);
+  static const Color secondary = Color(0xFFADC6FF);
+  static const Color tertiary = Color(0xFFFFB95F);
   static const Color success = Color(0xFF4ADE80);
-  static const Color warning = Color(0xFFFCD34D);
-  static const Color error = Color(0xFFFCA5A5);
-  static const Color info = Color(0xFF93C5FD);
+  static const Color warning = Color(0xFFFFB95F);
+  static const Color error = Color(0xFFFFB4AB);
+  static const Color info = Color(0xFFADC6FF);
 
-  static const Color background = Color(0xFF0B1120);
-  static const Color surface = Color(0xFF141C2E);
-  static const Color surfaceElevated = Color(0xFF1E293B);
-  static const Color textPrimary = Color(0xFFF1F5F9);
-  static const Color textSecondary = Color(0xFFCBD5E1);
-  static const Color textMuted = Color(0xFF94A3B8);
-  static const Color border = Color(0xFF334155);
+  static const Color background = Color(0xFF121218);
+  static const Color surface = Color(0xFF1B1B23);
+  static const Color surfaceElevated = Color(0xFF23232E);
+  static const Color textPrimary = Color(0xFFEFF1F3); // inverse-on-surface
+  static const Color textSecondary = Color(0xFFC8C5D0); // outline-variant
+  static const Color textMuted = Color(0xFF9490A0);
+  static const Color border = Color(0xFF3A3944);
+  static const Color borderStrong = Color(0xFF4C4B57);
   static const Color overlay = Color(0x99000000);
 
-  static const Color surfaceInfo = Color(0xFF1E2A4D);
-  static const Color surfaceSecondary = Color(0xFF2A2350);
-  static const Color surfaceAccent = Color(0xFF103240);
+  static const Color surfaceInfo = Color(0xFF1B2A4D);
+  static const Color surfaceSecondary = Color(0xFF232338);
+  static const Color surfaceAccent = Color(0xFF332616);
 
-  static const Color gradientStart = Color(0xFF1D4ED8);
-  static const Color gradientMid = Color(0xFF6D28D9);
-  static const Color gradientEnd = Color(0xFF0E7490);
-  static const Color gradientStrongStart = Color(0xFF3B82F6);
-  static const Color gradientStrongEnd = Color(0xFF8B5CF6);
+  static const Color gradientStart = Color(0xFF1E1B4B);
+  static const Color gradientMid = Color(0xFF444173);
+  static const Color gradientEnd = Color(0xFFADC6FF);
+  static const Color gradientStrongStart = Color(0xFF444173);
+  static const Color gradientStrongEnd = Color(0xFFC4C1FB);
 
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      gradientStart,
-      gradientMid,
-      gradientEnd,
-    ],
+    colors: [gradientStart, gradientMid, gradientEnd],
   );
 
   static const LinearGradient brandStrongGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      gradientStrongStart,
-      gradientStrongEnd,
-    ],
+    colors: [gradientStrongStart, gradientStrongEnd],
   );
+}
+
+/// Shape & spacing tokens straight from the Nocturne Voyage grid
+/// (8pt base rhythm, 4pt half-step for dense metadata groupings).
+class AppRadius {
+  AppRadius._();
+
+  static const double sm = 4; // 0.25rem
+  static const double base = 8; // 0.5rem — inputs, buttons, chips
+  static const double md = 12; // 0.75rem
+  static const double lg = 16; // 1rem — standard cards
+  static const double xl = 24; // 1.5rem — hero containers, sheets
+  static const double full = 9999; // avatars, progress pills
+}
+
+class AppSpacing {
+  AppSpacing._();
+
+  static const double xs2 = 4; // space-2xs
+  static const double xs = 8; // space-xs
+  static const double sm = 12; // space-sm
+  static const double md = 16; // space-md
+  static const double lg = 24; // space-lg
+  static const double xl = 32; // space-xl
+  static const double xl2 = 48; // space-2xl
+  static const double xl3 = 64; // space-3xl
+}
+
+/// Elevation shadows matching the spec's crisp, low-theatrics layering
+/// (hairline borders + soft ambient shadow rather than heavy Material
+/// elevation). Apply via `BoxDecoration(boxShadow: ...)` on custom
+/// containers; ThemeData elevation values remain 0 throughout.
+class AppElevation {
+  AppElevation._();
+
+  static const List<BoxShadow> level1 = [
+    BoxShadow(color: Color(0x0A1E1B4B), blurRadius: 3, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x051E1B4B), blurRadius: 2, offset: Offset(0, 1)),
+  ];
+
+  static const List<BoxShadow> level2 = [
+    BoxShadow(color: Color(0x0F1E1B4B), blurRadius: 15, offset: Offset(0, 10), spreadRadius: -3),
+    BoxShadow(color: Color(0x081E1B4B), blurRadius: 6, offset: Offset(0, 4), spreadRadius: -4),
+  ];
+
+  static const List<BoxShadow> level3 = [
+    BoxShadow(color: Color(0x141E1B4B), blurRadius: 25, offset: Offset(0, 20), spreadRadius: -5),
+    BoxShadow(color: Color(0x081E1B4B), blurRadius: 10, offset: Offset(0, 8), spreadRadius: -6),
+  ];
 }
 
 class AppStatusColors extends ThemeExtension<AppStatusColors> {
@@ -159,7 +206,6 @@ class AppStatusColors extends ThemeExtension<AppStatusColors> {
     if (other is! AppStatusColors) {
       return this;
     }
-
     return AppStatusColors(
       success: Color.lerp(success, other.success, t) ?? success,
       warning: Color.lerp(warning, other.warning, t) ?? warning,
@@ -184,9 +230,6 @@ extension TriporaColorsX on BuildContext {
 class AppTheme {
   AppTheme._();
 
-  static const Radius _radius = Radius.circular(16);
-  static const BorderRadius _radiusAll = BorderRadius.all(_radius);
-
   static final ThemeData lightTheme = _buildLight();
   static final ThemeData darkTheme = _buildDark();
 
@@ -200,9 +243,13 @@ class AppTheme {
       surface: AppColors.surface,
       brightness: Brightness.light,
     ).copyWith(
-      surfaceContainerLowest: AppColors.surface,
-      surfaceContainerLow: const Color(0xFFF3EEE2),
-      surfaceContainer: const Color(0xFFEFE8DA),
+      surfaceContainerLowest: const Color(0xFFFFFFFF),
+      surfaceContainerLow: const Color(0xFFF2F4F6),
+      surfaceContainer: const Color(0xFFECEEF0),
+      surfaceContainerHigh: const Color(0xFFE6E8EA),
+      surfaceContainerHighest: const Color(0xFFE0E3E5),
+      outline: const Color(0xFF787680),
+      outlineVariant: const Color(0xFFC8C5D0),
     );
 
     return _base(scheme, TriporaColors.light);
@@ -221,38 +268,150 @@ class AppTheme {
       surfaceContainerLowest: AppColorsDark.surface,
       surfaceContainerLow: AppColorsDark.surfaceElevated,
       surfaceContainer: AppColorsDark.surfaceElevated,
-      surfaceContainerHighest: const Color(0xFF1E293B),
+      surfaceContainerHighest: const Color(0xFF2D3133),
+      outline: const Color(0xFF938F99),
+      outlineVariant: const Color(0xFF49454F),
     );
 
     return _base(scheme, TriporaColors.dark);
   }
 
-  static ThemeData _base(
-    ColorScheme scheme,
-    TriporaColors bg,
-  ) {
+  static ThemeData _base(ColorScheme scheme, TriporaColors bg) {
+    // Nocturne Voyage type scale: Noto Serif on display/headline roles,
+    // Manrope on body/label roles. Pulled live via google_fonts (no
+    // bundled .ttf assets needed — see pubspec.yaml: add
+    // `google_fonts: ^6.0.0` under dependencies). Sizes, weights,
+    // line-heights and tracking still follow the original spec; only the
+    // family is layered on top of the existing TextStyle definitions via
+    // GoogleFonts.<family>(textStyle: ...).
+    final baseTextTheme = TextTheme(
+      displayLarge: TextStyle(
+        fontSize: 40,
+        fontWeight: FontWeight.w600,
+        height: 48 / 40,
+        letterSpacing: -0.02 * 40,
+        color: bg.textPrimary,
+      ),
+      headlineLarge: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        height: 36 / 28,
+        letterSpacing: -0.015 * 28,
+        color: bg.textPrimary,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w500,
+        height: 30 / 22,
+        letterSpacing: -0.01 * 22,
+        color: bg.textPrimary,
+      ),
+      headlineSmall: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        height: 26 / 18,
+        color: bg.textPrimary,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        height: 24 / 16,
+        letterSpacing: -0.005 * 16,
+        color: bg.textPrimary,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        height: 20 / 14,
+        color: bg.textSecondary,
+      ),
+      bodySmall: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        height: 16 / 12,
+        letterSpacing: 0.01 * 12,
+        color: bg.textMuted,
+      ),
+      labelLarge: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        height: 18 / 14,
+        letterSpacing: 0.01 * 14,
+        color: bg.textPrimary,
+      ),
+      labelMedium: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        height: 16 / 12,
+        letterSpacing: 0.02 * 12,
+        color: bg.textPrimary,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        height: 14 / 10,
+        letterSpacing: 0.05 * 10,
+        color: bg.textMuted,
+      ),
+    );
+
+    // Layer Noto Serif onto display/headline roles...
+    final textTheme = baseTextTheme.copyWith(
+      displayLarge: GoogleFonts.notoSerif(
+        textStyle: baseTextTheme.displayLarge,
+      ),
+      headlineLarge: GoogleFonts.notoSerif(
+        textStyle: baseTextTheme.headlineLarge,
+      ),
+      headlineMedium: GoogleFonts.notoSerif(
+        textStyle: baseTextTheme.headlineMedium,
+      ),
+      headlineSmall: GoogleFonts.notoSerif(
+        textStyle: baseTextTheme.headlineSmall,
+      ),
+      // ...and Manrope onto body/label roles.
+      bodyLarge: GoogleFonts.manrope(
+        textStyle: baseTextTheme.bodyLarge,
+      ),
+      bodyMedium: GoogleFonts.manrope(
+        textStyle: baseTextTheme.bodyMedium,
+      ),
+      bodySmall: GoogleFonts.manrope(
+        textStyle: baseTextTheme.bodySmall,
+      ),
+      labelLarge: GoogleFonts.manrope(
+        textStyle: baseTextTheme.labelLarge,
+      ),
+      labelMedium: GoogleFonts.manrope(
+        textStyle: baseTextTheme.labelMedium,
+      ),
+      labelSmall: GoogleFonts.manrope(
+        textStyle: baseTextTheme.labelSmall,
+      ),
+    );
+
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'Arial',
       colorScheme: scheme,
       brightness: scheme.brightness,
       scaffoldBackgroundColor: bg.backgroundColor,
       canvasColor: bg.backgroundColor,
-      appBarTheme: const AppBarTheme(
+      textTheme: textTheme,
+      appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
-      ).copyWith(
         backgroundColor: bg.backgroundColor,
         foregroundColor: bg.textPrimary,
         surfaceTintColor: Colors.transparent,
+        titleTextStyle: textTheme.headlineSmall,
       ),
       cardTheme: CardThemeData(
         color: bg.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shadowColor: const Color(0x140F172A),
+        shadowColor: const Color(0x0A1E1B4B),
         shape: RoundedRectangleBorder(
-          borderRadius: _radiusAll,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           side: BorderSide(color: bg.border),
         ),
       ),
@@ -260,75 +419,118 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
+          disabledBackgroundColor: bg.border,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.base),
           ),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.base),
           ),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge,
         ),
       ),
+      // "Secondary / AI Variant" from the spec — used for AI prompt
+      // triggers and dynamic flight/route highlights. Wired to
+      // TextButtonTheme's tonal cousin isn't ideal, so expose it as a
+      // FilledButton.tonal override via a dedicated ButtonStyle below
+      // if you add an explicit AI-action button widget.
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: scheme.primary,
-          side: BorderSide(color: scheme.primary, width: 1.4),
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+          side: BorderSide(color: bg.borderStrong, width: 1),
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.base),
           ),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: scheme.primary,
+          textStyle: textTheme.labelLarge,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: bg.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-        hintStyle: TextStyle(color: bg.textMuted),
-        prefixIconColor: scheme.primary,
+        constraints: const BoxConstraints(minHeight: 52),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        hintStyle: textTheme.bodyLarge?.copyWith(color: bg.textMuted),
+        labelStyle: textTheme.bodyMedium,
+        prefixIconColor: bg.textMuted,
+        suffixIconColor: bg.textMuted,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.base),
           borderSide: BorderSide(color: bg.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.base),
           borderSide: BorderSide(color: bg.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: scheme.primary, width: 1.6),
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          borderSide: BorderSide(color: scheme.error),
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: bg.surface,
+        backgroundColor: bg.surfaceSecondary,
         selectedColor: scheme.primary,
-        side: BorderSide(color: bg.border),
+        disabledColor: bg.border,
+        side: BorderSide.none,
+        shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        labelStyle: textTheme.labelMedium,
+        secondaryLabelStyle: textTheme.labelMedium?.copyWith(color: scheme.onPrimary),
+      ),
+      checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        side: BorderSide(color: bg.borderStrong, width: 1.5),
+        fillColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.selected) ? scheme.primary : Colors.transparent,
+        ),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.selected) ? scheme.primary : bg.borderStrong,
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: bg.border,
         thickness: 1,
+        space: 1,
       ),
-      snackBarTheme: const SnackBarThemeData(
+      snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Color(0xFF1F2937),
-        contentTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        backgroundColor: bg.isDarkBg ? AppColorsDark.surfaceElevated : const Color(0xFF1F2937),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: scheme.primary,
+        selectionColor: scheme.primary.withValues(alpha: 0.2),
+        selectionHandleColor: scheme.primary,
       ),
       extensions: <ThemeExtension<dynamic>>[bg.appStatus],
     );
@@ -344,10 +546,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
     required this.textSecondary,
     required this.textMuted,
     required this.border,
+    required this.borderStrong,
     required this.surfaceInfo,
     required this.surfaceSecondary,
     required this.surfaceAccent,
     required this.appStatus,
+    required this.isDarkBg,
   });
 
   static const TriporaColors light = TriporaColors(
@@ -357,10 +561,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
     textSecondary: AppColors.textSecondary,
     textMuted: AppColors.textMuted,
     border: AppColors.border,
+    borderStrong: AppColors.borderStrong,
     surfaceInfo: AppColors.surfaceInfo,
     surfaceSecondary: AppColors.surfaceSecondary,
     surfaceAccent: AppColors.surfaceAccent,
     appStatus: AppStatusColors.light,
+    isDarkBg: false,
   );
 
   static const TriporaColors dark = TriporaColors(
@@ -370,10 +576,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
     textSecondary: AppColorsDark.textSecondary,
     textMuted: AppColorsDark.textMuted,
     border: AppColorsDark.border,
+    borderStrong: AppColorsDark.borderStrong,
     surfaceInfo: AppColorsDark.surfaceInfo,
     surfaceSecondary: AppColorsDark.surfaceSecondary,
     surfaceAccent: AppColorsDark.surfaceAccent,
     appStatus: AppStatusColors.dark,
+    isDarkBg: true,
   );
 
   final Color backgroundColor;
@@ -382,10 +590,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
   final Color textSecondary;
   final Color textMuted;
   final Color border;
+  final Color borderStrong;
   final Color surfaceInfo;
   final Color surfaceSecondary;
   final Color surfaceAccent;
   final AppStatusColors appStatus;
+  final bool isDarkBg;
 
   @override
   TriporaColors copyWith({
@@ -395,10 +605,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
     Color? textSecondary,
     Color? textMuted,
     Color? border,
+    Color? borderStrong,
     Color? surfaceInfo,
     Color? surfaceSecondary,
     Color? surfaceAccent,
     AppStatusColors? appStatus,
+    bool? isDarkBg,
   }) {
     return TriporaColors(
       backgroundColor: backgroundColor ?? this.backgroundColor,
@@ -407,10 +619,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       textMuted: textMuted ?? this.textMuted,
       border: border ?? this.border,
+      borderStrong: borderStrong ?? this.borderStrong,
       surfaceInfo: surfaceInfo ?? this.surfaceInfo,
       surfaceSecondary: surfaceSecondary ?? this.surfaceSecondary,
       surfaceAccent: surfaceAccent ?? this.surfaceAccent,
       appStatus: appStatus ?? this.appStatus,
+      isDarkBg: isDarkBg ?? this.isDarkBg,
     );
   }
 
@@ -426,10 +640,12 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t) ?? textSecondary,
       textMuted: Color.lerp(textMuted, other.textMuted, t) ?? textMuted,
       border: Color.lerp(border, other.border, t) ?? border,
+      borderStrong: Color.lerp(borderStrong, other.borderStrong, t) ?? borderStrong,
       surfaceInfo: Color.lerp(surfaceInfo, other.surfaceInfo, t) ?? surfaceInfo,
       surfaceSecondary: Color.lerp(surfaceSecondary, other.surfaceSecondary, t) ?? surfaceSecondary,
       surfaceAccent: Color.lerp(surfaceAccent, other.surfaceAccent, t) ?? surfaceAccent,
       appStatus: appStatus.lerp(other.appStatus, t),
+      isDarkBg: t < 0.5 ? isDarkBg : other.isDarkBg,
     );
   }
 }

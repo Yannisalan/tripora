@@ -139,6 +139,151 @@ class AuthService {
   }
 
   // ============================================================
+  // GOOGLE LOGIN (DEDICATED ENDPOINT, TOKEN VERIFIED SERVER-SIDE)
+  // ============================================================
+
+  Future<Map<String, dynamic>> googleLogin({
+    required String idToken,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/google'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'idToken': idToken}),
+    );
+
+    final decoded = _decodeResponse(response);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Google sign-in failed.',
+      );
+    }
+
+    if (decoded['success'] != true) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Google sign-in failed.',
+      );
+    }
+
+    final token = decoded['accessToken'];
+
+    if (token == null || token.toString().trim().isEmpty) {
+      throw Exception('Sign-in succeeded but no access token was returned.');
+    }
+
+    await saveToken(token.toString());
+
+    return decoded;
+  }
+
+  // ============================================================
+  // FORGOT PASSWORD
+  // ============================================================
+
+  /// Requests a one-time password reset code for [email].
+  ///
+  /// The backend always responds with the same generic success message, so
+  /// this API cannot be used to probe whether an account exists.
+  Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/forgot-password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'email': email.trim()}),
+    );
+
+    final decoded = _decodeResponse(response);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Could not send a reset code.',
+      );
+    }
+
+    if (decoded['success'] != true) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Could not send a reset code.',
+      );
+    }
+
+    return decoded;
+  }
+
+  /// Verifies the emailed one-time reset [code] for [email].
+  ///
+  /// Returns the one-time ``resetToken`` that is then passed to
+  /// [resetPassword]. The token expires quickly and can only be used once.
+  Future<String> verifyResetCode({
+    required String email,
+    required String code,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/forgot-password/verify'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email.trim(),
+        'code': code.trim(),
+      }),
+    );
+
+    final decoded = _decodeResponse(response);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'That code is invalid or expired.',
+      );
+    }
+
+    if (decoded['success'] != true || decoded['resetToken'] == null) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'That code is invalid or expired.',
+      );
+    }
+
+    return decoded['resetToken'].toString();
+  }
+
+  /// Completes the reset using the one-time [resetToken] and a new
+  /// [password] (at least 8 characters).
+  Future<void> resetPassword({
+    required String resetToken,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/reset-password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'resetToken': resetToken, 'password': password}),
+    );
+
+    final decoded = _decodeResponse(response);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Could not reset your password.',
+      );
+    }
+
+    if (decoded['success'] != true) {
+      throw Exception(
+        decoded['message']?.toString() ?? 'Could not reset your password.',
+      );
+    }
+  }
+
+  // ============================================================
   // SAVE TOKEN
   // ============================================================
 

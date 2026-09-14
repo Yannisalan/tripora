@@ -150,6 +150,35 @@ class Config:
     ).lower() in ("1", "true", "yes", "on")
 
     # ============================================================
+    # TRIP VAULT DOCUMENT STORAGE
+    # ============================================================
+    #
+    # Trip documents (flight tickets, boarding passes, confirmations, ...)
+    # are stored in an S3-compatible object store, NOT the Render local
+    # filesystem. The values below are read at request time by
+    # ``services.storage_service``; they are declared here so the deployment
+    # environment has a single source of truth for what is required.
+    #
+    #   STORAGE_BACKEND  = "s3" (default when S3_* present) or "local"
+    #                      ("local" is for local development/tests only and
+    #                       is not persistent on Render).
+    #   S3_BUCKET        - bucket name (e.g. "tripora-vault")
+    #   S3_REGION        - region (optional for S3, clashing against R2/B2)
+    #   S3_ACCESS_KEY    - access key id
+    #   S3_SECRET_KEY    - secret access key
+    #   S3_ENDPOINT_URL  - optional custom endpoint (Cloudflare R2, B2, MinIO)
+    #   STORAGE_LOCAL_DIR- local backend root (default: backend/storage)
+    # ------------------------------------------------------------
+
+    STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "").strip().lower()
+    S3_BUCKET = os.getenv("S3_BUCKET", "").strip()
+    S3_REGION = os.getenv("S3_REGION", "").strip()
+    S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "").strip()
+    S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "").strip()
+    S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "").strip()
+    STORAGE_LOCAL_DIR = os.getenv("STORAGE_LOCAL_DIR", "").strip()
+
+    # ============================================================
     # DUFFEL TRAVEL SEARCH (PREMIUM)
     # ============================================================
     #
@@ -195,6 +224,11 @@ class Config:
     # Authentication endpoints (login / register / verify / resend)
     RATE_LIMIT_AUTH_LIMIT = os.getenv("RATE_LIMIT_AUTH_LIMIT", "10")
     RATE_LIMIT_AUTH_WINDOW = os.getenv("RATE_LIMIT_AUTH_WINDOW", "600")
+
+    # Password reset endpoints (forgot-password flow) -- much tighter than
+    # general auth because these are prime brute-force targets.
+    RATE_LIMIT_RESET_LIMIT = os.getenv("RATE_LIMIT_RESET_LIMIT", "5")
+    RATE_LIMIT_RESET_WINDOW = os.getenv("RATE_LIMIT_RESET_WINDOW", "900")
 
     # Other write/mutation endpoints
     RATE_LIMIT_WRITE_LIMIT = os.getenv("RATE_LIMIT_WRITE_LIMIT", "30")
@@ -252,6 +286,8 @@ class Config:
         G_W = cls.RATE_LIMIT_GENERATE_WINDOW
         A = cls.RATE_LIMIT_AUTH_LIMIT
         A_W = cls.RATE_LIMIT_AUTH_WINDOW
+        RESET = cls.RATE_LIMIT_RESET_LIMIT
+        RESET_W = cls.RATE_LIMIT_RESET_WINDOW
         W = cls.RATE_LIMIT_WRITE_LIMIT
         W_W = cls.RATE_LIMIT_WRITE_WINDOW
         R = cls.RATE_LIMIT_READ_LIMIT
@@ -267,8 +303,13 @@ class Config:
             "auth.login": cls._bucket(A, A_W, 10, 600),
             "auth.register": cls._bucket(A, A_W, 10, 600),
             "auth.social_login": cls._bucket(A, A_W, 10, 600),
+            "auth.google_login": cls._bucket(A, A_W, 10, 600),
             "auth.update_current_user": cls._bucket(W, W_W, 30, 600),
             "auth.delete_current_user": cls._bucket(A, A_W, 5, 600),
+            # ---- password reset (tight; brute-force target) ----
+            "auth.forgot_password": cls._bucket(RESET, RESET_W, 5, 900),
+            "auth.forgot_password_verify": cls._bucket(RESET, RESET_W, 5, 900),
+            "auth.reset_password": cls._bucket(RESET, RESET_W, 5, 900),
             # ---- premium / IAP endpoints ----
             "premium.verify_receipt": cls._bucket(W, W_W, 30, 600),
             "premium.dev_activate": cls._bucket(W, W_W, 30, 600),
@@ -278,6 +319,20 @@ class Config:
             "travel.search_flights_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_stays_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_cars_route": cls._bucket(A, A_W, 10, 600),
+            # ---- trip vault documents ----
+            "documents.get_trip_documents": cls._bucket(R, R_W, 60, 60),
+            "documents.get_document_file": cls._bucket(R, R_W, 60, 60),
+            "documents.upload_trip_document": cls._bucket(W, W_W, 30, 600),
+            "documents.delete_trip_document": cls._bucket(W, W_W, 30, 600),
+            # ---- smart trip expense tracker ----
+            "expenses.get_trip_expenses": cls._bucket(R, R_W, 60, 60),
+            "expenses.get_expense": cls._bucket(R, R_W, 60, 60),
+            "expenses.create_expense": cls._bucket(W, W_W, 30, 600),
+            "expenses.update_expense": cls._bucket(W, W_W, 30, 600),
+            "expenses.delete_expense": cls._bucket(W, W_W, 30, 600),
+            # ---- live interactive travel map (geocoding proxy) ----
+            "places.geocode": cls._bucket(R, R_W, 30, 60),
+            "places.route": cls._bucket(R, R_W, 30, 60),
             # ---- public page-view beacon ----
             "admin.track_page_view": cls._bucket(A, A_W, 10, 600),
             # ---- default read bucket ----

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/auth/auth_guard.dart';
 import '../core/config/app_config.dart';
 import '../models/trip_model.dart';
 
@@ -27,12 +28,6 @@ class TripService {
     return prefs.getString('access_token');
   }
 
-  Future<void> _clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.remove('access_token');
-  }
-
   // ============================================================
   // AUTHORIZATION HEADERS
   // ============================================================
@@ -41,6 +36,12 @@ class TripService {
     final token = await _getToken();
 
     if (token == null || token.isEmpty) {
+      // No token at all — force the user back to login rather than
+      // letting each screen show its own "not logged in" error state.
+      await AuthGuard.handleUnauthorized(
+        message: 'Please log in to continue.',
+      );
+
       throw Exception('You are not logged in.');
     }
 
@@ -95,7 +96,7 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await _clearToken();
+      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -143,7 +144,7 @@ class TripService {
     _debugLog('====================================');
 
     if (response.statusCode == 401) {
-      await _clearToken();
+      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -197,7 +198,7 @@ class TripService {
     _debugLog('====================================');
 
     if (response.statusCode == 401) {
-      await _clearToken();
+      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -255,7 +256,7 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await _clearToken();
+      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -309,11 +310,11 @@ class TripService {
       _debugLog('DESTINATION: ${tripMap['destination']}');
       _debugLog(
         'ITINERARY TYPE: '
-        '${tripMap['itinerary']?.runtimeType}',
+            '${tripMap['itinerary']?.runtimeType}',
       );
       _debugLog(
         'ITINERARY LENGTH: '
-        '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
+            '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
       );
       _debugLog('ITINERARY: ${tripMap['itinerary']}');
       _debugLog('------------------------------------');
@@ -351,7 +352,7 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await _clearToken();
+      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -409,11 +410,11 @@ class TripService {
     _debugLog('DESTINATION: ${tripMap['destination']}');
     _debugLog(
       'ITINERARY TYPE: '
-      '${tripMap['itinerary']?.runtimeType}',
+          '${tripMap['itinerary']?.runtimeType}',
     );
     _debugLog(
       'ITINERARY LENGTH: '
-      '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
+          '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
     );
     _debugLog('====================================');
 
@@ -447,7 +448,7 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await _clearToken();
+      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 

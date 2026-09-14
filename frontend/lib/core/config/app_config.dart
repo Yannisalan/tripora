@@ -5,13 +5,23 @@
 ///
 ///     flutter run \
 ///       --dart-define=API_BASE_URL=https://api.tripora.example.com \
-///       --dart-define=GOOGLE_ANDROID_CLIENT_ID=... \
-///       --dart-define=GOOGLE_IOS_CLIENT_ID=... \
+///       --dart-define=GOOGLE_WEB_CLIENT_ID=...apps.googleusercontent.com \
+///       --dart-define=GOOGLE_IOS_CLIENT_ID=...apps.googleusercontent.com \
 ///       --dart-define=APPLE_CLIENT_ID=com.tripora.app.login
 ///
 /// If no override is provided, the defaults below are used.
 class AppConfig {
   AppConfig._();
+
+  // ------------------------------------------------------------
+  // THIRD-PARTY SIGN-IN VISIBILITY
+  // ------------------------------------------------------------
+  //
+  // Master switch for the Google / Apple sign-in buttons on the login and
+  // register screens (mobile and web). Set to true to re-enable the buttons;
+  // all auth code, packages, backend routes and DB fields remain in place
+  // either way.
+  static const bool showThirdPartyAuth = false;
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -22,21 +32,29 @@ class AppConfig {
   // GOOGLE SIGN-IN
   // ------------------------------------------------------------
   //
-  // On iOS the client ID is the iOS OAuth client id
-  // (e.g. ...apps.googleusercontent.com). On Android the default
-  // client id is '' (auto-resolved from the google-services config),
-  // but an explicit one can be supplied as `GOOGLE_ANDROID_CLIENT_ID`.
+  // google_sign_in >= 7 behaviour differs per platform:
+  //  * Android  uses the Credential Manager flow, which ignores `clientId`
+  //    altogether and only mints an ID token for an audience it knows about.
+  //    Pass the Cloud *Web* OAuth client ID as `serverClientId`
+  //    (see social_auth_service.dart), or provide google-services.json whose
+  //    `default_web_client_id` is that same Web client ID.
+  //  * iOS     uses the iOS OAuth client ID (`GOOGLE_IOS_CLIENT_ID`).
+  //  * Web     uses the Web OAuth client ID (`GOOGLE_WEB_CLIENT_ID`).
+  //
+  // The backend `aud` validation accepts all three client IDs, and a Google ID
+  // token minted for the Web audience (as Android does with `serverClientId`)
+  // or for the iOS audience verifies successfully.
 
   static const String googleIosClientId = String.fromEnvironment(
     'GOOGLE_IOS_CLIENT_ID',
     defaultValue: '',
   );
 
-  static const String googleAndroidClientId = String.fromEnvironment(
-    'GOOGLE_ANDROID_CLIENT_ID',
-    defaultValue: '',
-  );
-
+  /// The Google Cloud Web OAuth client ID.
+  ///
+  /// Required on Android (passed as `serverClientId`) and used as `clientId`
+  /// on Web. A Google Web client also activates OAuth consent and gives the
+  /// API keys the `tripora-api-audience` verification audience.
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
     defaultValue: '',
@@ -94,6 +112,22 @@ class AppConfig {
   // entry point at all, so there is no premium surface anywhere in the app.
   static const bool premiumEnabled = bool.fromEnvironment(
     'PREMIUM_ENABLED',
+    defaultValue: false,
+  );
+
+  // ------------------------------------------------------------
+  // HOTELS FEATURE FLAG
+  // ------------------------------------------------------------
+  //
+  // Hotels shipping is currently hidden (the deck tile was removed) while
+  // it is being validated. The backend routes are kept, and enabling this
+  // flag at build time is what restores the hotels entry points in the app:
+  //
+  //     --dart-define=HOTEL_FEATURE_ENABLED=true
+  //
+  // Defaults to false so hotels never surface unless explicitly enabled.
+  static const bool hotelFeatureEnabled = bool.fromEnvironment(
+    'HOTEL_FEATURE_ENABLED',
     defaultValue: false,
   );
 }

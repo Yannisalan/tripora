@@ -38,6 +38,9 @@ DEFAULT_BUCKETS = {
     "auth.login": {"limit": None, "window": 600},
     "auth.register": {"limit": None, "window": 600},
     "auth.social_login": {"limit": None, "window": 600},
+    "auth.forgot_password": {"limit": None, "window": 900},
+    "auth.forgot_password_verify": {"limit": None, "window": 900},
+    "auth.reset_password": {"limit": None, "window": 900},
     "auth.update_current_user": {"limit": None, "window": 600},
     "auth.delete_current_user": {"limit": None, "window": 600},
     "premium.verify_receipt": {"limit": None, "window": 600},
@@ -47,6 +50,17 @@ DEFAULT_BUCKETS = {
     "travel.search_flights_route": {"limit": None, "window": 600},
     "travel.search_stays_route": {"limit": None, "window": 600},
     "travel.search_cars_route": {"limit": None, "window": 600},
+    "documents.get_trip_documents": {"limit": None, "window": 60},
+    "documents.upload_trip_document": {"limit": None, "window": 600},
+    "documents.get_document_file": {"limit": None, "window": 60},
+    "documents.delete_trip_document": {"limit": None, "window": 600},
+    "expenses.get_trip_expenses": {"limit": None, "window": 60},
+    "expenses.get_expense": {"limit": None, "window": 60},
+    "expenses.create_expense": {"limit": None, "window": 600},
+    "expenses.update_expense": {"limit": None, "window": 600},
+    "expenses.delete_expense": {"limit": None, "window": 600},
+    "places.geocode": {"limit": None, "window": 60},
+    "places.route": {"limit": None, "window": 60},
     "DEFAULT_READ": {"limit": None, "window": 60},
 }
 
@@ -59,6 +73,8 @@ READ_ENDPOINTS = {
     "trips.get_trips",
     "trips.get_trip",
     "premium.status",
+    "documents.get_trip_documents",
+    "documents.get_document_file",
 }
 
 

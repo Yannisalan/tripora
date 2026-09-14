@@ -22,6 +22,12 @@ class SocialLoginResult {
   });
 }
 
+/// Thrown when the user dismisses the native sign-in sheet (or the OS
+/// interrupts it), so callers can stay quiet instead of showing an error.
+class SocialSignInCancelled implements Exception {
+  const SocialSignInCancelled();
+}
+
 /// Wraps the native Google / Apple sign-in plugins and produces the
 /// ID / identity token that the backend verifies.
 class SocialAuthService {
@@ -33,12 +39,33 @@ class SocialAuthService {
 
   bool _googleInitialized = false;
 
+  /// Configures the native Google sign-in plugin.
+  ///
+  /// `initialize` must be called exactly once per process, so this is guarded
+  /// by [_googleInitialized] and never re-runs (not even after [signOutGoogle],
+  /// which does not invalidate the plugin configuration).
+  ///
+  /// Platform client identifiers (see app_config.dart / dart-defines):
+  ///  * Android  -> `serverClientId` MUST be the Google Cloud *Web* OAuth
+  ///    client ID. The Credential Manager flow used by google_sign_in >= 7
+  ///    ignores `clientId` on Android and only mints an ID token for an
+  ///    audience it knows about: either this value or the
+  ///    `default_web_client_id` from google-services.json.
+  ///  * iOS      -> `clientId` is the iOS OAuth client ID.
+  ///  * Web      -> `clientId` is the Web OAuth client ID.
   Future<void> _ensureGoogleInitialized() async {
     if (_googleInitialized) {
       return;
     }
 
-    await _google.initialize(clientId: _googleClientId());
+    if (Platform.isAndroid) {
+      final serverClientId = AppConfig.googleWebClientId.isNotEmpty
+          ? AppConfig.googleWebClientId
+          : null;
+      await _google.initialize(serverClientId: serverClientId);
+    } else {
+      await _google.initialize(clientId: _googleClientId());
+    }
     _googleInitialized = true;
   }
 
@@ -53,11 +80,6 @@ class SocialAuthService {
           ? AppConfig.googleIosClientId
           : null;
     }
-    if (Platform.isAndroid) {
-      return AppConfig.googleAndroidClientId.isNotEmpty
-          ? AppConfig.googleAndroidClientId
-          : null;
-    }
     return null;
   }
 
@@ -65,10 +87,25 @@ class SocialAuthService {
   // GOOGLE SIGN-IN
   // ============================================================
 
+  /// Runs the native Google sign-in flow.
+  ///
+  /// Throws [SocialSignInCancelled] if the user dismisses or the OS cancels
+  /// the sheet. Re-throws [GoogleSignInException] (e.g. a client configuration
+  /// problem) and any plugin `PlatformException` for the caller to surface.
   Future<SocialLoginResult> signInWithGoogle() async {
     await _ensureGoogleInitialized();
 
-    final account = await _google.authenticate();
+    final GoogleSignInAccount account;
+    try {
+      account = await _google.authenticate();
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled ||
+          error.code == GoogleSignInExceptionCode.interrupted ||
+          error.code == GoogleSignInExceptionCode.uiUnavailable) {
+        throw const SocialSignInCancelled();
+      }
+      rethrow;
+    }
 
     final idToken = account.authentication.idToken;
 
@@ -77,6 +114,17 @@ class SocialAuthService {
     }
 
     return SocialLoginResult(provider: 'google', idToken: idToken);
+  }
+
+  /// Ends the native Google session so the account picker appears on the next
+  /// sign-in. Best-effort: a stale native session is harmless to Tripora log
+  /// out, so errors are swallowed here.
+  Future<void> signOutGoogle() async {
+    try {
+      await _google.signOut();
+    } catch (_) {
+      // Best-effort only.
+    }
   }
 
   // ============================================================

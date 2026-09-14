@@ -19,6 +19,7 @@ import '../screens/travel/check_flight_prices_screen.dart';
 
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
 
 import '../screens/legal/legal_screen.dart';
 import '../screens/legal/legal_content.dart';
@@ -36,6 +37,7 @@ class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
 
   static const String terms = '/terms';
   static const String privacy = '/privacy';
@@ -80,6 +82,8 @@ class AppRoutes {
       login: (_) => const LoginScreen(),
 
       register: (_) => const RegisterScreen(),
+
+      forgotPassword: (_) => const ForgotPasswordScreen(),
 
       // ========================================================
       // LEGAL

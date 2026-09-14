@@ -32,7 +32,7 @@
 	  the Google Cloud console, or your Firebase iOS app.
 	-->
 	<key>GIDClientID</key>
-	<string>YOUR_GOOGLE_IOS_CLIENT_ID.apps.googleusercontent.com</string>
+	<string>116202173330-6emhoen50erbg2oicnqo4raribgnqdor.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -40,7 +40,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.YOUR_GOOGLE_PROJECT_NUMBER-YOUR_SUFFIX</string>
+				<string>com.googleusercontent.apps.116202173330-6emhoen50erbg2oicnqo4raribgnqdor</string>
 			</array>
 		</dict>
 	</array>

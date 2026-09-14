@@ -220,6 +220,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _passengers,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Passengers',
                       prefixIcon: Icon(Icons.groups_outlined),
@@ -237,6 +238,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _cabin,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Cabin',
                       prefixIcon: Icon(Icons.airline_seat_recline_extra),

@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import (
@@ -42,6 +43,7 @@ def _parse_trip_payload(data):
     budget = data.get("budget")
     travel_style = data.get("travelStyle")
     interests = data.get("interests", [])
+    budget_amount = data.get("budgetAmount")
 
     if not destination or not str(destination).strip():
         raise ValueError("Destination is required.")
@@ -65,6 +67,17 @@ def _parse_trip_payload(data):
     if budget is not None and not isinstance(budget, str):
         raise ValueError("Budget must be a text value.")
 
+    if budget_amount is not None:
+        try:
+            budget_amount = Decimal(str(budget_amount))
+            if not budget_amount.is_finite() or budget_amount <= 0:
+                raise InvalidOperation
+            budget_amount = budget_amount.quantize(Decimal("0.01"))
+        except (InvalidOperation, TypeError):
+            raise ValueError(
+                "Budget amount must be a positive number."
+            ) from None
+
     try:
         start_date_obj = date.fromisoformat(start_date[:10])
         end_date_obj = date.fromisoformat(end_date[:10])
@@ -82,6 +95,7 @@ def _parse_trip_payload(data):
         "end_date_obj": end_date_obj,
         "travelers": travelers,
         "budget": budget,
+        "budget_amount": budget_amount,
         "travel_style": travel_style,
         "interests": interests,
     }
@@ -144,6 +158,12 @@ def trip_to_dict(trip):
         "travelers": trip.travelers,
 
         "budget": trip.budget,
+
+        "budgetAmount": (
+            float(trip.budget_amount)
+            if trip.budget_amount is not None
+            else None
+        ),
 
         "travelStyle": trip.travel_style,
 
@@ -266,6 +286,8 @@ def generate_trip():
             travelers=payload["travelers"],
 
             budget=payload["budget"],
+
+            budget_amount=payload["budget_amount"],
 
             travel_style=payload["travel_style"],
 
@@ -514,6 +536,7 @@ def update_trip(trip_id):
         trip.end_date = payload["end_date_obj"]
         trip.travelers = payload["travelers"]
         trip.budget = payload["budget"]
+        trip.budget_amount = payload["budget_amount"]
         trip.travel_style = payload["travel_style"]
         trip.interests = payload["interests"]
         trip.estimated_cost = cost

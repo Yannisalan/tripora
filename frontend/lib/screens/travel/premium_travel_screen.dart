@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 
 /// Hub for the premium travel-search features.
 ///
 /// Free users are routed through [PremiumGate] which shows the paywall;
-/// premium users see the three search categories (Flights / Stays / Cars).
+/// premium users see the search categories. Hotels only appears when both
+/// premium and the hotels feature flag are enabled (see
+/// [AppConfig.hotelFeatureEnabled]).
 class PremiumTravelScreen extends StatelessWidget {
   const PremiumTravelScreen({super.key});
 
@@ -27,14 +30,15 @@ class PremiumTravelScreen extends StatelessWidget {
             route: AppRoutes.travelFlights,
           ),
           const SizedBox(height: 14),
-          _TravelTile(
-            icon: Icons.hotel_outlined,
-            title: 'Hotels',
-            subtitle: 'Find stays near your destination.',
-            color: Theme.of(context).colorScheme.tertiary,
-            route: AppRoutes.travelStays,
-          ),
-          const SizedBox(height: 14),
+          if (AppConfig.hotelFeatureEnabled)
+            _TravelTile(
+              icon: Icons.hotel_outlined,
+              title: 'Hotels',
+              subtitle: 'Find stays near your destination.',
+              color: Theme.of(context).colorScheme.tertiary,
+              route: AppRoutes.travelStays,
+            ),
+          if (AppConfig.hotelFeatureEnabled) const SizedBox(height: 14),
           _TravelTile(
             icon: Icons.directions_car_outlined,
             title: 'Cars',

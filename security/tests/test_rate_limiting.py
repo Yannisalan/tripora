@@ -102,7 +102,8 @@ class TestEnvConfiguration:
         assert b["window"] == 600
 
     def test_default_auth_bucket(self):
-        for ep in ("auth.login", "auth.register", "auth.social_login"):
+        for ep in ("auth.login", "auth.register", "auth.social_login",
+                   "auth.google_login"):
             b = Config.rate_limit_buckets()[ep]
             assert b["limit"] == AUTH_LIMIT
             assert b["window"] == 600

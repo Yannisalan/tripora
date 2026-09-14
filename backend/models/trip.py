@@ -59,6 +59,14 @@ class Trip(db.Model):
         nullable=True
     )
 
+    # Numeric budget (trip currency is the user's preferred currency at read
+    # time). Kept alongside the categorical ``budget`` label (Budget /
+    # Moderate / Luxury) which existing API clients rely on.
+    budget_amount = db.Column(
+        db.Numeric(12, 2),
+        nullable=True
+    )
+
     travel_style = db.Column(
         db.String(100),
         nullable=True
@@ -91,4 +99,26 @@ class Trip(db.Model):
         db.DateTime,
         default=datetime.utcnow,
         nullable=False
+    )
+
+    # ============================================================
+    # DOCUMENTS (VAULT)
+    # ============================================================
+
+    documents = db.relationship(
+        "TripDocument",
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # ============================================================
+    # EXPENSES
+    # ============================================================
+
+    expenses = db.relationship(
+        "Expense",
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

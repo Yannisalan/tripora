@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../models/destination_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/destination_card.dart';
-import '../../widgets/gradient_button.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -32,10 +31,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final query = _query.toLowerCase();
       final matchesQuery =
           query.isEmpty ||
-          destination.city.toLowerCase().contains(query) ||
-          destination.country.toLowerCase().contains(query) ||
-          destination.description.toLowerCase().contains(query) ||
-          destination.tags.any((tag) => tag.toLowerCase().contains(query));
+              destination.city.toLowerCase().contains(query) ||
+              destination.country.toLowerCase().contains(query) ||
+              destination.description.toLowerCase().contains(query) ||
+              destination.tags.any((tag) => tag.toLowerCase().contains(query));
 
       final matchesTag =
           _selectedTag == 'All' || destination.tags.contains(_selectedTag);
@@ -59,6 +58,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _showDestinationDetails(DestinationModel destination) {
+    final textTheme = Theme.of(context).textTheme;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -69,10 +70,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
             decoration: BoxDecoration(
               color: context.triporaColors.surface,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
+                top: Radius.circular(AppRadius.xl),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.xs,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,13 +90,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       height: 5,
                       decoration: BoxDecoration(
                         color: context.triporaColors.border,
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: AppSpacing.lg),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
                       child: Stack(
@@ -107,6 +113,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               );
                             },
                           ),
+                          // Photo scrim for text legibility — not a brand
+                          // gradient, so it stays even though the design
+                          // system otherwise avoids gradients on UI chrome.
                           DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -124,14 +133,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
                     destination.city,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      color: context.triporaColors.textPrimary,
-                    ),
+                    style: textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -146,24 +151,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       const SizedBox(width: 4),
                       Text(
                         destination.country,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                        style: textTheme.labelLarge?.copyWith(
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     destination.description,
-                    style: TextStyle(
-                      fontSize: 15,
-                      height: 1.5,
+                    style: textTheme.bodyLarge?.copyWith(
                       color: context.triporaColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.md),
                   _DetailRow(
                     icon: Icons.favorite_outline,
                     label: 'Best for',
@@ -174,7 +175,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     label: 'Suggested stay',
                     value: destination.tripLength,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -182,22 +183,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       return Chip(label: Text(tag));
                     }).toList(),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: AppSpacing.lg),
                   SizedBox(
                     width: double.infinity,
-                    height: 54,
-                    child: GradientButton(
+                    child: FilledButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
                         _planDestination(destination);
                       },
-                      height: 54,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
                       icon: const Icon(Icons.add_location_alt_outlined),
-                      label: const Text(
-                        'Plan This Trip',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      label: const Text('Plan this trip'),
                     ),
                   ),
                 ],
@@ -229,42 +224,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final width = MediaQuery.of(context).size.width;
     final isCompact = width < 760;
     final filtered = _filteredDestinations;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Explore',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
+        title: Text('Explore', style: textTheme.headlineSmall),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 16 : 40,
-            vertical: 24,
+            horizontal: isCompact ? AppSpacing.md : AppSpacing.xl2,
+            vertical: AppSpacing.lg,
           ),
           children: [
             Text(
               'Discover where to go next',
-              style: TextStyle(
-                fontSize: 34,
-                height: 1.1,
-                fontWeight: FontWeight.w900,
-                color: context.triporaColors.textPrimary,
-              ),
+              style: isCompact ? textTheme.headlineLarge : textTheme.displayLarge,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.xs),
             Text(
-              'From Cotonou to Seychelles — search by place or mood, then send the destination straight into Planner.',
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.45,
+              'From Cotonou to Seychelles — search by place or mood, then '
+                  'send the destination straight into Planner.',
+              style: textTheme.bodyLarge?.copyWith(
                 color: context.triporaColors.textMuted,
               ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _searchController,
               onChanged: (value) {
@@ -278,24 +265,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 suffixIcon: _query.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: 'Clear search',
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _query = '';
-                          });
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
+                  tooltip: 'Clear search',
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _query = '';
+                    });
+                  },
+                  icon: const Icon(Icons.close),
+                ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: _tags.map((tag) {
                   return Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: AppSpacing.xs),
                     child: ChoiceChip(
                       label: Text(tag),
                       selected: _selectedTag == tag,
@@ -309,13 +296,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             if (filtered.isEmpty)
-              _buildEmptyState()
+              _buildEmptyState(context)
             else
               Wrap(
-                spacing: 18,
-                runSpacing: 18,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: filtered.map((destination) {
                   return SizedBox(
                     width: isCompact ? double.infinity : 320,
@@ -339,16 +326,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     final hasActiveSearch = _query.isNotEmpty;
     final hasActiveTag = _selectedTag != 'All';
+    final textTheme = Theme.of(context).textTheme;
 
     String headline, description;
 
     if (hasActiveSearch && hasActiveTag) {
       headline = 'No matches found';
       description =
-          'Try adjusting your search or filter to discover destinations.';
+      'Try adjusting your search or filter to discover destinations.';
     } else if (hasActiveSearch) {
       headline = 'No destinations match your search';
       description = 'Try different keywords or browse by interest below.';
@@ -363,7 +351,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Card(
       color: context.triporaColors.surfaceInfo,
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           children: [
             ExcludeSemantics(
@@ -373,19 +361,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              headline,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(headline, style: textTheme.headlineSmall),
             const SizedBox(height: 6),
             Text(
               description,
               textAlign: TextAlign.center,
-              style: TextStyle(color: context.appStatus.info),
+              style: textTheme.bodyMedium?.copyWith(
+                color: context.triporaColors.textSecondary,
+              ),
             ),
             if (hasActiveSearch || hasActiveTag) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               TextButton.icon(
                 onPressed: () {
                   _searchController.clear();
@@ -395,7 +382,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   });
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text('Clear Filters'),
+                label: const Text('Clear filters'),
               ),
             ],
           ],
@@ -418,14 +405,24 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 10),
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w800)),
-          Expanded(child: Text(value)),
+          Text('$label: ', style: textTheme.labelLarge),
+          Expanded(
+            child: Text(
+              value,
+              style: textTheme.bodyMedium?.copyWith(
+                color: context.triporaColors.textSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );

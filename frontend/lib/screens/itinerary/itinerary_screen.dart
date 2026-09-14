@@ -1,15 +1,30 @@
 import 'dart:convert';
-
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
-
-import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
   final Map<String, dynamic> tripData;
 
-  const ItineraryScreen({super.key, required this.tripData});
+  const ItineraryScreen({
+    super.key,
+    required this.tripData,
+  });
+
+  // ============================================================
+  // COLORS
+  // ============================================================
+
+  static const Color _background = Color(0xFFF8FAFC);
+  static const Color _surface = Colors.white;
+  static const Color _midnight = Color(0xFF1E1B4B);
+  static const Color _blue = Color(0xFF3B82F6);
+  static const Color _amber = Color(0xFFF59E0B);
+  static const Color _text = Color(0xFF191C1E);
+  static const Color _secondaryText = Color(0xFF475569);
+  static const Color _mutedText = Color(0xFF64748B);
+  static const Color _border = Color(0xFFE2E8F0);
+  static const Color _strongBorder = Color(0xFFCBD5E1);
 
   // ============================================================
   // SAFE VALUE HELPERS
@@ -45,21 +60,6 @@ class ItineraryScreen extends StatelessWidget {
 
   // ============================================================
   // GET ACTUAL TRIP OBJECT
-  //
-  // Supports:
-  //
-  // {
-  //   success: true,
-  //   trip: {...}
-  // }
-  //
-  // OR directly:
-  //
-  // {
-  //   id: 11,
-  //   destination: "...",
-  //   itinerary: [...]
-  // }
   // ============================================================
 
   Map<String, dynamic> get trip {
@@ -77,7 +77,10 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   String get destination {
-    return _stringValue(trip['destination'], 'Your Destination');
+    return _stringValue(
+      trip['destination'],
+      'Your Destination',
+    );
   }
 
   // ============================================================
@@ -85,7 +88,9 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   DateTime get startDate {
-    final date = _dateValue(trip['startDate'] ?? trip['start_date']);
+    final date = _dateValue(
+      trip['startDate'] ?? trip['start_date'],
+    );
 
     return date ?? DateTime.now();
   }
@@ -95,7 +100,9 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   DateTime get endDate {
-    final date = _dateValue(trip['endDate'] ?? trip['end_date']);
+    final date = _dateValue(
+      trip['endDate'] ?? trip['end_date'],
+    );
 
     return date ?? startDate;
   }
@@ -105,7 +112,10 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   int get travelers {
-    return _intValue(trip['travelers'], 1);
+    return _intValue(
+      trip['travelers'],
+      1,
+    );
   }
 
   // ============================================================
@@ -113,7 +123,10 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   String get budget {
-    return _stringValue(trip['budget'], 'Moderate');
+    return _stringValue(
+      trip['budget'],
+      'Moderate',
+    );
   }
 
   // ============================================================
@@ -164,10 +177,9 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Map<String, dynamic>? get estimatedCost {
-    dynamic value = trip['estimatedCost'] ?? trip['estimated_cost'];
+    dynamic value =
+        trip['estimatedCost'] ?? trip['estimated_cost'];
 
-    // Sometimes estimated cost may be
-    // returned outside the nested trip object.
     value ??= tripData['estimatedCost'];
     value ??= tripData['estimated_cost'];
 
@@ -180,30 +192,14 @@ class ItineraryScreen extends StatelessWidget {
 
   // ============================================================
   // ITINERARY
-  //
-  // Supports:
-  //
-  // itinerary: [...]
-  //
-  // AND:
-  //
-  // itinerary: "[...]"
   // ============================================================
 
   List<Map<String, dynamic>> get itinerary {
     dynamic value = trip['itinerary'];
 
-    // ----------------------------------------------------------
-    // Already a List
-    // ----------------------------------------------------------
-
     if (value is List) {
       return _parseItineraryList(value);
     }
-
-    // ----------------------------------------------------------
-    // JSON string
-    // ----------------------------------------------------------
 
     if (value is String && value.trim().isNotEmpty) {
       try {
@@ -229,7 +225,9 @@ class ItineraryScreen extends StatelessWidget {
 
     for (final item in value) {
       if (item is Map) {
-        result.add(Map<String, dynamic>.from(item));
+        result.add(
+          Map<String, dynamic>.from(item),
+        );
       }
     }
 
@@ -342,32 +340,35 @@ class ItineraryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.triporaColors.backgroundColor,
+      backgroundColor: _background,
 
       // ========================================================
       // APP BAR
       // ========================================================
+
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: _background,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
 
         leading: IconButton(
           tooltip: 'Go back',
-          icon: Icon(
-            Icons.arrow_back,
-            color: context.triporaColors.textPrimary,
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: _midnight,
           ),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
 
-        title: Text(
+        title: const Text(
           'Your Itinerary',
           style: TextStyle(
-            fontWeight: FontWeight.w800,
-            color: context.triporaColors.textPrimary,
+            fontFamily: 'Noto Serif',
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+            color: _midnight,
           ),
         ),
       ),
@@ -375,245 +376,87 @@ class ItineraryScreen extends StatelessWidget {
       // ========================================================
       // BODY
       // ========================================================
+
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
+            constraints: const BoxConstraints(
+              maxWidth: 1080,
+            ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                40,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ==================================================
-                  // TRIP HEADER
+                  // EDITORIAL TRIP HEADER
                   // ==================================================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(28),
-                    decoration: BoxDecoration(
-                      color: context.triporaColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '\u2726 Your AI Travel Plan',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
 
-                        const SizedBox(height: 12),
-
-                        Text(
-                          destination,
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
-                            color: context.triporaColors.textPrimary,
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        Wrap(
-                          spacing: 20,
-                          runSpacing: 12,
-                          children: [
-                            _buildInfo(
-                              context,
-                              Icons.calendar_month_outlined,
-                              '$numberOfDays days',
-                            ),
-
-                            _buildInfo(
-                              context,
-                              Icons.people_outline,
-                              '$travelers traveler'
-                              '${travelers == 1 ? '' : 's'}',
-                            ),
-
-                            _buildInfo(
-                              context,
-                              Icons.account_balance_wallet_outlined,
-                              budget,
-                            ),
-
-                            _buildInfo(
-                              context,
-                              Icons.explore_outlined,
-                              travelStyle,
-                            ),
-                          ],
-                        ),
-
-                        if (interests.isNotEmpty) ...[
-                          const SizedBox(height: 20),
-
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: interests.map((interest) {
-                              return Chip(label: Text(interest));
-                            }).toList(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                  _buildTripHeader(context),
 
                   // ==================================================
                   // COST
                   // ==================================================
-                  if (estimatedCost != null) ...[
-                    const SizedBox(height: 30),
 
+                  if (estimatedCost != null) ...[
+                    const SizedBox(height: 24),
                     _buildCostCard(context),
                   ],
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 48),
 
                   // ==================================================
-                  // ITINERARY TITLE
+                  // ITINERARY INTRO
                   // ==================================================
-                  Text(
-                    'Your Itinerary',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      color: context.triporaColors.textPrimary,
-                    ),
-                  ),
 
-                  const SizedBox(height: 10),
+                  _buildSectionHeading(),
 
-                  Text(
-                    'A suggested plan based on your preferences.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: context.triporaColors.textSecondary,
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 28),
 
                   // ==================================================
                   // ITINERARY
                   // ==================================================
+
                   if (itinerary.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: context.triporaColors.surface,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Text(
-                        'No itinerary was generated.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: context.triporaColors.textSecondary,
-                        ),
-                      ),
-                    ),
+                    _buildEmptyItinerary(context),
 
-                  ...itinerary.map((day) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: _buildDayCard(
-                        context: context,
-                        day: _intValue(day['day'], 1),
-                        date: day['date']?.toString(),
-                        title: _stringValue(day['title'], 'Travel Day'),
-                        activities: _parseActivities(day['activities']),
-                      ),
-                    );
-                  }),
-
-                  const SizedBox(height: 40),
-
-                  // ==================================================
-                  // EDIT TRIP
-                  // ==================================================
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text(
-                        'Edit Trip',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                  ...itinerary.map(
+                    (day) {
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: 20,
                         ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                        child: _buildDayCard(
+                          context: context,
+                          day: _intValue(
+                            day['day'],
+                            1,
+                          ),
+                          date: day['date']?.toString(),
+                          title: _stringValue(
+                            day['title'],
+                            'Travel Day',
+                          ),
+                          activities: _parseActivities(
+                            day['activities'],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // ==================================================
-                  // CHECK FLIGHT PRICES
+                  // ACTIONS
                   // ==================================================
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => _openFlightPrices(context),
-                      icon: const Icon(Icons.flight_takeoff),
-                      label: const Text(
-                        'Check flight prices',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 16),
-
-                  // ==================================================
-                  // ADD TO CALENDAR
-                  // ==================================================
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _addToCalendar(context),
-                      icon: const Icon(Icons.event_outlined),
-                      label: const Text(
-                        'Add to calendar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
+                  _buildActionButtons(context),
                 ],
               ),
             ),
@@ -624,131 +467,293 @@ class ItineraryScreen extends StatelessWidget {
   }
 
   // ============================================================
-  // OPEN FLIGHT PRICES
+  // TRIP HEADER
   // ============================================================
 
-  void _openFlightPrices(BuildContext context) {
-    final d = destination;
-    // The itinerary doesn't know the traveller's home airport, so we leave
-    // the origin blank and prefill only the destination + date. The user can
-    // type their origin airport on the price screen.
-    Navigator.pushNamed(
-      context,
-      AppRoutes.checkFlightPrices,
-      arguments: <String, dynamic>{
-        if (d.isNotEmpty) 'destination': d,
-        'departDate': _dateIso(startDate),
-      },
+  Widget _buildTripHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: _midnight,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // AI LABEL
+
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 11,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.16),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  size: 14,
+                  color: Color(0xFF93C5FD),
+                ),
+                SizedBox(width: 7),
+                Text(
+                  'AI-GENERATED TRAVEL PLAN',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          // DESTINATION
+
+          Text(
+            destination,
+            style: const TextStyle(
+              fontFamily: 'Noto Serif',
+              fontSize: 38,
+              height: 1.08,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Text(
+            '${_formatDate(_dateIso(startDate))} — '
+            '${_formatDate(_dateIso(endDate))}',
+            style: TextStyle(
+              fontFamily: 'Manrope',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.70),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // INFO ROW
+
+          Wrap(
+            spacing: 20,
+            runSpacing: 14,
+            children: [
+              _buildHeaderInfo(
+                Icons.calendar_today_outlined,
+                '$numberOfDays days',
+              ),
+              _buildHeaderInfo(
+                Icons.people_outline,
+                '$travelers traveler'
+                '${travelers == 1 ? '' : 's'}',
+              ),
+              _buildHeaderInfo(
+                Icons.account_balance_wallet_outlined,
+                budget,
+              ),
+              _buildHeaderInfo(
+                Icons.explore_outlined,
+                travelStyle,
+              ),
+            ],
+          ),
+
+          if (interests.isNotEmpty) ...[
+            const SizedBox(height: 24),
+
+            Divider(
+              color: Colors.white.withValues(alpha: 0.12),
+              height: 1,
+            ),
+
+            const SizedBox(height: 18),
+
+            Text(
+              'INTERESTS',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+                color: Colors.white.withValues(alpha: 0.55),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: interests.map(
+                (interest) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
+                    ),
+                    child: Text(
+                      interest,
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                },
+              ).toList(),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
   // ============================================================
-  // ADD TO CALENDAR
+  // HEADER INFO
   // ============================================================
 
-  Future<void> _addToCalendar(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    try {
-      final event = Event(
-        title: 'Trip to $destination',
-        description: budget.isNotEmpty ? 'Budget: $budget' : null,
-        location: destination,
-        startDate: startDate,
-        endDate: endDate,
-        allDay: true,
-      );
-
-      final added = await Add2Calendar.addEvent2Cal(event);
-
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              added
-                  ? 'Trip added to calendar'
-                  : 'Could not open the calendar.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-    } catch (error) {
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: const Text('Could not open the calendar.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-    }
-  }
-
-  String _dateIso(DateTime date) {
-    return '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
-  }
-
-  // ============================================================
-  // PARSE ACTIVITIES
-  // ============================================================
-
-  List<_Activity> _parseActivities(dynamic activities) {
-    final result = <_Activity>[];
-
-    if (activities is! List) {
-      return result;
-    }
-
-    for (final activity in activities) {
-      if (activity is! Map) {
-        continue;
-      }
-
-      final category = activity['category']?.toString();
-
-      result.add(
-        _Activity(
-          icon: _getActivityIcon(category),
-          time: _stringValue(activity['time']),
-          title: _stringValue(activity['title'], 'Activity'),
-          description: _stringValue(activity['description']),
-        ),
-      );
-    }
-
-    return result;
-  }
-
-  // ============================================================
-  // INFO ITEM
-  // ============================================================
-
-  Widget _buildInfo(BuildContext context, IconData icon, String text) {
+  Widget _buildHeaderInfo(
+    IconData icon,
+    String text,
+  ) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ExcludeSemantics(
-          child: Icon(
-            icon,
-            size: 19,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+        Icon(
+          icon,
+          size: 16,
+          color: const Color(0xFF93C5FD),
         ),
-
         const SizedBox(width: 7),
-
         Text(
           text,
-          style: TextStyle(
-            fontSize: 15,
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: context.triporaColors.textSecondary,
+            color: Colors.white,
           ),
         ),
       ],
+    );
+  }
+
+  // ============================================================
+  // SECTION HEADING
+  // ============================================================
+
+  Widget _buildSectionHeading() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'YOUR ITINERARY',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.4,
+            color: _blue,
+          ),
+        ),
+
+        const SizedBox(height: 7),
+
+        const Text(
+          'Days designed around you.',
+          style: TextStyle(
+            fontFamily: 'Noto Serif',
+            fontSize: 31,
+            height: 1.15,
+            fontWeight: FontWeight.w700,
+            color: _midnight,
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        const Text(
+          'A suggested plan based on your preferences.',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            height: 1.5,
+            color: _secondaryText,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // EMPTY ITINERARY
+  // ============================================================
+
+  Widget _buildEmptyItinerary(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.event_note_outlined,
+              color: _blue,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Text(
+              'No itinerary was generated.',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _secondaryText,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -759,75 +764,117 @@ class ItineraryScreen extends StatelessWidget {
   Widget _buildCostCard(BuildContext context) {
     final cost = estimatedCost!;
 
-    final currency = _stringValue(cost['currency'], 'USD');
+    final currency = _stringValue(
+      cost['currency'],
+      'USD',
+    );
 
-    final total = cost['estimatedTotal'] ?? cost['estimated_total'] ?? 0;
+    final total =
+        cost['estimatedTotal'] ??
+        cost['estimated_total'] ??
+        0;
 
     final breakdown = cost['breakdown'];
 
-    final Map<String, dynamic> costs = breakdown is Map
-        ? Map<String, dynamic>.from(breakdown)
-        : {};
+    final Map<String, dynamic> costs =
+        breakdown is Map
+            ? Map<String, dynamic>.from(breakdown)
+            : {};
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: context.triporaColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.triporaColors.border),
+        color: _surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.account_balance_wallet_outlined,
-                color: Theme.of(context).colorScheme.primary,
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 20,
+                  color: _amber,
+                ),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
 
-              Text(
-                'Estimated Trip Cost',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: context.triporaColors.textPrimary,
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ESTIMATED COST',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        color: _mutedText,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Trip budget overview',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _text,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
           Text(
             '$currency $total',
-            style: TextStyle(
-              fontSize: 38,
-              fontWeight: FontWeight.w800,
-              color: Theme.of(context).colorScheme.primary,
+            style: const TextStyle(
+              fontFamily: 'Noto Serif',
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              color: _midnight,
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
-          Text(
-            'Approximate cost for your trip. '
-            'Actual prices may vary.',
+          const Text(
+            'Approximate cost for your trip. Actual prices may vary.',
             style: TextStyle(
-              fontSize: 14,
-              color: context.triporaColors.textSecondary,
+              fontFamily: 'Manrope',
+              fontSize: 12,
+              height: 1.5,
+              color: _mutedText,
             ),
           ),
 
           if (costs.isNotEmpty) ...[
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
 
-            const Divider(),
+            const Divider(
+              color: _border,
+            ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
             _buildCostRow(
               context,
@@ -836,7 +883,12 @@ class ItineraryScreen extends StatelessWidget {
               currency,
             ),
 
-            _buildCostRow(context, 'Food', costs['food'], currency),
+            _buildCostRow(
+              context,
+              'Food',
+              costs['food'],
+              currency,
+            ),
 
             _buildCostRow(
               context,
@@ -845,7 +897,12 @@ class ItineraryScreen extends StatelessWidget {
               currency,
             ),
 
-            _buildCostRow(context, 'Activities', costs['activities'], currency),
+            _buildCostRow(
+              context,
+              'Activities',
+              costs['activities'],
+              currency,
+            ),
           ],
         ],
       ),
@@ -863,25 +920,28 @@ class ItineraryScreen extends StatelessWidget {
     String currency,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(
+        bottom: 13,
+      ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 16,
-                color: context.triporaColors.textSecondary,
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 13,
+                color: _secondaryText,
               ),
             ),
           ),
-
           Text(
             '$currency ${value ?? 0}',
-            style: TextStyle(
-              fontSize: 16,
+            style: const TextStyle(
+              fontFamily: 'Manrope',
+              fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: context.triporaColors.textPrimary,
+              color: _text,
             ),
           ),
         ],
@@ -904,8 +964,11 @@ class ItineraryScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: context.triporaColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: _surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,51 +976,56 @@ class ItineraryScreen extends StatelessWidget {
           // ------------------------------------------------------
           // DAY HEADER
           // ------------------------------------------------------
+
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 50,
+                height: 50,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  gradient: AppColors.brandGradient,
+                  color: _midnight,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   '$day',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontFamily: 'Manrope',
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
               ),
 
-              const SizedBox(width: 16),
+              const SizedBox(width: 15),
 
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Day $day',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: context.triporaColors.textMuted,
-                        fontWeight: FontWeight.w600,
+                      'DAY ${day.toString().padLeft(2, '0')}',
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        color: _blue,
                       ),
                     ),
 
                     if (date != null && date.isNotEmpty) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
 
                       Text(
                         _formatDate(date),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.primary,
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
+                          color: _mutedText,
                         ),
                       ),
                     ],
@@ -966,10 +1034,12 @@ class ItineraryScreen extends StatelessWidget {
 
                     Text(
                       title,
-                      style: TextStyle(
-                        fontSize: 20,
+                      style: const TextStyle(
+                        fontFamily: 'Noto Serif',
+                        fontSize: 21,
+                        height: 1.2,
                         fontWeight: FontWeight.w700,
-                        color: context.triporaColors.textPrimary,
+                        color: _text,
                       ),
                     ),
                   ],
@@ -983,73 +1053,344 @@ class ItineraryScreen extends StatelessWidget {
           // ------------------------------------------------------
           // ACTIVITIES
           // ------------------------------------------------------
+
           if (activities.isEmpty)
-            Text(
+            const Text(
               'No activities available for this day.',
-              style: TextStyle(color: context.triporaColors.textMuted),
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 13,
+                color: _mutedText,
+              ),
             ),
 
-          ...activities.map((activity) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ExcludeSemantics(
-                    child: Icon(
-                      activity.icon,
-                      size: 22,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
+          ...activities.asMap().entries.map(
+            (entry) {
+              final index = entry.key;
+              final activity = entry.value;
 
-                  const SizedBox(width: 14),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (activity.time.isNotEmpty)
-                          Text(
-                            activity.time,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-
-                        const SizedBox(height: 3),
-
-                        Text(
-                          activity.title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: context.triporaColors.textPrimary,
-                          ),
-                        ),
-
-                        const SizedBox(height: 5),
-
-                        Text(
-                          activity.description,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.5,
-                            color: context.triporaColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
+              return _buildActivity(
+                context,
+                activity,
+                isLast: index == activities.length - 1,
+              );
+            },
+          ),
         ],
       ),
     );
+  }
+
+  // ============================================================
+  // ACTIVITY
+  // ============================================================
+
+  Widget _buildActivity(
+    BuildContext context,
+    _Activity activity, {
+    required bool isLast,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: isLast ? 0 : 20,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ICON
+
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(
+              activity.icon,
+              size: 19,
+              color: _blue,
+            ),
+          ),
+
+          const SizedBox(width: 13),
+
+          // CONTENT
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (activity.time.isNotEmpty)
+                  Text(
+                    activity.time,
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: _blue,
+                    ),
+                  ),
+
+                if (activity.time.isNotEmpty)
+                  const SizedBox(height: 3),
+
+                Text(
+                  activity.title,
+                  style: const TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _text,
+                  ),
+                ),
+
+                if (activity.description.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    activity.description,
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 13,
+                      height: 1.55,
+                      color: _secondaryText,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // ACTION BUTTONS
+  // ============================================================
+
+  Widget _buildActionButtons(BuildContext context) {
+    return Column(
+      children: [
+        // EDIT
+
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: const Icon(
+              Icons.edit_outlined,
+              size: 18,
+            ),
+            label: const Text(
+              'Edit Trip',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _midnight,
+              side: const BorderSide(
+                color: _strongBorder,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // FLIGHTS
+
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: () {
+              _openFlightPrices(context);
+            },
+            icon: const Icon(
+              Icons.flight_takeoff_outlined,
+              size: 18,
+            ),
+            label: const Text(
+              'Check flight prices',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: _midnight,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // CALENDAR
+
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              _addToCalendar(context);
+            },
+            icon: const Icon(
+              Icons.event_outlined,
+              size: 18,
+            ),
+            label: const Text(
+              'Add to calendar',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _midnight,
+              side: const BorderSide(
+                color: _strongBorder,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // OPEN FLIGHT PRICES
+  // ============================================================
+
+  void _openFlightPrices(BuildContext context) {
+    final d = destination;
+
+    Navigator.pushNamed(
+      context,
+      AppRoutes.checkFlightPrices,
+      arguments: <String, dynamic>{
+        if (d.isNotEmpty) 'destination': d,
+        'departDate': _dateIso(startDate),
+      },
+    );
+  }
+
+  // ============================================================
+  // ADD TO CALENDAR
+  // ============================================================
+
+  Future<void> _addToCalendar(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final event = Event(
+        title: 'Trip to $destination',
+        description: budget.isNotEmpty
+            ? 'Budget: $budget'
+            : null,
+        location: destination,
+        startDate: startDate,
+        endDate: endDate,
+        allDay: true,
+      );
+
+      final added = await Add2Calendar.addEvent2Cal(event);
+
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              added
+                  ? 'Trip added to calendar'
+                  : 'Could not open the calendar.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } catch (_) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open the calendar.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+  }
+
+  // ============================================================
+  // DATE ISO
+  // ============================================================
+
+  String _dateIso(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // ============================================================
+  // PARSE ACTIVITIES
+  // ============================================================
+
+  List<_Activity> _parseActivities(
+    dynamic activities,
+  ) {
+    final result = <_Activity>[];
+
+    if (activities is! List) {
+      return result;
+    }
+
+    for (final activity in activities) {
+      if (activity is! Map) {
+        continue;
+      }
+
+      final category =
+          activity['category']?.toString();
+
+      result.add(
+        _Activity(
+          icon: _getActivityIcon(category),
+          time: _stringValue(
+            activity['time'],
+          ),
+          title: _stringValue(
+            activity['title'],
+            'Activity',
+          ),
+          description: _stringValue(
+            activity['description'],
+          ),
+        ),
+      );
+    }
+
+    return result;
   }
 }
 

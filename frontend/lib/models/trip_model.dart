@@ -12,6 +12,8 @@ class TripModel {
   final String budget;
   final String travelStyle;
 
+  final double? budgetAmount;
+
   final List<String> interests;
 
   final List<dynamic> itinerary;
@@ -28,7 +30,8 @@ class TripModel {
     required this.travelers,
     required this.budget,
     required this.travelStyle,
-    required this.interests,
+    this.budgetAmount,
+    this.interests = const [],
     this.itinerary = const [],
     this.estimatedCost,
     this.createdAt,
@@ -77,6 +80,7 @@ class TripModel {
       'budget': budget,
       'travelStyle': travelStyle,
       'interests': interests,
+      'budgetAmount': budgetAmount,
     };
   }
 
@@ -94,6 +98,7 @@ class TripModel {
       'budget': budget,
       'travelStyle': travelStyle,
       'interests': interests,
+      'budgetAmount': budgetAmount,
       'itinerary': itinerary,
       'estimatedCost': estimatedCost,
       'createdAt': createdAt?.toIso8601String(),
@@ -243,6 +248,21 @@ class TripModel {
         json['budget']?.toString() ?? '';
 
     // ----------------------------------------------------------
+    // BUDGET AMOUNT
+    // ----------------------------------------------------------
+
+    final dynamic rawBudgetAmount =
+        json['budgetAmount'] ?? json['budget_amount'];
+
+    double? parsedBudgetAmount;
+
+    if (rawBudgetAmount is num) {
+      parsedBudgetAmount = rawBudgetAmount.toDouble();
+    } else if (rawBudgetAmount is String) {
+      parsedBudgetAmount = double.tryParse(rawBudgetAmount);
+    }
+
+    // ----------------------------------------------------------
     // TRAVEL STYLE
     // ----------------------------------------------------------
 
@@ -309,6 +329,7 @@ class TripModel {
       travelers: parsedTravelers,
       budget: parsedBudget,
       travelStyle: parsedTravelStyle,
+      budgetAmount: parsedBudgetAmount,
       interests: parsedInterests,
       itinerary: parsedItinerary,
       estimatedCost: parsedEstimatedCost,

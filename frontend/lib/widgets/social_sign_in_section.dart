@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/social_auth_service.dart';
+import '../core/config/app_config.dart';
 import '../core/theme/app_theme.dart';
+import 'google_g_logo.dart';
 import 'social_sign_in_button.dart';
 
 /// A "continue with" divider plus Google and Apple sign-in buttons.
 ///
-/// Runs the native provider flow, sends the ID token to the backend and,
-/// on success, calls [onSuccess]. Loads one provider at a time and shows
-/// errors via [ScaffoldMessenger].
+/// Renders nothing while [AppConfig.showThirdPartyAuth] is false (the Google /
+/// Apple buttons are API-gated off) — see app_config.dart for the one-line
+/// re-enable.
+///
+/// When enabled it runs the native provider flow, sends the ID token to the
+/// backend and, on success, calls [onSuccess]. Loads one provider at a time
+/// and shows errors via [ScaffoldMessenger].
 class SocialSignInSection extends StatefulWidget {
   final VoidCallback onSuccess;
 
@@ -46,15 +52,22 @@ class _SocialSignInSectionState extends State<SocialSignInSection> {
         _ => throw Exception('Unsupported sign-in provider.'),
       };
 
-      await _auth.socialLogin(
-        provider: result.provider,
-        idToken: result.idToken,
-        nonce: result.nonce,
-      );
+      if (provider == 'google') {
+        await _auth.googleLogin(idToken: result.idToken);
+      } else {
+        await _auth.socialLogin(
+          provider: result.provider,
+          idToken: result.idToken,
+          nonce: result.nonce,
+        );
+      }
 
       if (!mounted) return;
 
       widget.onSuccess();
+    } on SocialSignInCancelled {
+      // The user dismissed the native provider sheet; treat as "did nothing"
+      // rather than an error.
     } catch (error) {
       if (!mounted) return;
 
@@ -94,6 +107,10 @@ class _SocialSignInSectionState extends State<SocialSignInSection> {
 
   @override
   Widget build(BuildContext context) {
+    if (!AppConfig.showThirdPartyAuth) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -105,20 +122,7 @@ class _SocialSignInSectionState extends State<SocialSignInSection> {
           foregroundColor: const Color(0xFF1F2937),
           loading: _activeProvider == 'google',
           onPressed: _busy ? null : () => _handleProvider('google'),
-          icon: Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            child: const Icon(
-              Icons.g_mobiledata,
-              size: 22,
-              color: Color(0xFF4285F4),
-            ),
-          ),
+          icon: const GoogleGLogo(size: 22),
         ),
         const SizedBox(height: 12),
         SocialSignInButton(
