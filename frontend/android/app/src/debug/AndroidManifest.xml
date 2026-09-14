@@ -4,4 +4,11 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Debug builds only: allow plain (http://) traffic so the emulator can
+         reach a locally-run Tripora backend at http://10.0.2.2:5000. Android
+         blocks cleartext by default on API 28+, which makes widget tests pass
+         but real network calls fail. Release builds are untouched.
+    -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

@@ -36,12 +36,12 @@ class TripService {
     final token = await _getToken();
 
     if (token == null || token.isEmpty) {
-      // No token at all — force the user back to login rather than
-      // letting each screen show its own "not logged in" error state.
-      await AuthGuard.handleUnauthorized(
-        message: 'Please log in to continue.',
-      );
-
+      // No token at all simply means "not signed in". Do NOT force a
+      // redirect to /login here — that made the app bounce straight to
+      // the login page on launch. Instead surface a clean "not logged
+      // in" error so screens can render their guest state (e.g. the
+      // home screen's "Sign in to see your saved trips" card). Expired
+      // sessions are handled separately by the 401 branch in each call.
       throw Exception('You are not logged in.');
     }
 
