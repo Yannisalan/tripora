@@ -867,13 +867,10 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                     Expanded(
                       child: TextFormField(
                         controller: _amountController,
-                        autofocus: true,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
+                        autofocus: false,
+                        keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Amount',
-                          prefixText: '',
                           hintText: '0.00',
                         ),
                         validator: (value) {
