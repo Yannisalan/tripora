@@ -61,8 +61,8 @@ def main():
         "name": "Local Repro",
         "email": email,
         "password": "Loc4lRepro!x1",
-        "preferred_language": "en",
-        "preferred_currency": "USD",
+        "preferredLanguage": "en",
+        "preferredcurrency": "USD",
     }
     req = urllib.request.Request(
         "http://127.0.0.1:5000/api/auth/register",
