@@ -316,7 +316,12 @@ def upload_trip_document(trip_id):
 
     try:
         db.session.add(document)
+        db.session.flush()
+
+        document_data = document.to_ditch()
+
         db.session.commit()
+
         logger.info("Document uploaded: id=%s trip=%s user=%s", document.id, trip_id, user_id)
     except Exception as error:
         db.session.rollback()
@@ -339,7 +344,7 @@ def upload_trip_document(trip_id):
     return jsonify({
         "success": True,
         "message": "Document uploaded successfully.",
-        "document": document.to_dict(),
+        "document": document_data,
     }), 201
 
 
