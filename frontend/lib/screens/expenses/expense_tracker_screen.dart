@@ -862,29 +862,26 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _amountController,
-                        autofocus: false,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Amount',
-                          hintText: '0.00',
-                        ),
-                        validator: (value) {
-                          final parsed = double.tryParse(
-                            value?.trim() ?? '',
-                          );
-                          if (parsed == null || parsed <= 0) {
-                            return 'Enter a positive amount.';
-                          }
-                          return null;
-                        },
+                    TextFormField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Amount',
+                        hintText: '0.00',
                       ),
+                      validator: (value) {
+                        final parsed = double.tryParse(value?.trim() ?? '');
+                        if (parsed == null || parsed <= 0) {
+                          return 'Enter a positive amount.';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(width: 12),
+
+                    const SizedBox(height: 16),
+
                     DropdownButtonFormField<String>(
                       initialValue: _currency,
                       decoration: const InputDecoration(
@@ -893,10 +890,10 @@ class _ExpenseFormSheetState extends State<_ExpenseFormSheet> {
                       items: widget.availableCurrencies
                           .map(
                             (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c),
-                            ),
-                          )
+                          value: c,
+                          child: Text(c),
+                        ),
+                      )
                           .toList(),
                       onChanged: (value) {
                         if (value != null) {
