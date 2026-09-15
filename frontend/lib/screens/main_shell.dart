@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/l10n/app_localizations.dart';
 import '../core/theme/app_theme.dart';
 import '../screens/explore/explore_screen.dart';
 import '../screens/home/home_screen.dart';
@@ -44,31 +45,31 @@ class _MainShellState extends State<MainShell> {
             backgroundColor: AppColors.surface,
             indicatorColor: AppColors.primary.withValues(alpha: 0.14),
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
+                icon: const Icon(Icons.home_outlined),
+                selectedIcon: const Icon(Icons.home),
+                label: context.tr('nav.home'),
               ),
               NavigationDestination(
-                icon: Icon(Icons.explore_outlined),
-                selectedIcon: Icon(Icons.explore),
-                label: 'Explore',
+                icon: const Icon(Icons.explore_outlined),
+                selectedIcon: const Icon(Icons.explore),
+                label: context.tr('nav.explore'),
               ),
               NavigationDestination(
-                icon: Icon(Icons.flight_takeoff_outlined),
-                selectedIcon: Icon(Icons.flight_takeoff),
-                label: 'Flights',
+                icon: const Icon(Icons.flight_takeoff_outlined),
+                selectedIcon: const Icon(Icons.flight_takeoff),
+                label: context.tr('nav.flights'),
               ),
               NavigationDestination(
-                icon: Icon(Icons.card_travel_outlined),
-                selectedIcon: Icon(Icons.card_travel),
-                label: 'My Trips',
+                icon: const Icon(Icons.card_travel_outlined),
+                selectedIcon: const Icon(Icons.card_travel),
+                label: context.tr('nav.trips'),
               ),
               NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'Profile',
+                icon: const Icon(Icons.person_outline),
+                selectedIcon: const Icon(Icons.person),
+                label: context.tr('nav.profile'),
               ),
             ],
           ),

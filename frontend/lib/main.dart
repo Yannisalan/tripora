@@ -1,11 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/auth/auth_guard.dart';
+import 'core/preferences/app_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/route_tracker.dart';
 import 'routes/app_routes.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = AppPreferences.instance;
+
+  // Restore the saved language/currency, then kick off a best-effort
+  // refresh of the conversion table in the background.
+  await prefs.load();
+  unawaited(prefs.ensureRates());
+
   runApp(const TriporaApp());
 }
 
@@ -27,16 +40,32 @@ class _TriporaAppState extends State<TriporaApp> {
   Widget build(BuildContext context) {
     final themeMode = widget.themeMode ?? ThemeMode.system;
 
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Tripora',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
-      initialRoute: AppRoutes.home,
-      routes: AppRoutes.routes,
-      navigatorObservers: [_routeTracker],
-      navigatorKey: AuthGuard.navigatorKey,
+    // Rebuild the whole tree (locale, delegates) the instant the language
+    // or currency preference changes.
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Tripora',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode,
+          initialRoute: AppRoutes.home,
+          routes: AppRoutes.routes,
+          navigatorObservers: [_routeTracker],
+          navigatorKey: AuthGuard.navigatorKey,
+          locale: AppPreferences.instance.locale,
+          supportedLocales: AppPreferences.validLanguages
+              .map((code) => Locale(code))
+              .toList(),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        );
+      },
     );
   }
 }

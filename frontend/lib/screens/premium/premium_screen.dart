@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/subscription_model.dart';
 import '../../routes/app_routes.dart';
@@ -115,7 +116,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Widget _buildHeroCard() {
     final sub = _subscription;
     final premium = sub?.isPremium ?? false;
-    final price = sub != null ? sub.priceLabel : '\u2014';
+    final price = sub != null
+        ? AppPreferences.instance.formatMoney(
+            sub.price,
+            from: sub.currency,
+          )
+        : '\u2014';
 
     return Card(
       elevation: 0,

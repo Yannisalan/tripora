@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
 
@@ -326,7 +327,10 @@ class _PriceCard extends StatelessWidget {
               ),
             ),
             Text(
-              '$currency${amount.toStringAsFixed(2)}',
+              AppPreferences.instance.formatMoney(
+                amount,
+                from: currency,
+              ),
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,

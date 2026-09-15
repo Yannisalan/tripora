@@ -93,9 +93,8 @@ on **Cloudflare R2**, **Backblaze B2**, or **AWS S3**), then add:
   per-user policy on `users` (not forced, so unauthenticated flows still work).
   The Vault migration (`b2c3d4e5f6a7`) extends the same protection to
   `trip_documents`. The feature migration (`3e2d1c0b9a87`) adds the Expense
-  tracker (`trip_expenses`, RLS-owned), Place-coordinate cache
-  (`place_coordinates`), the password-reset columns on `users`, and
-  `trips.budget_amount`. The app sets the authenticated user id into the
+  tracker (`trip_expenses`, RLS-owned), the password-reset columns on `users`,
+  and `trips.budget_amount`. The app sets the authenticated user id into the
   `request.jwt.claims.sub` GUC per request (`SET LOCAL`) so the database
   enforces ownership too. RLS fails closed whenever the GUC is unset. Applying
   the migrations via `flask db upgrade` is required for the constraints to take
@@ -129,15 +128,6 @@ log-only mode, reset codes never leave the server log.
 > **confirmed personal email** without owning a custom domain. To use another
 > provider, only change `MAIL_HOST`/`MAIL_PORT`/`MAIL_USER`/`MAIL_PASSWORD`/
 > `MAIL_FROM` — no code changes needed.
-
-### Interactive trip map (geocoding + routing)
-
-The Travel Map resolves the itinerary's free-text `location` fields through
-**Nominatim** and draws routes through **OSRM** — both proxied by the backend
-(`routes/places.py`) so keys are never exposed to the client and upstream
-ratelimits are absorbed by an in-DB cache (`place_coordinates`). No env vars
-are required. If the external services are down the map degrades gracefully
-(markers still plot from cache; routing simply draws no line).
 
 ### Expense tracker
 

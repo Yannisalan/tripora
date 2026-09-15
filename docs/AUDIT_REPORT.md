@@ -9,12 +9,11 @@ succeeds, Alembic migration chain renders valid SQL.
 ## A. Summary
 
 This engagement audited the Tripora codebase and fixed security/UX gaps, then
-shipped four user-facing features end to end:
+shipped three user-facing features end to end:
 
 1. **Forgot password** — full email -> code -> reset flow (hashed codes/tokens).
 2. **Expense Tracker** — per-trip budget + categorized expenses, RLS-protected.
-3. **Live interactive Travel Map** — geocoded itinerary markers + driving routes.
-4. **Trip Vault warning** — convenience-only acknowledgement, persisted per trip.
+3. **Trip Vault warning** — convenience-only acknowledgement, persisted per trip.
 
 Plus: removed **Packing** entirely, **hid Hotels** (code preserved, gated by a
 build flag), enabled system theme + fixed a broken logo path, and wired the
@@ -75,27 +74,7 @@ Rate buckets: `expenses.read` (60/60s), `expenses.write` (30/600s).
 
 ---
 
-## D. Backend — Travel Map
-
-`models/place_coordinate.py` — cache of geocoding results. Note: the ORM
-attribute is `location_query` mapped to DB column `query`, because a column
-named `query` would shadow SQLAlchemy's `Model.query`.
-
-`routes/places.py`:
-
-- `GET /api/places/geocode?query=` — Nominatim proxy (identifying
-  `User-Agent`); cache hits **and** misses for 24h; upstream failure returns
-  **503**; unresolvable returns `200 {geocoded:false, coordinate:null}`.
-- `GET /api/places/route?from_lat=&from_lng=&to_lat=&to_lng=` — OSRM proxy,
-  lon/lat to lat/lon swap; no route / upstream failure returns
-  `200 {routed:false, coordinates:[]}` (never crashes the map).
-
-Migration `3e2d1c0b9a87` creates `place_coordinates` (unique `query` index,
-RLS policies) alongside the expense + reset columns.
-
----
-
-## E. Backend — Vault (existing feature, audited)
+## D. Backend — Vault (existing feature, audited)
 
 `trip_documents` + S3-compatible storage (`storage_service.py`) were already in
 place; audit confirmed ownership scoping, mime/extension allow-listing and a
@@ -103,7 +82,7 @@ place; audit confirmed ownership scoping, mime/extension allow-listing and a
 
 ---
 
-## F. Frontend — auth & theme fixes
+## E. Frontend — auth & theme fixes
 
 - `main.dart` — `MaterialApp` now attaches `navigatorKey: AuthGuard.navigatorKey`
   (was missing; `AuthGuard.handleUnauthorized` could never navigate) and
@@ -118,7 +97,7 @@ place; audit confirmed ownership scoping, mime/extension allow-listing and a
 
 ---
 
-## G. Frontend — Expense Tracker UI
+## F. Frontend — Expense Tracker UI
 
 `models/expense_model.dart` (mirrors backend vocab), `services/expense_service.dart`,
 `screens/expenses/expense_tracker_screen.dart`:
@@ -135,25 +114,7 @@ place; audit confirmed ownership scoping, mime/extension allow-listing and a
 
 ---
 
-## H. Frontend — Interactive Map
-
-`models/trip_model.dart` exposes itinerary; `services/places_service.dart`
-wraps `/api/places/geocode` and `/api/places/route`.
-
-`screens/map/trip_map_screen.dart` (flutter_map 8.3, latlong2, geolocator):
-
-- Collects ordered unique locations from itinerary days + destination.
-- Sequentially geocodes each through the backend (server-side cache absorbs
-  repeated lookups).
-- Plots numbered gradient markers for each resolved spot; best-effort driving
-  polyline between consecutive markers via OSRM.
-- Top banner shows resolved count; bottom legend scrolls through spots.
-- "Locate me" FAB (geolocator, permission-aware; falls back to snackbar).
-- Destinations unresolvable or route unavailable degrade gracefully.
-
----
-
-## I. Frontend — Vault warning
+## G. Frontend — Vault warning
 
 `vault_screen.dart`:
 
@@ -166,14 +127,13 @@ wraps `/api/places/geocode` and `/api/places/route`.
 
 ---
 
-## J. Deck & feature gating
+## H. Deck & feature gating
 
 `screens/trip_details.dart`:
 
-- Removed Hotels and Packing tiles from the deck (6 tiles: Activities, Expenses,
-  Vault, Live Map).
+- Removed Hotels and Packing tiles from the deck (3 tiles: Activities, Expenses,
+  Vault).
 - Expenses -> `ExpenseTrackerScreen(trip: _trip)`.
-- Live Map -> `TripMapScreen(trip: _trip)`.
 - Removed orphaned `_showComingSoon` and `_showExpensesSheet` methods (unused
   after deck edits).
 - `premium_travel_screen.dart` — Hotels tile now gated behind
@@ -182,16 +142,15 @@ wraps `/api/places/geocode` and `/api/places/route`.
 
 ---
 
-## K. Deps & cleanup
+## I. Deps & cleanup
 
-- `pubspec.yaml`: removed `provider`, added `flutter_map`, `latlong2`,
-  `geolocator` (resolved versions: 8.3.2, 0.10.1, 14.0.3).
+- `pubspec.yaml`: removed `provider`.
 - Deleted 4 empty files: `widgets/feature_card.dart`, `footer.dart`,
   `hero_section.dart`, `tripora_navbar.dart`.
 
 ---
 
-## L. Migration
+## J. Migration
 
 `3e2d1c0b9a87_expenses_places_password_reset_budget.py` (down_revision
 `b2c3d4e5f6a7`):
@@ -200,7 +159,6 @@ wraps `/api/places/geocode` and `/api/places/route`.
   `reset_token_hash` (indexed), `reset_token_expires_at`.
 - `trips`: `budget_amount` Numeric(12,2).
 - `trip_expenses`: FKs CASCADE, indexes, RLS ENABLE/FORCE + 4 owner policies.
-- `place_coordinates`: `query` unique index, RLS policies.
 - Downgrade drops all of the above.
 - Verified: `flask db upgrade --sql` renders valid Postgres DDL.
 
@@ -210,12 +168,12 @@ wraps `/api/places/geocode` and `/api/places/route`.
 
 Added buckets in `config/settings.py` + `services/rate_limiter.py`:
 `auth.forgot_password/forgot_password_verify/reset_password` (5/900),
-`expenses.read` (60/60), `expenses.write` (30/600), `places.geocode` (30/60),
-`places.route` (30/60). All scoped per-user ID; no auth default to `"none"`.
+`expenses.read` (60/60), `expenses.write` (30/600). All scoped per-user ID; no
+auth default to `"none"`.
 
 ---
 
-## N. Test results
+## L. Test results
 
 | Suite | Pass | Notes |
 |-------|------|-------|
@@ -231,12 +189,10 @@ security suite.
 
 ---
 
-## O. Known limitations
+## M. Known limitations
 
 - **Expense currency**: non-standard currencies are stored as-is with no
   conversion; budget/spent totals are in the user's `preferred_currency` only.
-- **Geocoding**: Nominatim is best-effort and may fail on obscure venue names;
-  the map degrades gracefully.
 - **Hotels**: backend routes remain active; frontend entry is gated behind
   `HOTEL_FEATURE_ENABLED=true` at build time.
 - **Rate limiter**: in-memory; resets on redeploy; suitable for single-instance
@@ -244,51 +200,44 @@ security suite.
 
 ---
 
-## P. Env vars added / relevant
+## N. Env vars added / relevant
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
 | `HOTEL_FEATURE_ENABLED` (dart-define) | `false` | Re-enables the Hotels entry points in the UI |
 | `RESEND_API_KEY` | unset | Optional fallback email provider |
 
-All other new functionality (expenses, map, reset) requires no new env vars
+All other new functionality (expenses, reset) requires no new env vars
 beyond what was already in `DEPLOYMENT.md`.
 
 ---
 
-## Q. Security notes
+## O. Security notes
 
 - Codes/tokens hashed before storage; raw values never logged.
 - Generic reset message prevents account enumeration.
 - Reset code has max 5 attempts then lockout; token is single-use.
-- No new secrets or API keys required for geocoding/routing (Nominatim and
-  OSRM are public, proxied through the backend).
 
 ---
 
-## R. Files created (new)
+## P. Files created (new)
 
 | File | Purpose |
 |------|---------|
 | `backend/services/email_service.py` | SMTP / Resend / log-only email sender |
 | `backend/models/expense.py` | Expense model + constants |
-| `backend/models/place_coordinate.py` | Geocode cache model |
 | `backend/routes/expenses.py` | Expense CRUD blueprint |
-| `backend/routes/places.py` | Geocode + route blueprint |
 | `backend/migrations/versions/3e2d1c0b9a87_*.py` | Alembic migration |
 | `security/tests/test_password_reset.py` | Reset flow tests |
 | `security/tests/test_expenses.py` | Expense API tests |
-| `security/tests/test_places.py` | Places API tests |
 | `frontend/lib/models/expense_model.dart` | Expense client model |
 | `frontend/lib/services/expense_service.dart` | Expense API client |
-| `frontend/lib/services/places_service.dart` | Places API client |
 | `frontend/lib/screens/auth/forgot_password_screen.dart` | Forgot password UI |
 | `frontend/lib/screens/expenses/expense_tracker_screen.dart` | Expense tracker UI |
-| `frontend/lib/screens/map/trip_map_screen.dart` | Interactive map UI |
 
 ---
 
-## S. Files modified (key)
+## Q. Files modified (key)
 
 | File | Change |
 |------|--------|
@@ -297,25 +246,24 @@ beyond what was already in `DEPLOYMENT.md`.
 | `backend/models/__init__.py` | Added new model exports |
 | `backend/routes/auth.py` | Forgot/reset endpoints + redact |
 | `backend/routes/trips.py` | `budgetAmount` in parse/serialize |
-| `backend/app.py` | Registered `expenses_bp`, `places_bp` |
+| `backend/app.py` | Registered `expenses_bp` |
 | `backend/config/settings.py` | Rate limit reset defaults |
-| `backend/services/rate_limiter.py` | Reset + expense + places buckets |
+| `backend/services/rate_limiter.py` | Reset + expense buckets |
 | `frontend/lib/main.dart` | `navigatorKey` + `ThemeMode.system` |
 | `frontend/lib/models/trip_model.dart` | `budgetAmount` field |
 | `frontend/lib/routes/app_routes.dart` | `forgotPassword` route |
 | `frontend/lib/screens/auth/login_screen.dart` | Logo path + forgot-password link |
 | `frontend/lib/screens/auth/register_screen.dart` | Logo path fix |
-| `frontend/lib/screens/trip_details.dart` | Deck restructure + new imports |
 | `frontend/lib/screens/vault/vault_screen.dart` | Warning banner + ack gate |
 | `frontend/lib/screens/travel/premium_travel_screen.dart` | Hotels gated |
 | `frontend/lib/core/config/app_config.dart` | `hotelFeatureEnabled` |
 | `frontend/lib/services/auth_service.dart` | Reset methods |
-| `frontend/pubspec.yaml` | Deps (remove provider, add flutter_map etc.) |
+| `frontend/pubspec.yaml` | Deps cleanup |
 | `docs/DEPLOYMENT.md` | Env docs for new features |
 
 ---
 
-## T. Files removed
+## R. Files removed
 
 | File | Reason |
 |------|--------|
@@ -326,12 +274,11 @@ beyond what was already in `DEPLOYMENT.md`.
 
 ---
 
-## U. Next steps
+## S. Next steps
 
 1. **Hotels re-enable**: build with `--dart-define=HOTEL_FEATURE_ENABLED=true`
    once the booking backend is validated.
 2. **Expense currency conversion**: add a rates API (e.g. exchangerate.host)
    for real-time totals across mixed currencies.
 3. **Redis rate limiter**: needed when scaling beyond a single Render instance.
-4. **PWA offline caching**: service worker for the map tiles (already tiled
-   by OSM) and expense data.
+4. **PWA offline caching**: service worker for expense data.

@@ -11,6 +11,11 @@
     flutter:
       sdk: flutter
 
+    flutter_localizations:
+      sdk: flutter
+
+    intl: any
+
     cupertino_icons: ^1.0.8
     http: ^1.6.0
     shared_preferences: ^2.5.0
@@ -23,9 +28,6 @@
     url_launcher: ^6.3.2
     web: ^1.1.1
     http_parser: ^4.1.2
-    flutter_map: ^8.3.2
-    latlong2: ^0.10.1
-    geolocator: ^14.0.3
 
   dev_dependencies:
     flutter_test:

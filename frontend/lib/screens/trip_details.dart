@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_localizations.dart';
+import '../../core/preferences/app_preferences.dart';
 import '../../core/utils/logger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
 import '../../widgets/shimmer_loader.dart';
 import 'expenses/expense_tracker_screen.dart';
-import 'map/trip_map_screen.dart';
 import 'vault/vault_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
@@ -1359,20 +1360,20 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
         final tiles = [
           _statTile(
-            label: 'BUDGET',
+            label: context.tr('details.budget'),
             value: _trip.budget.isEmpty ? '—' : _trip.budget,
             icon: Icons.account_balance_wallet_outlined,
           ),
           _statTile(
-            label: 'PLAN COMPLETE',
+            label: context.tr('details.planComplete'),
             value: '${(planPercent * 100).round()}%',
             icon: Icons.map_outlined,
             progress: planPercent,
           ),
           _statTile(
-            label: 'DURATION',
+            label: context.tr('details.duration'),
             value:
-            '${_trip.numberOfDays} ${_trip.numberOfDays == 1 ? 'day' : 'days'}',
+                '${_trip.numberOfDays} ${_trip.numberOfDays == 1 ? 'day' : 'days'}',
             icon: Icons.schedule_outlined,
           ),
         ];
@@ -1467,11 +1468,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  /// 6-tile "command deck" grid. Activities, Expenses, and Vault route
-  /// to real functionality already in this screen/app. Live Map shows the
-  /// interactive travel map. Hotels and Packing tiles are intentionally
-  /// absent from the deck — hotels shipping remains gated behind
-  /// [AppConfig.hotelFeatureEnabled] and packing was removed entirely.
+  /// "Command deck" grid. Activities, Expenses, and Vault route
+  /// to real functionality already in this screen/app. Hotels and Packing
+  /// tiles are intentionally absent from the deck — hotels shipping remains
+  /// gated behind [AppConfig.hotelFeatureEnabled] and packing was removed
+  /// entirely.
   Widget _buildCommandDeck() {
     final totalActivities = _trip.itinerary.fold<int>(0, (sum, day) {
       if (day is! Map) return sum;
@@ -1482,34 +1483,29 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final items = <_DeckItem>[
       _DeckItem(
         Icons.local_activity_outlined,
-        'Activities',
-        '$totalActivities planned',
+        context.tr('details.activities'),
+        context.tr('details.activitiesPlanned')
+            .replaceFirst('{n}', '$totalActivities'),
         _showActivitiesSheet,
       ),
       _DeckItem(
         Icons.account_balance_wallet_outlined,
-        'Expenses',
-        'Track your spending',
+        context.tr('details.expenses'),
+        context.tr('details.trackSpending'),
         _openExpenseTracker,
       ),
       _DeckItem(
         Icons.folder_outlined,
-        'Vault',
-        'Trip documents',
+        context.tr('details.vault'),
+        context.tr('details.tripDocuments'),
             _openVault,
-      ),
-      _DeckItem(
-        Icons.map_outlined,
-        'Live Map',
-        'Interactive map',
-            _openTripMap,
       ),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionEyebrow('TRIP COMMAND DECK'),
+        _sectionEyebrow(context.tr('details.commandDeck')),
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 3,
@@ -1603,22 +1599,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ExpenseTrackerScreen(trip: _trip),
-      ),
-    );
-  }
-
-  /// Opens the trip's interactive map.
-  void _openTripMap() {
-    final tripId = _trip.id;
-
-    if (tripId == null) {
-      _showMessage('This trip cannot open its map yet.');
-      return;
-    }
-
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TripMapScreen(trip: _trip),
       ),
     );
   }
@@ -1828,58 +1808,73 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final currency = cost['currency']?.toString() ?? 'USD';
     final total = cost['estimatedTotal'] ?? cost['estimated_total'] ?? 0;
 
+    final prefs = AppPreferences.instance;
+
     if (breakdown is! Map) {
-      return _sectionCard(child: _costHeader(currency, total));
+      return _sectionCard(
+        child: _costHeader(currency, prefs.formatMoney(total, from: currency)),
+      );
     }
 
-    final accommodation = breakdown['accommodation']?.toString() ?? '0';
-    final food = breakdown['food']?.toString() ?? '0';
-    final activities = breakdown['activities']?.toString() ?? '0';
-    final transportation = breakdown['transportation']?.toString() ?? '0';
+    final accommodation =
+        prefs.formatMoney(breakdown['accommodation'] ?? 0, from: currency);
+    final food =
+        prefs.formatMoney(breakdown['food'] ?? 0, from: currency);
+    final activities =
+        prefs.formatMoney(breakdown['activities'] ?? 0, from: currency);
+    final transportation =
+        prefs.formatMoney(breakdown['transportation'] ?? 0, from: currency);
 
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionEyebrow('ESTIMATED COST'),
+          _sectionEyebrow(context.tr('details.estimatedCost')),
           const SizedBox(height: 8),
-          _costHeader(currency, total),
+          _costHeader(
+            currency,
+            prefs.formatMoney(total, from: currency),
+          ),
           const SizedBox(height: 20),
           const Divider(color: _border),
           const SizedBox(height: 16),
           _buildCostRow(
             Icons.hotel_outlined,
-            'Accommodation',
-            '$currency $accommodation',
+            context.tr('it.accommodation'),
+            accommodation,
           ),
-          _buildCostRow(Icons.restaurant_outlined, 'Food', '$currency $food'),
+          _buildCostRow(
+            Icons.restaurant_outlined,
+            context.tr('it.food'),
+            food,
+          ),
           _buildCostRow(
             Icons.local_activity_outlined,
-            'Activities',
-            '$currency $activities',
+            context.tr('it.activities'),
+            activities,
           ),
           _buildCostRow(
             Icons.directions_car_outlined,
-            'Transportation',
-            '$currency $transportation',
+            context.tr('it.transportation'),
+            transportation,
           ),
         ],
       ),
     );
   }
 
-  Widget _costHeader(String currency, dynamic total) {
+  Widget _costHeader(String currency, String formattedTotal) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: Text(
-            'Projected trip spend',
+            context.tr('details.projectedTripSpend'),
             style: const TextStyle(fontSize: 14, color: _slate500),
           ),
         ),
         Text(
-          '$currency $total',
+          formattedTotal,
           style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 26,

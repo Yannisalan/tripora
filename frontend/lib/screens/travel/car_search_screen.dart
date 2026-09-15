@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
 import 'premium_gate.dart';
@@ -381,7 +382,10 @@ class _CarCard extends StatelessWidget {
                   ],
                   const SizedBox(height: 8),
                   Text(
-                    '$currency${amount.toStringAsFixed(2)}',
+                    AppPreferences.instance.formatMoney(
+                      amount,
+                      from: currency,
+                    ),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

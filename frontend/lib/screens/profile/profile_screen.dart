@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/l10n/app_localizations.dart';
+import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/subscription_model.dart';
 import '../../routes/app_routes.dart';
@@ -40,9 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-
-  String _preferredLanguage = 'en';
-  String _preferredCurrency = 'USD';
 
   static const Color _midnight = Color(0xFF1E1B4B);
   static const Color _blue = Color(0xFF3B82F6);
@@ -86,11 +85,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
 
-      _preferredLanguage =
+      final language =
           (user['preferredLanguage'] ?? 'en').toString().trim();
-
-      _preferredCurrency =
+      final currency =
           (user['preferredCurrency'] ?? 'USD').toString().trim();
+
+      await AppPreferences.instance.setLanguage(language);
+      await AppPreferences.instance.setCurrency(currency);
 
       setState(() {
         _isLoading = false;
@@ -147,8 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         password: newPassword.isEmpty ? null : newPassword,
         currentPassword:
             currentPassword.isEmpty ? null : currentPassword,
-        preferredLanguage: _preferredLanguage,
-        preferredCurrency: _preferredCurrency,
+        preferredLanguage: AppPreferences.instance.language,
+        preferredCurrency: AppPreferences.instance.currency,
       );
 
       final user = response['user'] as Map<String, dynamic>;
@@ -158,11 +159,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
 
-      _preferredLanguage =
-          (user['preferredLanguage'] ?? 'en').toString().trim();
-
-      _preferredCurrency =
-          (user['preferredCurrency'] ?? 'USD').toString().trim();
+      await AppPreferences.instance.setLanguage(
+        (user['preferredLanguage'] ?? 'en').toString().trim(),
+      );
+      await AppPreferences.instance.setCurrency(
+        (user['preferredCurrency'] ?? 'USD').toString().trim(),
+      );
 
       _currentPasswordController.clear();
       _newPasswordController.clear();
@@ -181,6 +183,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {
         _isSaving = false;
+        _errorMessage =
+            error.toString().replaceFirst('Exception: ', '').trim();
+      });
+    }
+  }
+
+  /// Background fire-and-forget sync of the current language/currency to the
+  /// server. A failed sync surfaces the backend's real error message briefly
+  /// so the user can fix it (e.g. unsupported currency) but never blocks the
+  /// local instant-apply.
+  Future<void> _syncPreferences() async {
+    try {
+      await _authService.updateCurrentUser(
+        preferredLanguage: AppPreferences.instance.language,
+        preferredCurrency: AppPreferences.instance.currency,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _successMessage = context.tr('profile.prefSynced');
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
         _errorMessage =
             error.toString().replaceFirst('Exception: ', '').trim();
       });
@@ -284,9 +312,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         titleSpacing: 20,
-        title: const Text(
-          'My Account',
-          style: TextStyle(
+        title: Text(
+          context.tr('profile.myAccount'),
+          style: const TextStyle(
             fontFamily: 'Noto Serif',
             fontSize: 22,
             fontWeight: FontWeight.w600,
@@ -359,8 +387,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
 
                             _buildSectionLabel(
-                              eyebrow: 'ACCOUNT',
-                              title: 'Personal details',
+                              eyebrow: context.tr('profile.accountEyebrow'),
+                              title: context.tr('profile.personalDetails'),
                             ),
                             const SizedBox(height: 14),
 
@@ -405,14 +433,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 32),
 
                             _buildSectionLabel(
-                              eyebrow: 'TRAVEL SETTINGS',
-                              title: 'Preferences',
+                              eyebrow:
+                                  context.tr('profile.travelSettingsEyebrow'),
+                              title: context.tr('profile.preferences'),
                             ),
                             const SizedBox(height: 14),
 
                             _buildDropdown<String>(
-                              value: _preferredLanguage,
-                              label: 'Preferred language',
+                              value: AppPreferences.instance.language,
+                              label: context.tr('profile.preferredLanguage'),
                               icon: Icons.language_outlined,
                               items: const [
                                 DropdownMenuItem(
@@ -442,9 +471,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                               onChanged: (value) {
                                 if (value != null) {
-                                  setState(() {
-                                    _preferredLanguage = value;
-                                  });
+                                  AppPreferences.instance.setLanguage(value);
+                                  _syncPreferences();
                                 }
                               },
                             ),
@@ -452,8 +480,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 14),
 
                             _buildDropdown<String>(
-                              value: _preferredCurrency,
-                              label: 'Preferred currency',
+                              value: AppPreferences.instance.currency,
+                              label: context.tr('profile.preferredCurrency'),
                               icon: Icons.payments_outlined,
                               items: const [
                                 DropdownMenuItem(
@@ -488,12 +516,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   value: 'CHF',
                                   child: Text('CHF — Swiss Franc'),
                                 ),
+                                DropdownMenuItem(
+                                  value: 'INR',
+                                  child: Text('INR — Indian Rupee'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'CFA',
+                                  child: Text('CFA — West African Franc'),
+                                ),
                               ],
                               onChanged: (value) {
                                 if (value != null) {
-                                  setState(() {
-                                    _preferredCurrency = value;
-                                  });
+                                  AppPreferences.instance.setCurrency(value);
+                                  _syncPreferences();
                                 }
                               },
                             ),
@@ -714,6 +749,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _premiumPriceLabel(SubscriptionModel? subscription) {
+    if (subscription == null) {
+      return '\u2014';
+    }
+
+    return AppPreferences.instance.formatMoney(
+      subscription.price,
+      from: subscription.currency,
+    );
+  }
+
   Widget _buildPremiumCard() {
     final subscription = _subscription;
     final isPremium = subscription?.isPremium ?? false;
@@ -786,7 +832,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       isPremium
                           ? 'Unlock flight prices and daily weather.'
                           : 'Flight prices and daily weather — from '
-                              '${subscription?.priceLabel ?? '\u2014'}/month',
+                              '${_premiumPriceLabel(subscription)}/month',
                       style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 13,
@@ -1140,7 +1186,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 19,
               ),
         label: Text(
-          _isSaving ? 'Saving...' : 'Save Changes',
+          _isSaving
+              ? context.tr('profile.saving')
+              : context.tr('profile.saveChanges'),
           style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,

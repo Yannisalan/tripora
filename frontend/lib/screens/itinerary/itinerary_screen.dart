@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
+import '../../core/l10n/app_localizations.dart';
+import '../../core/preferences/app_preferences.dart';
 import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
@@ -556,12 +558,13 @@ class ItineraryScreen extends StatelessWidget {
             children: [
               _buildHeaderInfo(
                 Icons.calendar_today_outlined,
-                '$numberOfDays days',
+                '$numberOfDays ${context.tr('it.days')}',
               ),
               _buildHeaderInfo(
                 Icons.people_outline,
-                '$travelers traveler'
-                '${travelers == 1 ? '' : 's'}',
+                travelers == 1
+                    ? '1 ${context.tr('it.travelerOne')}'
+                    : '$travelers ${context.tr('it.travelerPlural')}',
               ),
               _buildHeaderInfo(
                 Icons.account_balance_wallet_outlined,
@@ -781,6 +784,8 @@ class ItineraryScreen extends StatelessWidget {
             ? Map<String, dynamic>.from(breakdown)
             : {};
 
+    final prefs = AppPreferences.instance;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -813,13 +818,13 @@ class ItineraryScreen extends StatelessWidget {
 
               const SizedBox(width: 12),
 
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ESTIMATED COST',
-                      style: TextStyle(
+                      context.tr('it.estimatedCost'),
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -827,10 +832,10 @@ class ItineraryScreen extends StatelessWidget {
                         color: _mutedText,
                       ),
                     ),
-                    SizedBox(height: 3),
+                    const SizedBox(height: 3),
                     Text(
-                      'Trip budget overview',
-                      style: TextStyle(
+                      context.tr('it.tripBudgetOverview'),
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -846,7 +851,7 @@ class ItineraryScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           Text(
-            '$currency $total',
+            prefs.formatMoney(total, from: currency),
             style: const TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 34,
@@ -857,9 +862,9 @@ class ItineraryScreen extends StatelessWidget {
 
           const SizedBox(height: 6),
 
-          const Text(
-            'Approximate cost for your trip. Actual prices may vary.',
-            style: TextStyle(
+          Text(
+            context.tr('it.approxCost'),
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12,
               height: 1.5,
@@ -878,28 +883,28 @@ class ItineraryScreen extends StatelessWidget {
 
             _buildCostRow(
               context,
-              'Accommodation',
+              context.tr('it.accommodation'),
               costs['accommodation'],
               currency,
             ),
 
             _buildCostRow(
               context,
-              'Food',
+              context.tr('it.food'),
               costs['food'],
               currency,
             ),
 
             _buildCostRow(
               context,
-              'Transportation',
+              context.tr('it.transportation'),
               costs['transportation'],
               currency,
             ),
 
             _buildCostRow(
               context,
-              'Activities',
+              context.tr('it.activities'),
               costs['activities'],
               currency,
             ),
@@ -936,7 +941,7 @@ class ItineraryScreen extends StatelessWidget {
             ),
           ),
           Text(
-            '$currency ${value ?? 0}',
+            AppPreferences.instance.formatMoney(value ?? 0, from: currency),
             style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 13,

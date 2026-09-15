@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/auth/auth_guard.dart';
 import '../core/config/app_config.dart';
+import '../core/preferences/app_preferences.dart';
 import '../models/trip_model.dart';
 
 class TripService {
@@ -76,10 +77,14 @@ class TripService {
   Future<Map<String, dynamic>> generateTrip(TripModel trip) async {
     final headers = await _headers();
 
+    final body = Map<String, dynamic>.from(trip.toJson())
+      ..['preferredLanguage'] = AppPreferences.instance.language
+      ..['preferredCurrency'] = AppPreferences.instance.currency;
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/trips/generate'),
       headers: headers,
-      body: jsonEncode(trip.toJson()),
+      body: jsonEncode(body),
     );
 
     final decoded = _decodeResponse(response);

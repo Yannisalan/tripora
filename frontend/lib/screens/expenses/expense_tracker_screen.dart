@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/logger.dart';
 import '../../models/expense_model.dart';
@@ -126,31 +127,11 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     return _totalSpent / budget;
   }
 
-  String _currencyLabel() {
-    switch (_budgetCurrency) {
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-        return '£';
-      case 'JPY':
-        return '¥';
-      case 'CAD':
-        return 'CA\$';
-      case 'AUD':
-        return 'A\$';
-      case 'CHF':
-        return 'CHF ';
-      case 'AED':
-        return 'AED ';
-      default:
-        return '$_budgetCurrency ';
-    }
-  }
-
-  String _formatAmount(double amount) {
-    return '${_currencyLabel()}${amount.toStringAsFixed(2)}';
+  String _formatAmount(double amount, [String? from]) {
+    return AppPreferences.instance.formatMoney(
+      amount,
+      from: from ?? _budgetCurrency,
+    );
   }
 
   Map<String, double> _categoryTotals() {
@@ -1035,6 +1016,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
             formattedAmount:
             _formatAmount(
               expense.amount,
+              expense.currency,
             ),
             onTap: () =>
                 _openExpenseSheet(
