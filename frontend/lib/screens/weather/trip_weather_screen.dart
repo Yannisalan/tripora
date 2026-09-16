@@ -48,7 +48,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
   static const Map<String, IconData> _iconMap = {
     'clear': Icons.wb_sunny_outlined,
     'mostly_clear': Icons.wb_sunny_outlined,
-    'partly_cloudy': Icons.partly_cloudy_day_outlined,
+    'partly_cloudy': Icons.cloud_outlined,
     'cloudy': Icons.cloud_outlined,
     'fog': Icons.foggy,
     'drizzle': Icons.grain_outlined,
