@@ -249,27 +249,3 @@ class TripDetailsShimmer extends StatelessWidget {
     );
   }
 }
-
-/// Premium screen skeleton loader.
-class PremiumScreenShimmer extends StatelessWidget {
-  const PremiumScreenShimmer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
-          ShimmerLoader(height: 160, borderRadius: BorderRadius.all(Radius.circular(16))),
-          SizedBox(height: 20),
-          ShimmerLoader(height: 90, borderRadius: BorderRadius.all(Radius.circular(16))),
-          SizedBox(height: 20),
-          ShimmerLoader(height: 90, borderRadius: BorderRadius.all(Radius.circular(16))),
-          SizedBox(height: 20),
-          ShimmerLoader(height: 70, borderRadius: BorderRadius.all(Radius.circular(16))),
-        ],
-      ),
-    );
-  }
-}

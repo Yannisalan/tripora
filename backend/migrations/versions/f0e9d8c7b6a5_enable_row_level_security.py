@@ -16,8 +16,8 @@ Policies below read that value and only allow rows whose ``user_id``/``id``
 matches.
 
 Notes:
-- ``trips`` and ``subscriptions`` are only ever touched through authenticated
-  routes, so they are FORCEd on (the owning role is subject to RLS too).
+- ``trips`` is only ever touched through authenticated routes, so it is FORCEd
+  on (the owning role is subject to RLS too).
 - ``users`` is read/inserted by unauthenticated flows (register, login,
   verify-email, resend) before a JWT/sub exists, so it is enabled WITHOUT
   FORCE. The per-user policy protects ``users`` against any non-owner role,
@@ -66,30 +66,6 @@ def upgrade():
     )
 
     # ---------------------------------------------------------------
-    # SUBSCRIPTIONS  (force)
-    # ---------------------------------------------------------------
-    op.execute("ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY")
-    op.execute("ALTER TABLE subscriptions FORCE ROW LEVEL SECURITY")
-
-    op.execute(
-        "CREATE POLICY subscriptions_select_owner ON subscriptions "
-        "FOR SELECT USING (user_id = %s)" % _RLS_SUB
-    )
-    op.execute(
-        "CREATE POLICY subscriptions_insert_owner ON subscriptions "
-        "FOR INSERT WITH CHECK (user_id = %s)" % _RLS_SUB
-    )
-    op.execute(
-        "CREATE POLICY subscriptions_update_owner ON subscriptions "
-        "FOR UPDATE USING (user_id = %s) "
-        "WITH CHECK (user_id = %s)" % (_RLS_SUB, _RLS_SUB)
-    )
-    op.execute(
-        "CREATE POLICY subscriptions_delete_owner ON subscriptions "
-        "FOR DELETE USING (user_id = %s)" % _RLS_SUB
-    )
-
-    # ---------------------------------------------------------------
     # USERS  (enabled, not forced)
     # ---------------------------------------------------------------
     op.execute("ALTER TABLE users ENABLE ROW LEVEL SECURITY")
@@ -111,12 +87,6 @@ def downgrade():
     op.execute("DROP POLICY IF EXISTS users_update_owner ON users")
     op.execute("DROP POLICY IF EXISTS users_select_owner ON users")
     op.execute("ALTER TABLE users DISABLE ROW LEVEL SECURITY")
-
-    op.execute("DROP POLICY IF EXISTS subscriptions_delete_owner ON subscriptions")
-    op.execute("DROP POLICY IF EXISTS subscriptions_update_owner ON subscriptions")
-    op.execute("DROP POLICY IF EXISTS subscriptions_insert_owner ON subscriptions")
-    op.execute("DROP POLICY IF EXISTS subscriptions_select_owner ON subscriptions")
-    op.execute("ALTER TABLE subscriptions DISABLE ROW LEVEL SECURITY")
 
     op.execute("DROP POLICY IF EXISTS trips_delete_owner ON trips")
     op.execute("DROP POLICY IF EXISTS trips_update_owner ON trips")

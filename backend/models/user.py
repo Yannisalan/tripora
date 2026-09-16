@@ -163,17 +163,6 @@ class User(db.Model):
     )
 
     # ========================================================
-    # SUBSCRIPTION
-    # ========================================================
-
-    subscription = db.relationship(
-        "Subscription",
-        uselist=False,
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-
-    # ========================================================
     # CREATED AT
     # ========================================================
 
@@ -189,17 +178,6 @@ class User(db.Model):
 
     trips = db.relationship(
         "Trip",
-        back_populates="user",
-        lazy=True,
-    )
-
-    # ========================================================
-    # TRIP DOCUMENTS (VAULT)
-    # ========================================================
-
-    documents = db.relationship(
-        "TripDocument",
-        foreign_keys="TripDocument.user_id",
         back_populates="user",
         lazy=True,
     )

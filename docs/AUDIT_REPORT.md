@@ -13,11 +13,13 @@ shipped three user-facing features end to end:
 
 1. **Forgot password** — full email -> code -> reset flow (hashed codes/tokens).
 2. **Expense Tracker** — per-trip budget + categorized expenses, RLS-protected.
-3. **Trip Vault warning** — convenience-only acknowledgement, persisted per trip.
 
-Plus: removed **Packing** entirely, **hid Hotels** (code preserved, gated by a
-build flag), enabled system theme + fixed a broken logo path, and wired the
-global auth guard's `navigatorKey` so session expiry always redirects to login.
+Plus: removed **Packing** entirely, enabled system theme + fixed a broken logo
+path, and wired the global auth guard's `navigatorKey` so session expiry always
+redirects to login.
+
+Later, the **Trip Vault** and all **monetization/subscription** features were
+removed from the product; this codebase is free-only.
 
 ---
 
@@ -74,14 +76,6 @@ Rate buckets: `expenses.read` (60/60s), `expenses.write` (30/600s).
 
 ---
 
-## D. Backend — Vault (existing feature, audited)
-
-`trip_documents` + S3-compatible storage (`storage_service.py`) were already in
-place; audit confirmed ownership scoping, mime/extension allow-listing and a
-10 MB cap. Adds no secret: `STORAGE_BACKEND`, `S3_*` env vars only.
-
----
-
 ## E. Frontend — auth & theme fixes
 
 - `main.dart` — `MaterialApp` now attaches `navigatorKey: AuthGuard.navigatorKey`
@@ -114,31 +108,15 @@ place; audit confirmed ownership scoping, mime/extension allow-listing and a
 
 ---
 
-## G. Frontend — Vault warning
-
-`vault_screen.dart`:
-
-- Acknowledgement dialog on first open (persisted per trip in SharedPreferences
-  as `vault_warning_acked_<tripId>`).
-- Persistent warning banner until acknowledged ("The Vault is provided for
-  convenience only...").
-- Pre-upload gate: confirms acknowledgement before the file leaves the device;
-  can be dismissed without blocking the session.
-
----
-
-## H. Deck & feature gating
+## H. Deck edits
 
 `screens/trip_details.dart`:
 
-- Removed Hotels and Packing tiles from the deck (3 tiles: Activities, Expenses,
-  Vault).
+- Removed Hotels, Packing and Vault tiles from the deck (3 tiles:
+  Activities, Expenses).
 - Expenses -> `ExpenseTrackerScreen(trip: _trip)`.
 - Removed orphaned `_showComingSoon` and `_showExpensesSheet` methods (unused
   after deck edits).
-- `premium_travel_screen.dart` — Hotels tile now gated behind
-  `AppConfig.hotelFeatureEnabled` (default `false`).
-- `app_config.dart` — `hotelFeatureEnabled` via `--dart-define` (default false).
 
 ---
 
@@ -153,7 +131,7 @@ place; audit confirmed ownership scoping, mime/extension allow-listing and a
 ## J. Migration
 
 `3e2d1c0b9a87_expenses_places_password_reset_budget.py` (down_revision
-`b2c3d4e5f6a7`):
+`a0dd384f0147` after the Vault migration was removed from the chain):
 
 - `users`: `reset_code_hash`, `reset_code_expires_at`, `reset_attempts`,
   `reset_token_hash` (indexed), `reset_token_expires_at`.
@@ -178,7 +156,7 @@ auth default to `"none"`.
 | Suite | Pass | Notes |
 |-------|------|-------|
 | `pytest -q` (security/tests) | 254 | All green |
-| `flutter test` | 2 | `premium_disabled_test` + widget test |
+| `flutter test` | 1 | Widget test (premium tests removed) |
 | `flutter analyze` | 0 new | 4 pre-existing infos (not from this work) |
 | `flutter build web --release` | OK | Compiled in ~120s |
 
@@ -193,8 +171,6 @@ security suite.
 
 - **Expense currency**: non-standard currencies are stored as-is with no
   conversion; budget/spent totals are in the user's `preferred_currency` only.
-- **Hotels**: backend routes remain active; frontend entry is gated behind
-  `HOTEL_FEATURE_ENABLED=true` at build time.
 - **Rate limiter**: in-memory; resets on redeploy; suitable for single-instance
   free-tier deployments. Needs Redis for horizontal scale.
 
@@ -204,7 +180,6 @@ security suite.
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
-| `HOTEL_FEATURE_ENABLED` (dart-define) | `false` | Re-enables the Hotels entry points in the UI |
 | `RESEND_API_KEY` | unset | Optional fallback email provider |
 
 All other new functionality (expenses, reset) requires no new env vars
@@ -254,9 +229,7 @@ beyond what was already in `DEPLOYMENT.md`.
 | `frontend/lib/routes/app_routes.dart` | `forgotPassword` route |
 | `frontend/lib/screens/auth/login_screen.dart` | Logo path + forgot-password link |
 | `frontend/lib/screens/auth/register_screen.dart` | Logo path fix |
-| `frontend/lib/screens/vault/vault_screen.dart` | Warning banner + ack gate |
-| `frontend/lib/screens/travel/premium_travel_screen.dart` | Hotels gated |
-| `frontend/lib/core/config/app_config.dart` | `hotelFeatureEnabled` |
+| `frontend/lib/core/config/app_config.dart` | Deck/feature flags |
 | `frontend/lib/services/auth_service.dart` | Reset methods |
 | `frontend/pubspec.yaml` | Deps cleanup |
 | `docs/DEPLOYMENT.md` | Env docs for new features |
@@ -276,9 +249,7 @@ beyond what was already in `DEPLOYMENT.md`.
 
 ## S. Next steps
 
-1. **Hotels re-enable**: build with `--dart-define=HOTEL_FEATURE_ENABLED=true`
-   once the booking backend is validated.
-2. **Expense currency conversion**: add a rates API (e.g. exchangerate.host)
+1. **Expense currency conversion**: add a rates API (e.g. exchangerate.host)
    for real-time totals across mixed currencies.
-3. **Redis rate limiter**: needed when scaling beyond a single Render instance.
-4. **PWA offline caching**: service worker for expense data.
+2. **Redis rate limiter**: needed when scaling beyond a single Render instance.
+3. **PWA offline caching**: service worker for expense data.

@@ -22,7 +22,6 @@ from models.user import (
 )
 
 from models.activity_log import ActivityLog
-from models.subscription import Subscription
 from models.trip import Trip
 
 from services.social_auth_service import (
@@ -1257,7 +1256,7 @@ def update_current_user():
 #
 # Permanently deletes the authenticated user and all of their
 # owned data. There is no DB-level ON DELETE CASCADE in this
-# schema, so child rows (activity logs, trips, subscriptions)
+# schema, so child rows (activity logs, trips)
 # are removed explicitly here, in dependency order, before the
 # user row itself. The whole operation is transactional.
 #
@@ -1291,9 +1290,6 @@ def delete_current_user():
             synchronize_session=False
         )
         Trip.query.filter_by(user_id=user.id).delete(
-            synchronize_session=False
-        )
-        Subscription.query.filter_by(user_id=user.id).delete(
             synchronize_session=False
         )
 

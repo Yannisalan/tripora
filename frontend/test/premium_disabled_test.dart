@@ -1,18 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/core/config/app_config.dart';
 import 'package:frontend/routes/app_routes.dart';
 
 void main() {
-  test('v1 free-only: premium routes are not registered by default', () {
-    expect(AppConfig.premiumEnabled, isFalse);
+  test('free-only: no premium or gated travel routes are registered', () {
     final routes = AppRoutes.routes;
-    expect(routes.containsKey(AppRoutes.premium), isFalse);
-    expect(routes.containsKey(AppRoutes.travel), isFalse);
-    expect(routes.containsKey(AppRoutes.travelFlights), isTrue);
-    expect(routes.containsKey(AppRoutes.travelStays), isFalse);
-    expect(routes.containsKey(AppRoutes.travelCars), isFalse);
+    // No premium paywall, subscription hub, or gated stays/cars routes.
+    expect(routes.containsKey('/premium'), isFalse);
+    expect(routes.containsKey('/travel'), isFalse);
+    expect(routes.containsKey('/travel/stays'), isFalse);
+    expect(routes.containsKey('/travel/cars'), isFalse);
     // Core app routes remain.
     expect(routes.containsKey(AppRoutes.home), isTrue);
     expect(routes.containsKey(AppRoutes.profile), isTrue);
+    expect(routes.containsKey(AppRoutes.travelFlights), isTrue);
   });
 }

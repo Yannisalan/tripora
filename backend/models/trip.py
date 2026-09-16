@@ -102,17 +102,6 @@ class Trip(db.Model):
     )
 
     # ============================================================
-    # DOCUMENTS (VAULT)
-    # ============================================================
-
-    documents = db.relationship(
-        "TripDocument",
-        back_populates="trip",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-    # ============================================================
     # EXPENSES
     # ============================================================
 

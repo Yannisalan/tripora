@@ -7,7 +7,7 @@ import '../../services/duffel_service.dart';
 /// Lets any logged-in user check real flight prices for their trip.
 ///
 /// Prefilled from the generated itinerary (origin/destination/date) and
-/// backed by the Travelpayouts price endpoint. No premium paywall here.
+/// backed by the Travelpayouts price endpoint.
 class CheckFlightPricesScreen extends StatefulWidget {
   /// Optional prefill: `{origin, destination, departDate}` (IATA + ISO date).
   final Map<String, dynamic>? prefill;

@@ -55,13 +55,9 @@ class DuffelService {
     final decoded = _decode(response);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final code = (decoded['code'] ?? '').toString();
       final message =
           decoded['message']?.toString() ?? 'The travel search failed.';
-      throw PremiumRequiredException(
-        message,
-        premiumRequired: code == 'PREMIUM_REQUIRED',
-      );
+      throw Exception(message);
     }
 
     if (decoded['results'] is! Map) {
@@ -97,7 +93,7 @@ class DuffelService {
   // FLIGHT PRICES
   // POST /api/travel/flights/prices
   //
-  // Open to any logged-in user (no premium gate).
+  // Open to any logged-in user.
   // ============================================================
 
   Future<Map<String, dynamic>> searchFlightPrices({
@@ -155,18 +151,4 @@ class DuffelService {
       'driverAge': driverAge,
     });
   }
-}
-
-/// Thrown when the backend reports a non-2xx response.
-///
-/// [premiumRequired] is true when the backend returned the `PREMIUM_REQUIRED`
-/// code, which the UI uses to route the user to the paywall.
-class PremiumRequiredException implements Exception {
-  final String message;
-  final bool premiumRequired;
-
-  PremiumRequiredException(this.message, {this.premiumRequired = false});
-
-  @override
-  String toString() => message;
 }

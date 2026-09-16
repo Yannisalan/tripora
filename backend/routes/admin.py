@@ -3,18 +3,18 @@ Admin / analytics API.
 
 Everything under ``/api/admin`` is gated by a single shared secret
 (``ADMIN_API_TOKEN``) presented as ``Authorization: Bearer <token>``. The
-endpoints expose read-only analytics over users, trips, subscriptions and the
-activity log so the product owner can see how the site is being used.
+endpoints expose read-only analytics over users, trips and the activity log so
+the product owner can see how the site is being used.
 
 Row-Level Security
 ------------------
-``trips`` and ``subscriptions`` have RLS FORCED on. This backend connects as
-the owning role (e.g. ``neondb_owner``), and the owner is subject to forced
-RLS, so a plain SELECT would only ever surface the requesting user's own rows.
-The admin view is meant to be cross-user, so each admin request runs inside a
-transaction where we ``SET LOCAL row_security = off``. The flag is scoped to
-the current transaction (per request) and never leaks elsewhere. ``users`` is
-RLS-enabled but not forced, so the owning role can already read all rows there.
+``trips`` has RLS FORCED on. This backend connects as the owning role (e.g.
+``neondb_owner``), and the owner is subject to forced RLS, so a plain SELECT
+would only ever surface the requesting user's own rows. The admin view is meant
+to be cross-user, so each admin request runs inside a transaction where we
+``SET LOCAL row_security = off``. The flag is scoped to the current transaction
+(per request) and never leaks elsewhere. ``users`` is RLS-enabled but not
+forced, so the owning role can already read all rows there.
 """
 
 import logging
@@ -26,7 +26,6 @@ from sqlalchemy import func, text
 from config.database import db
 from config.settings import Config
 from models.activity_log import ActivityLog
-from models.subscription import Subscription
 from models.trip import Trip
 from models.user import User
 
@@ -138,12 +137,6 @@ def stats():
         ).filter(User.email_verified.is_(True)).scalar() or 0
 
         trips_total = db.session.query(func.count(Trip.id)).scalar() or 0
-        subs_total = db.session.query(
-            func.count(Subscription.id)
-        ).scalar() or 0
-        subs_active = db.session.query(
-            func.count(Subscription.id)
-        ).filter(Subscription.status == "active").scalar() or 0
 
         page_views = db.session.query(
             func.count(ActivityLog.id)
@@ -178,10 +171,6 @@ def stats():
                 },
                 "trips": {
                     "total": trips_total,
-                },
-                "subscriptions": {
-                    "total": subs_total,
-                    "active": subs_active,
                 },
                 "activity": {
                     "pageViews": page_views,

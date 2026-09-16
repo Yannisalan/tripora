@@ -43,17 +43,9 @@ DEFAULT_BUCKETS = {
     "auth.reset_password": {"limit": None, "window": 900},
     "auth.update_current_user": {"limit": None, "window": 600},
     "auth.delete_current_user": {"limit": None, "window": 600},
-    "premium.verify_receipt": {"limit": None, "window": 600},
-    "premium.dev_activate": {"limit": None, "window": 600},
-    "premium.flight_price": {"limit": None, "window": 60},
-    "premium.weather_forecast": {"limit": None, "window": 60},
     "travel.search_flights_route": {"limit": None, "window": 600},
     "travel.search_stays_route": {"limit": None, "window": 600},
     "travel.search_cars_route": {"limit": None, "window": 600},
-    "documents.get_trip_documents": {"limit": None, "window": 60},
-    "documents.upload_trip_document": {"limit": None, "window": 600},
-    "documents.get_document_file": {"limit": None, "window": 60},
-    "documents.delete_trip_document": {"limit": None, "window": 600},
     "expenses.get_trip_expenses": {"limit": None, "window": 60},
     "expenses.get_expense": {"limit": None, "window": 60},
     "expenses.create_expense": {"limit": None, "window": 600},
@@ -70,9 +62,6 @@ READ_ENDPOINTS = {
     "auth.get_current_user",
     "trips.get_trips",
     "trips.get_trip",
-    "premium.status",
-    "documents.get_trip_documents",
-    "documents.get_document_file",
 }
 
 

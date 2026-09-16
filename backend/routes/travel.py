@@ -1,12 +1,12 @@
 """Live travel search endpoints (flights, stays, cars).
 
-Stay and car searches proxy Duffel searches for subscribers and enforce
-entitlement server-side with ``@require_premium``. Flight search is available
-to every authenticated user. Provider credentials are read from the server
-environment inside the service, never sent to or from the client.
+Stay and car searches proxy Duffel searches and flight search uses
+Travelpayouts. Every endpoint is available to all authenticated users.
+Provider credentials are read from the server environment inside the service,
+never sent to or from the client.
 
-Free users keep all existing features; itinerary generation is unaffected.
-This module only adds live travel *search* (no booking, payments, or checkout).
+These features are all free; there is no premium gating anymore.
+This module only adds live travel *search* (no booking or payments).
 """
 
 import logging
@@ -21,7 +21,6 @@ from services.duffel_service import (
     search_cars,
     search_stays,
 )
-from services.subscription_service import require_premium
 from services.travelpayouts_service import (
     TravelpayoutsError,
     resolve_city_to_iata,
@@ -201,8 +200,8 @@ def search_flights_route():
 # FLIGHT PRICES
 # POST /api/travel/flights/prices
 #
-# NOTE: This endpoint is intentionally NOT premium-gated -- any logged-in
-# user can check real flight prices for their generated trip.
+# This endpoint is open to any logged-in
+# user so they can check real flight prices for their generated trip.
 # ============================================================
 
 @travel_bp.route("/flights/prices", methods=["POST"])
@@ -266,7 +265,6 @@ def flight_prices_route():
 
 @travel_bp.route("/stays/search", methods=["POST"])
 @jwt_required()
-@require_premium
 def search_stays_route():
     data = _body()
 
@@ -332,7 +330,7 @@ def search_stays_route():
 
     return jsonify({
         "success": True,
-        "message": "Stay search results (premium).",
+        "message": "Stay search results.",
         "results": results,
     }), 200
 
@@ -344,7 +342,6 @@ def search_stays_route():
 
 @travel_bp.route("/cars/search", methods=["POST"])
 @jwt_required()
-@require_premium
 def search_cars_route():
     data = _body()
 
@@ -406,6 +403,6 @@ def search_cars_route():
 
     return jsonify({
         "success": True,
-        "message": "Car search results (premium).",
+        "message": "Car search results.",
         "results": results,
     }), 200

@@ -1,11 +1,8 @@
 """Tests for the live travel search endpoints.
 
-The routes decorate their views with ``@jwt_required()`` (a factory) and
-``@require_premium`` at import time, so we patch the *source* symbols before
-importing ``routes.travel``. That lets us exercise the validation and
-response-shaping logic in isolation, plus the premium-gating contract
-(free user -> 403 PREMIUM_REQUIRED, unauthenticated -> 401 handled by the
-real JWT decorator when not patched).
+The routes decorate their views with ``@jwt_required()`` (a factory), so we
+patch the *source* symbol before importing ``routes.travel``. That lets us
+exercise the validation and response-shaping logic in isolation.
 """
 
 import sys
@@ -14,7 +11,6 @@ import flask_jwt_extended
 import pytest
 from flask import Flask
 import services.duffel_service as duffel_module
-import services.subscription_service as subscription_module
 import services.travelpayouts_service as travelpayouts_module
 
 
@@ -22,13 +18,12 @@ def _stub_results(kind):
     return {"count": 1, kind: [{"id": "x"}], "disclaimer": "d"}
 
 
-def _load_app_with_guards(monkeypatch, premium_decorator, stays=None,
+def _load_app_with_guards(monkeypatch, stays=None,
                           cars=None, prices=None):
     """Build a fresh Flask app with the patrol-guard seams replaced.
 
-    ``premium_decorator`` is the function used in place of ``require_premium``
-    (the real one needs a DB). ``stays/cars`` stub the Duffel calls and
-    ``prices`` stubs the Travelpayouts call.
+    ``stays/cars`` stub the Duffel calls and ``prices`` stubs the
+    Travelpayouts call.
     """
     # jwt_required is used as a *factory* in the routes (``@jwt_required()``),
     # so replacing it with ``lambda: (lambda fn: fn)`` makes the factory return
@@ -38,7 +33,6 @@ def _load_app_with_guards(monkeypatch, premium_decorator, stays=None,
         "jwt_required",
         lambda: (lambda fn: fn),
     )
-    monkeypatch.setattr(subscription_module, "require_premium", premium_decorator)
 
     monkeypatch.setattr(
         travelpayouts_module,
@@ -67,13 +61,9 @@ def _load_app_with_guards(monkeypatch, premium_decorator, stays=None,
     return app.test_client()
 
 
-def _pass_through(fn):
-    return fn
-
-
 @pytest.fixture
 def client(monkeypatch):
-    return _load_app_with_guards(monkeypatch, _pass_through)
+    return _load_app_with_guards(monkeypatch)
 
 
 # ------------------------------------------------------------
@@ -100,7 +90,6 @@ def test_flights_search_accepts_whole_month(monkeypatch):
 
     client = _load_app_with_guards(
         monkeypatch,
-        _pass_through,
         prices=prices,
     )
     resp = client.post("/api/travel/flights/search", json={
@@ -122,7 +111,7 @@ def test_flights_accepts_city_or_airport_names(monkeypatch):
         "resolve_city_to_iata",
         lambda value: {"New York": "JFK", "London Heathrow": "LHR"}[value],
     )
-    client = _load_app_with_guards(monkeypatch, _pass_through)
+    client = _load_app_with_guards(monkeypatch)
     resp = client.post("/api/travel/flights/search", json={
         "origin": "New York",
         "destination": "London Heathrow",
@@ -242,7 +231,7 @@ def test_flights_provider_error_maps_to_502(monkeypatch):
     def boom(**kwargs):
         raise TravelpayoutsError("provider down")
 
-    client = _load_app_with_guards(monkeypatch, _pass_through, prices=boom)
+    client = _load_app_with_guards(monkeypatch, prices=boom)
 
     resp = client.post("/api/travel/flights/search", json={
         "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
@@ -255,22 +244,8 @@ def test_flights_provider_error_maps_to_502(monkeypatch):
 # Flight search access
 # ------------------------------------------------------------
 
-def test_free_user_can_search_flights(monkeypatch):
-    import functools
-    from flask import jsonify
-
-    def deny(fn):
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            return jsonify({
-                "success": False,
-                "error": "premium_required",
-                "code": "PREMIUM_REQUIRED",
-            }), 403
-        return wrapper
-
-    client = _load_app_with_guards(monkeypatch, deny)
-
+def test_free_user_can_search_flights(client):
+    """Every authenticated user (free or otherwise) can search flights."""
     resp = client.post("/api/travel/flights/search", json={
         "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
     })
@@ -279,7 +254,7 @@ def test_free_user_can_search_flights(monkeypatch):
 
 
 # ------------------------------------------------------------
-# Flight prices (open to all logged-in users, no premium gate)
+# Flight prices (open to all authenticated users)
 # ------------------------------------------------------------
 
 def test_flight_prices_success(client):
@@ -291,15 +266,6 @@ def test_flight_prices_success(client):
     assert body["success"] is True
     assert body["results"]["count"] == 1
     assert body["results"]["provider"] == "travelpayouts"
-
-
-def test_flight_prices_accepts_no_premium(monkeypatch):
-    """The prices endpoint must NOT be premium-gated (free users get 200)."""
-    client = _load_app_with_guards(monkeypatch, _pass_through)
-    resp = client.post("/api/travel/flights/prices", json={
-        "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",
-    })
-    assert resp.status_code == 200
 
 
 def test_flight_prices_requires_origin_destination(client):
@@ -354,7 +320,7 @@ def test_flight_prices_provider_error_maps_to_502(monkeypatch):
     def boom(**kwargs):
         raise TravelpayoutsError("provider down")
 
-    client = _load_app_with_guards(monkeypatch, _pass_through, prices=boom)
+    client = _load_app_with_guards(monkeypatch, prices=boom)
 
     resp = client.post("/api/travel/flights/prices", json={
         "origin": "JFK", "destination": "LHR", "departDate": "2026-10-01",

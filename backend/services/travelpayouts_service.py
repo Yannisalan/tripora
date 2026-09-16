@@ -2,11 +2,11 @@
 
 This service hits the Travelpayouts "Data Access API" (``/v2/prices/latest``)
 which returns real, cached airline prices for a route and date range. It is
-open to any logged-in user -- there is no premium gate on this endpoint. The
+open to any logged-in user. The
 API token is read from ``TRAVELPAYOUTS_API_KEY`` at request time (never from
 the client).
 
-Like the Duffel/IAP services, this module FAILS CLOSED: if the token is not
+Like the Duffel service, this module FAILS CLOSED: if the token is not
 configured, every lookup raises ``TravelpayoutsError`` and no data is returned.
 Response mapping is deliberately defensive so a slightly different payload
 degrades to an error rather than crashing the process.

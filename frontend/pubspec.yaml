@@ -24,7 +24,6 @@
     crypto: ^3.0.7
     add_2_calendar: ^3.1.1
     google_fonts: ^8.2.1
-    file_picker: ^12.3.0
     url_launcher: ^6.3.2
     web: ^1.1.1
     http_parser: ^4.1.2

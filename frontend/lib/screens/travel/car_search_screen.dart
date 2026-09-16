@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
-import 'premium_gate.dart';
 
-/// Premium car rental search screen (live results, display only).
+/// Car rental search screen (live results, display only).
 class CarSearchScreen extends StatefulWidget {
   const CarSearchScreen({super.key});
 
@@ -75,8 +74,6 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
         _disclaimer = results['disclaimer']?.toString();
         _busy = false;
       });
-    } on PremiumRequiredException catch (e) {
-      _fail(e.message);
     } catch (e) {
       _fail(e.toString().replaceFirst('Exception: ', '').trim());
     }
@@ -94,8 +91,7 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Car Search')),
-      body: PremiumGate(
-        builder: (_) => SingleChildScrollView(
+      body: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Form(
             key: _formKey,
@@ -141,7 +137,6 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 

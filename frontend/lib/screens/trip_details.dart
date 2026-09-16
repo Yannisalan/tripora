@@ -8,7 +8,7 @@ import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
 import '../../widgets/shimmer_loader.dart';
 import 'expenses/expense_tracker_screen.dart';
-import 'vault/vault_screen.dart';
+import 'weather/trip_weather_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final TripModel trip;
@@ -1468,7 +1468,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  /// "Command deck" grid. Activities, Expenses, and Vault route
+  /// "Command deck" grid. Activities, Expenses, and Weather route
   /// to real functionality already in this screen/app. Hotels and Packing
   /// tiles are intentionally absent from the deck — hotels shipping remains
   /// gated behind [AppConfig.hotelFeatureEnabled] and packing was removed
@@ -1495,10 +1495,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         _openExpenseTracker,
       ),
       _DeckItem(
-        Icons.folder_outlined,
-        context.tr('details.vault'),
-        context.tr('details.tripDocuments'),
-            _openVault,
+        Icons.cloud_outlined,
+        context.tr('details.weather'),
+        context.tr('details.weatherForecast'),
+            _openWeather,
       ),
     ];
 
@@ -1568,21 +1568,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  /// Opens the trip's document Vault (board passes, confirmations, ...).
-  void _openVault() {
+  /// Opens the trip's weather forecast.
+  void _openWeather() {
     final tripId = _trip.id;
 
     if (tripId == null) {
-      _showMessage('This trip cannot open its vault yet.');
+      _showMessage('This trip cannot show weather yet.');
       return;
     }
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => VaultScreen(
-          tripId: tripId,
-          tripDestination: _trip.destination,
-        ),
+        builder: (_) => TripWeatherScreen(trip: _trip),
       ),
     );
   }

@@ -231,7 +231,6 @@ class _AdminScreenState extends State<AdminScreen> {
     final s = _stats!;
     final users = (s['users'] as Map? ?? {}) as Map<String, dynamic>;
     final trips = (s['trips'] as Map? ?? {}) as Map<String, dynamic>;
-    final subs = (s['subscriptions'] as Map? ?? {}) as Map<String, dynamic>;
     final activity = (s['activity'] as Map? ?? {}) as Map<String, dynamic>;
     final topDestinations = (s['topDestinations'] as List? ?? [])
         .whereType<Map>()
@@ -246,8 +245,6 @@ class _AdminScreenState extends State<AdminScreen> {
           users['recent7d']?.toString() ?? '0'),
       _statCard(context, Icons.travel_explore, 'Trips',
           trips['total']?.toString() ?? '0'),
-      _statCard(context, Icons.workspace_premium, 'Subscriptions',
-          subs['total']?.toString() ?? '0'),
       _statCard(context, Icons.route_outlined, 'API requests',
           activity['apiRequests']?.toString() ?? '0'),
     ];

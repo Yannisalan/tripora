@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/config/app_config.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
-import '../../models/subscription_model.dart';
-import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/social_auth_service.dart';
-import '../../services/subscription_service.dart';
 import '../../widgets/shimmer_loader.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -21,7 +17,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
-  final SubscriptionService _subService = SubscriptionService();
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = true;
@@ -31,8 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String? _errorMessage;
   String? _successMessage;
-
-  SubscriptionModel? _subscription;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -45,7 +38,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   static const Color _midnight = Color(0xFF1E1B4B);
   static const Color _blue = Color(0xFF3B82F6);
-  static const Color _amber = Color(0xFFF59E0B);
 
   static const Color _canvas = Color(0xFFF8FAFC);
   static const Color _white = Colors.white;
@@ -96,10 +88,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoading = false;
       });
-
-      if (AppConfig.premiumEnabled) {
-        _loadSubscriptionStatus();
-      }
     } catch (error) {
       if (!mounted) return;
 
@@ -108,20 +96,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _errorMessage =
             error.toString().replaceFirst('Exception: ', '').trim();
       });
-    }
-  }
-
-  Future<void> _loadSubscriptionStatus() async {
-    try {
-      final status = await _subService.getStatus();
-
-      if (!mounted) return;
-
-      setState(() {
-        _subscription = status;
-      });
-    } catch (_) {
-      // Profile remains usable if subscription status cannot be loaded.
     }
   }
 
@@ -364,11 +338,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             _buildProfileHeader(),
                             const SizedBox(height: 24),
-
-                            if (AppConfig.premiumEnabled) ...[
-                              _buildPremiumCard(),
-                              const SizedBox(height: 24),
-                            ],
 
                             if (_errorMessage != null) ...[
                               _buildMessageBanner(
@@ -745,147 +714,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  String _premiumPriceLabel(SubscriptionModel? subscription) {
-    if (subscription == null) {
-      return '\u2014';
-    }
-
-    return AppPreferences.instance.formatMoney(
-      subscription.price,
-      from: subscription.currency,
-    );
-  }
-
-  Widget _buildPremiumCard() {
-    final subscription = _subscription;
-    final isPremium = subscription?.isPremium ?? false;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          Navigator.pushNamed(context, AppRoutes.premium);
-        },
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _midnight,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: const Color(0xFF39356A),
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x141E1B4B),
-                blurRadius: 16,
-                offset: Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _amber.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _amber.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: Icon(
-                  isPremium
-                      ? Icons.workspace_premium_outlined
-                      : Icons.auto_awesome_outlined,
-                  color: _amber,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isPremium
-                          ? 'Premium member'
-                          : 'Upgrade to Premium',
-                      style: const TextStyle(
-                        fontFamily: 'Noto Serif',
-                        fontSize: 19,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      isPremium
-                          ? 'Unlock flight prices and daily weather.'
-                          : 'Flight prices and daily weather — from '
-                              '${_premiumPriceLabel(subscription)}/month',
-                      style: const TextStyle(
-                        fontFamily: 'Manrope',
-                        fontSize: 13,
-                        height: 1.45,
-                        color: Color(0xFFD9D8EA),
-                      ),
-                    ),
-                    if (isPremium) ...[
-                      const SizedBox(height: 14),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor:
-                              Colors.white.withValues(alpha: 0.10),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 13,
-                            vertical: 9,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.travel,
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.travel_explore_outlined,
-                          size: 17,
-                        ),
-                        label: const Text(
-                          'Premium Travel',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: Color(0xFFBFC0D9),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -13,12 +13,11 @@ from config.settings import Config
 from models.activity_log import ActivityLog
 from routes.auth import auth_bp
 from routes.trips import trips_bp
-from routes.premium import premium_bp
 from routes.travel import travel_bp
 from routes.admin import admin_bp
-from routes.documents import documents_bp
 from routes.expenses import expenses_bp
 from routes.rates import rates_bp
+from routes.weather import weather_bp
 from services.rate_limiter import limiter, RateLimitExceeded
 logger = logging.getLogger(__name__)
 
@@ -193,12 +192,11 @@ def create_app():
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(trips_bp)
-    app.register_blueprint(premium_bp)
     app.register_blueprint(travel_bp)
     app.register_blueprint(admin_bp)
-    app.register_blueprint(documents_bp)
     app.register_blueprint(expenses_bp)
     app.register_blueprint(rates_bp)
+    app.register_blueprint(weather_bp)
 
     # ========================================================
     # RATE LIMITING

@@ -7,7 +7,7 @@ Create Date: 2026-09-01 00:00:00.000000
 Adds the ``activity_logs`` table used by the admin analytics surface to record
 page views and API requests.
 
-Unlike ``trips`` and ``subscriptions`` this table is intentionally NOT put under
+Unlike ``trips`` this table is intentionally NOT put under
 Row-Level Security: it is owned by the app role and only ever written by the
 app itself (request/after-request hooks and the public page-view beacon), and
 only ever read back through the token-gated admin endpoints. App-level scoping

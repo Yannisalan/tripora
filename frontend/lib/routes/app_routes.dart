@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../core/config/app_config.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/logger.dart';
 
@@ -10,11 +9,7 @@ import '../screens/planner/planner_screen.dart';
 import '../screens/itinerary/itinerary_screen.dart';
 import '../screens/trips/trips_screen.dart';
 import '../screens/profile/profile_screen.dart';
-import '../screens/premium/premium_screen.dart';
-import '../screens/travel/premium_travel_screen.dart';
 import '../screens/travel/flight_search_screen.dart';
-import '../screens/travel/stay_search_screen.dart';
-import '../screens/travel/car_search_screen.dart';
 import '../screens/travel/check_flight_prices_screen.dart';
 
 import '../screens/auth/login_screen.dart';
@@ -48,14 +43,9 @@ class AppRoutes {
   static const String trips = '/trips';
   static const String profile = '/profile';
 
-  static const String premium = '/premium';
-
-  static const String travel = '/travel';
   static const String travelFlights = '/travel/flights';
-  static const String travelStays = '/travel/stays';
-  static const String travelCars = '/travel/cars';
 
-  // Open (non-premium) flight price check.
+  // Open flight price check for all logged-in users.
   static const String checkFlightPrices = '/check-flights';
 
   // ============================================================
@@ -161,20 +151,6 @@ class AppRoutes {
 
       adminDashboard: (_) => const AdminScreen(),
     };
-
-    // ============================================================
-    // PREMIUM + PREMIUM TRAVEL
-    // ============================================================
-
-    if (AppConfig.premiumEnabled) {
-      result[premium] = (_) => const PremiumScreen();
-
-      result[travel] = (_) => const PremiumTravelScreen();
-
-      result[travelStays] = (_) => const StaySearchScreen();
-
-      result[travelCars] = (_) => const CarSearchScreen();
-    }
 
     return result;
   }

@@ -155,42 +155,13 @@ class Config:
     ).lower() in ("1", "true", "yes", "on")
 
     # ============================================================
-    # TRIP VAULT DOCUMENT STORAGE
-    # ============================================================
-    #
-    # Trip documents (flight tickets, boarding passes, confirmations, ...)
-    # are stored in an S3-compatible object store, NOT the Render local
-    # filesystem. The values below are read at request time by
-    # ``services.storage_service``; they are declared here so the deployment
-    # environment has a single source of truth for what is required.
-    #
-    #   STORAGE_BACKEND  = "s3" (default when S3_* present) or "local"
-    #                      ("local" is for local development/tests only and
-    #                       is not persistent on Render).
-    #   S3_BUCKET        - bucket name (e.g. "tripora-vault")
-    #   S3_REGION        - region (optional for S3, clashing against R2/B2)
-    #   S3_ACCESS_KEY    - access key id
-    #   S3_SECRET_KEY    - secret access key
-    #   S3_ENDPOINT_URL  - optional custom endpoint (Cloudflare R2, B2, MinIO)
-    #   STORAGE_LOCAL_DIR- local backend root (default: backend/storage)
-    # ------------------------------------------------------------
-
-    STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "").strip().lower()
-    S3_BUCKET = os.getenv("S3_BUCKET", "").strip()
-    S3_REGION = os.getenv("S3_REGION", "").strip()
-    S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "").strip()
-    S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "").strip()
-    S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "").strip()
-    STORAGE_LOCAL_DIR = os.getenv("STORAGE_LOCAL_DIR", "").strip()
-
-    # ============================================================
-    # DUFFEL TRAVEL SEARCH (PREMIUM)
+    # DUFFEL TRAVEL SEARCH
     # ============================================================
     #
     # Server-only API token for the Duffel travel-search provider. It is never
     # exposed to the client and is only read from the environment at request
     # time by ``services.duffel_service``. An empty/unset value makes the
-    # premium travel-search endpoints fail closed (no data returned).
+    # travel-search endpoints fail closed (no data returned).
     # ------------------------------------------------------------
 
     DUFFEL_API_TOKEN = os.getenv("DUFFEL_API_TOKEN", "")
@@ -315,20 +286,10 @@ class Config:
             "auth.forgot_password": cls._bucket(RESET, RESET_W, 5, 900),
             "auth.forgot_password_verify": cls._bucket(RESET, RESET_W, 5, 900),
             "auth.reset_password": cls._bucket(RESET, RESET_W, 5, 900),
-            # ---- premium / IAP endpoints ----
-            "premium.verify_receipt": cls._bucket(W, W_W, 30, 600),
-            "premium.dev_activate": cls._bucket(W, W_W, 30, 600),
-            "premium.flight_price": cls._bucket(R, R_W, 60, 60),
-            "premium.weather_forecast": cls._bucket(R, R_W, 60, 60),
-            # ---- premium travel search (Duffel-backed, third-party cost) ----
+            # ---- travel search (Duffel-backed, third-party cost) ----
             "travel.search_flights_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_stays_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_cars_route": cls._bucket(A, A_W, 10, 600),
-            # ---- trip vault documents ----
-            "documents.get_trip_documents": cls._bucket(R, R_W, 60, 60),
-            "documents.get_document_file": cls._bucket(R, R_W, 60, 60),
-            "documents.upload_trip_document": cls._bucket(W, W_W, 30, 600),
-            "documents.delete_trip_document": cls._bucket(W, W_W, 30, 600),
             # ---- smart trip expense tracker ----
             "expenses.get_trip_expenses": cls._bucket(R, R_W, 60, 60),
             "expenses.get_expense": cls._bucket(R, R_W, 60, 60),
@@ -337,6 +298,8 @@ class Config:
             "expenses.delete_expense": cls._bucket(W, W_W, 30, 600),
             # ---- public page-view beacon ----
             "admin.track_page_view": cls._bucket(A, A_W, 10, 600),
+            # ---- weather forecast (Open-Meteo, read-heavy) ----
+            "weather.get_trip_weather": cls._bucket(R, R_W, 60, 60),
             # ---- default read bucket ----
             "DEFAULT_READ": cls._bucket(R, R_W, 60, 60),
         }

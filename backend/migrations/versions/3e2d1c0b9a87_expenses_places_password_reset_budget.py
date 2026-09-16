@@ -1,7 +1,7 @@
 """expenses, password reset, and numeric trip budget
 
 Revision ID: 3e2d1c0b9a87
-Revises: b2c3d4e5f6a7
+Revises: a0dd384f0147
 Create Date: 2026-09-13 00:00:00.000000
 
 Supported features added by this migration:
@@ -14,11 +14,11 @@ Supported features added by this migration:
   clients.
 - ``trip_expenses``: per-expense records (amount, currency, category, date,
   payment method) owned by a user and attached to a trip. Protected by RLS
-  (``FORCE``) exactly like ``trip_documents``.
+  (``FORCE``).
 
 Ownership is enforced at the application layer (every route filters by the
 JWT user id) AND at the database layer with Row-Level Security, mirroring the
-``trips`` / ``trip_documents`` pattern.
+``trips`` pattern.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -26,7 +26,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '3e2d1c0b9a87'
-down_revision = 'b2c3d4e5f6a7'
+down_revision = 'a0dd384f0147'
 branch_labels = None
 depends_on = None
 
