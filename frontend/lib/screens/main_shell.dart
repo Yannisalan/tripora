@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../core/l10n/app_localizations.dart';
+import '../core/preferences/app_preferences.dart';
 import '../core/theme/app_theme.dart';
 import '../screens/explore/explore_screen.dart';
 import '../screens/home/home_screen.dart';
@@ -20,30 +21,42 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  static const List<Widget> _pages = [
-    HomeScreen(),
-    ExploreScreen(),
-    FlightSearchScreen(),
-    TripsScreen(),
-    ProfileScreen(),
-  ];
+  // Built per-render (not const) so a language/currency/theme change —
+  // which rebuilds MainShell through the ListenableBuilder below — also
+  // rebuilds the tab contents instead of serving stale instances.
+  List<Widget> _buildPages() {
+    return [
+      HomeScreen(),
+      ExploreScreen(),
+      FlightSearchScreen(),
+      TripsScreen(),
+      ProfileScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MainShell.currentIndex,
-      builder: (context, currentIndex, _) {
-        return Scaffold(
-          body: IndexedStack(
-            index: currentIndex,
-            children: _pages,
-          ),
-          bottomNavigationBar: _TriporaBottomNav(
-            currentIndex: currentIndex,
-            onSelected: (index) {
-              MainShell.currentIndex.value = index;
-            },
-          ),
+    // Re-render the shell (nav labels, every tab) whenever preferences
+    // change so translated labels and per-currency UI stay in sync.
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) {
+        return ValueListenableBuilder<int>(
+          valueListenable: MainShell.currentIndex,
+          builder: (context, currentIndex, _) {
+            return Scaffold(
+              body: IndexedStack(
+                index: currentIndex,
+                children: _buildPages(),
+              ),
+              bottomNavigationBar: _TriporaBottomNav(
+                currentIndex: currentIndex,
+                onSelected: (index) {
+                  MainShell.currentIndex.value = index;
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -91,71 +104,64 @@ class _TriporaBottomNav extends StatelessWidget {
       ),
     ];
 
-    return SafeArea(
-      top: false,
-      minimum: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(28),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 24,
-            sigmaY: 24,
-          ),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: colors.surface.withValues(alpha: 0.86),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-              border: Border(
-                top: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.65),
-                  width: 0.8,
-                ),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  blurRadius: 18,
-                  spreadRadius: -4,
-                  offset: const Offset(0, -2),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+    return SizedBox(
+      height: 64 + MediaQuery.of(context).padding.bottom,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Positioned.fill(
+            child: Container(
+              color: Colors.transparent,
             ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                8,
-                8,
-                8,
-                10,
-              ),
-              child: Row(
-                children: List.generate(
-                  items.length,
-                      (index) {
-                    final item = items[index];
-
-                    return Expanded(
-                      child: _TriporaNavItem(
-                        item: item,
-                        selected: index == currentIndex,
-                        onTap: () => onSelected(index),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: MediaQuery.of(context).padding.bottom,
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      blurRadius: 24,
+                      spreadRadius: 0,
+                      offset: const Offset(0, -4),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: colors.border.withValues(alpha: 0.5),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      Expanded(
+                        child: _TriporaNavItem(
+                          item: items[i],
+                          selected: i == currentIndex,
+                          onTap: () => onSelected(i),
+                        ),
                       ),
-                    );
-                  },
+                  ],
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -176,7 +182,7 @@ class _TriporaNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
 
-    final activeColor = AppColors.secondary;
+    final activeColor = AppColors.primary;
     final inactiveColor = colors.textMuted;
 
     return Semantics(

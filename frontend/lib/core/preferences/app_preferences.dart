@@ -63,6 +63,7 @@ class AppPreferences extends ChangeNotifier {
 
   static const String _languageKey = 'preferred_language';
   static const String _currencyKey = 'preferred_currency';
+  static const String _themeModeKey = 'preferred_theme_mode';
 
   // ============================================================
   // STATE
@@ -70,17 +71,25 @@ class AppPreferences extends ChangeNotifier {
 
   String _language = 'en';
   String _currency = 'USD';
+  ThemeMode _themeMode = ThemeMode.system;
 
   Map<String, double> _usdRates = const {};
   bool _ratesLoaded = false;
+  bool _loadedFromStorage = false;
 
   String get language => _language;
 
   String get currency => _currency;
 
+  ThemeMode get themeMode => _themeMode;
+
   Locale get locale => Locale(_language);
 
   bool get ratesLoaded => _ratesLoaded;
+
+  /// Whether preferences were successfully restored from local storage.
+  /// Used to avoid clobbering locally-chosen prefs from backend values.
+  bool get loadedFromStorage => _loadedFromStorage;
 
   static String symbolFor(String code) => _symbols[code] ?? '$code ';
 
@@ -94,6 +103,7 @@ class AppPreferences extends ChangeNotifier {
 
     final storedLanguage = prefs.getString(_languageKey);
     final storedCurrency = prefs.getString(_currencyKey);
+    final storedThemeMode = prefs.getString(_themeModeKey);
 
     if (storedLanguage != null && validLanguages.contains(storedLanguage)) {
       _language = storedLanguage;
@@ -103,7 +113,35 @@ class AppPreferences extends ChangeNotifier {
       _currency = storedCurrency;
     }
 
+    if (storedThemeMode != null) {
+      _themeMode = _parseThemeMode(storedThemeMode);
+    }
+
+    _loadedFromStorage = storedLanguage != null || storedCurrency != null || storedThemeMode != null;
+
     notifyListeners();
+  }
+
+  static ThemeMode _parseThemeMode(String value) {
+    switch (value) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  static String _themeModeToString(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.system:
+        return 'system';
+    }
   }
 
   Future<void> _persist() async {
@@ -111,6 +149,7 @@ class AppPreferences extends ChangeNotifier {
 
     await prefs.setString(_languageKey, _language);
     await prefs.setString(_currencyKey, _currency);
+    await prefs.setString(_themeModeKey, _themeModeToString(_themeMode));
   }
 
   // ============================================================
@@ -143,6 +182,15 @@ class AppPreferences extends ChangeNotifier {
     // Refresh the conversion table in the background so amounts in the new
     // currency render as soon as possible.
     unawaited(ensureRates());
+  }
+
+  /// Applies [newMode] immediately, notifies listeners, and persists it.
+  Future<void> setThemeMode(ThemeMode newMode) async {
+    if (newMode == _themeMode) return;
+
+    _themeMode = newMode;
+    notifyListeners();
+    await _persist();
   }
 
   // ============================================================

@@ -94,6 +94,13 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final lang = AppPreferences.instance.language;
 
     return Scaffold(

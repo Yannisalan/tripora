@@ -92,6 +92,13 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final colors = context.triporaColors;
     return Scaffold(
       backgroundColor: colors.backgroundColor,

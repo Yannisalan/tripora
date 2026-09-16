@@ -15,11 +15,14 @@ logger = logging.getLogger(__name__)
 # Gemini models used for itinerary generation, in priority order. The primary
 # model can intermittently return 503 UNAVAILABLE ("experiencing high
 # demand"); if it stays down we fall back to the next capable model so a
-# transient capacity spike never fails the user's request.
+# transient capacity spike never fails the user's request. All ids here were
+# verified against the Gemini API (2026-09): `gemini-3.6-flash` and
+# `gemini-3.5-flash-lite` respond; `gemini-3.6-flash-lite` does NOT exist
+# anymore (404) and must not be used as a fallback.
 GEMINI_MODELS = [
     "gemini-3.6-flash",
     "gemini-3.5-flash",
-    "gemini-3.6-flash-lite",
+    "gemini-3.5-flash-lite",
 ]
 
 # Categories every activity must fall into. Kept in sync with the interest
@@ -420,6 +423,21 @@ def _is_transient_error(error):
         return False
 
 
+def _is_permanent_model_error(error):
+    """True when the model id itself is unusable and will never recover.
+
+    These are permanent failures — retrying burns attempts without any
+    chance of success, so the caller should advance to the next model
+    immediately instead of waiting on transient-error thresholds.
+    """
+    message = str(error).upper()
+    if "404" in message or "NOT_FOUND" in message:
+        return True
+    if "NO LONGER AVAILABLE" in message or "NOT SUPPORTED" in message:
+        return True
+    return False
+
+
 def generate_itinerary(
     destination,
     start_date,
@@ -435,7 +453,10 @@ def generate_itinerary(
     # NUMBER OF GENERATION ATTEMPTS
     # ========================================================
 
-    max_attempts = 4
+    # Budget must cover the worst realistic case: every fallback model
+    # transiently failing twice before swapping to the next one.
+    # (3 models * 2 transient errors + slack for a final try = 8.)
+    max_attempts = 8
 
     last_error = None
 
@@ -713,6 +734,23 @@ REQUIREMENTS:
             )
 
             last_error = str(error)
+
+            # A model id that no longer exists (404 NOT_FOUND, "no longer
+            # available") will never succeed — skip straight to the next
+            # model instead of consuming the retry budget on it.
+            if (
+                _is_permanent_model_error(error)
+                and model_index < len(GEMINI_MODELS) - 1
+            ):
+                model_index += 1
+                model = GEMINI_MODELS[model_index]
+                model_transient_errors = 0
+                logger.warning(
+                    "Skipping permanently unavailable Gemini model, "
+                    "falling back to %s.",
+                    model,
+                )
+                continue
 
             # The Gemini client surfaces HTTP status codes in the message.
             # A 429/5xx (notably 503 UNAVAILABLE under high demand) is

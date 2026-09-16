@@ -36,14 +36,18 @@ class GradientButton extends StatelessWidget {
 
     final content = child ??
         (icon != null || label != null
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ?icon,
-                  if (icon != null && label != null) const SizedBox(width: 8),
-                  ?label,
-                ],
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ?icon,
+                    if (icon != null && label != null)
+                      const SizedBox(width: 8),
+                    ?label,
+                  ],
+                ),
               )
             : const SizedBox.shrink());
 

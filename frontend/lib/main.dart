@@ -38,19 +38,18 @@ class _TriporaAppState extends State<TriporaApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = widget.themeMode ?? ThemeMode.system;
-
     // Rebuild the whole tree (locale, delegates) the instant the language
     // or currency preference changes.
     return ListenableBuilder(
       listenable: AppPreferences.instance,
       builder: (context, _) {
+        final resolvedThemeMode = widget.themeMode ?? AppPreferences.instance.themeMode;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Tripora',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeMode,
+          themeMode: resolvedThemeMode,
           initialRoute: AppRoutes.home,
           routes: AppRoutes.routes,
           navigatorObservers: [_routeTracker],

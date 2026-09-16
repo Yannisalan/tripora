@@ -150,6 +150,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild when language/currency preferences change so translated
+    // strings and price formatting update immediately (this screen sits on
+    // the pushed navigator stack and is not rebuilt by MaterialApp).
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) {
+        return _buildScaffold(context);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: _surface,
       appBar: AppBar(

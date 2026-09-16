@@ -77,13 +77,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
 
-      final language =
-          (user['preferredLanguage'] ?? 'en').toString().trim();
-      final currency =
-          (user['preferredCurrency'] ?? 'USD').toString().trim();
+      // Only seed language/currency from the backend when the local
+      // preferences have NOT yet been loaded from storage.  This
+      // prevents backend values from clobbering locally-chosen prefs
+      // when the sync to the server previously failed (e.g. Render
+      // cold start).
+      if (!AppPreferences.instance.loadedFromStorage) {
+        final language =
+            (user['preferredLanguage'] ?? 'en').toString().trim();
+        final currency =
+            (user['preferredCurrency'] ?? 'USD').toString().trim();
 
-      await AppPreferences.instance.setLanguage(language);
-      await AppPreferences.instance.setCurrency(currency);
+        await AppPreferences.instance.setLanguage(language);
+        await AppPreferences.instance.setCurrency(currency);
+      }
 
       setState(() {
         _isLoading = false;
@@ -406,6 +413,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   context.tr('profile.travelSettingsEyebrow'),
                               title: context.tr('profile.preferences'),
                             ),
+                            const SizedBox(height: 14),
+
+                            _buildAppearanceToggle(),
+
                             const SizedBox(height: 14),
 
                             _buildDropdown<String>(
@@ -869,7 +880,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
+    // Key the form field by its selected value so the internal
+    // FormFieldState is recreated whenever the underlying preference
+    // changes externally. Without this, `initialValue` only applies on
+    // first build and the dropdown keeps showing a stale selection.
     return DropdownButtonFormField<T>(
+      key: ValueKey('$label-$value'),
       initialValue: value,
       items: items,
       onChanged: onChanged,
@@ -908,6 +924,107 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       dropdownColor: _white,
+    );
+  }
+
+  /// Appearance control (Light / System / Dark) — persisted through
+  /// [AppPreferences] and applied app-wide via MaterialApp.themeMode.
+  Widget _buildAppearanceToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 13,
+      ),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.dark_mode_outlined,
+                  size: 20,
+                  color: _midnight,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Appearance',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Choose light, dark, or system theme.',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        color: _textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SegmentedButton<ThemeMode>(
+            key: ValueKey('appearance-${AppPreferences.instance.themeMode}'),
+            segments: const [
+              ButtonSegment(
+                value: ThemeMode.light,
+                icon: Icon(Icons.light_mode_outlined),
+                label: Text('Light'),
+              ),
+              ButtonSegment(
+                value: ThemeMode.system,
+                icon: Icon(Icons.brightness_auto_outlined),
+                label: Text('System'),
+              ),
+              ButtonSegment(
+                value: ThemeMode.dark,
+                icon: Icon(Icons.dark_mode_outlined),
+                label: Text('Dark'),
+              ),
+            ],
+            selected: {AppPreferences.instance.themeMode},
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              textStyle: WidgetStateProperty.all(
+                const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            onSelectionChanged: (selection) {
+              AppPreferences.instance.setThemeMode(selection.first);
+            },
+          ),
+        ],
+      ),
     );
   }
 

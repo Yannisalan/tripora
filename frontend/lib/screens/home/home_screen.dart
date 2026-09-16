@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:frontend/screens/main_shell.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/destinations.dart';
 import '../../models/trip_model.dart';
 import '../../routes/app_routes.dart';
@@ -323,27 +324,34 @@ color: slate200,
 
 const SizedBox(height: 18),
 
-const Wrap(
-spacing: 22,
-runSpacing: 12,
-children: [
-_HeroMeta(
-icon: Icons.schedule_outlined,
-label: 'PERSONALIZED',
-),
-_HeroMeta(
-icon: Icons.auto_awesome_outlined,
-label: 'AI-GENERATED',
-),
-_HeroMeta(
-icon: Icons.public_outlined,
-label: 'GLOBAL DESTINATIONS',
-),
-],
-),
-],
-),
-);
+SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _HeroMeta(
+                      icon: Icons.schedule_outlined,
+                      label: 'PERSONALIZED',
+                    ),
+                    const SizedBox(width: 16),
+                    _HeroMeta(
+                      icon: Icons.auto_awesome_outlined,
+                      label: 'AI-GENERATED',
+                    ),
+                    const SizedBox(width: 16),
+                    _HeroMeta(
+                      icon: Icons.public_outlined,
+                      label: 'GLOBAL',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          ),
+          );
 }
 
 // ---------------------------------------------------------------------------
@@ -1203,38 +1211,35 @@ fontWeight: FontWeight.w700,
 // -----------------------------------------------------------------------------
 
 class _HeroMeta extends StatelessWidget {
-final IconData icon;
-final String label;
+  final IconData icon;
+  final String label;
 
-const _HeroMeta({
-required this.icon,
-required this.label,
-});
+  const _HeroMeta({
+    required this.icon,
+    required this.label,
+  });
 
-@override
+  @override
   Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: const Color(0xFF10B981),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 14,
+          color: AppColors.primary,
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.7,
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.7,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
