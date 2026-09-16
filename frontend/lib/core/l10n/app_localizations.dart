@@ -54,6 +54,14 @@ class AppLocalizations {
       'it': 'Profilo',
       'pt': 'Perfil',
     },
+    'nav.planTrip': {
+      'en': 'Plan a Trip',
+      'es': 'Planear un Viaje',
+      'fr': 'Planifier un Voyage',
+      'de': 'Reise Planen',
+      'it': 'Pianifica un Viaggio',
+      'pt': 'Planejar uma Viagem',
+    },
     'profile.myAccount': {
       'en': 'My Account',
       'es': 'Mi Cuenta',

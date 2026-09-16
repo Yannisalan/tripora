@@ -12,7 +12,12 @@ import '../trip_details.dart';
 import '../../widgets/shimmer_loader.dart';
 
 class HomeScreen extends StatefulWidget {
-const HomeScreen({super.key});
+  const HomeScreen({super.key, this.showAppBar = true});
+
+  /// When false (global web top-nav layout), the inner app bar with the
+  /// inline "Tripora" brand + Plan Trip button is suppressed because the
+  /// web header already provides both.
+  final bool showAppBar;
 
 @override
 State<HomeScreen> createState() => _HomeScreenState();
@@ -114,7 +119,7 @@ builder: (_) => TripDetailsScreen(trip: trip),
 Widget build(BuildContext context) {
 return Scaffold(
 backgroundColor: porcelain,
-appBar: _buildAppBar(),
+appBar: widget.showAppBar ? _buildAppBar() : null,
 body: RefreshIndicator(
 color: midnight,
 backgroundColor: white,
