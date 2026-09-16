@@ -18,7 +18,7 @@ from routes.travel import travel_bp
 from routes.admin import admin_bp
 from routes.documents import documents_bp
 from routes.expenses import expenses_bp
-from routes.places import places_bp
+from routes.rates import rates_bp
 from services.rate_limiter import limiter, RateLimitExceeded
 logger = logging.getLogger(__name__)
 
@@ -198,7 +198,7 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(documents_bp)
     app.register_blueprint(expenses_bp)
-    app.register_blueprint(places_bp)
+    app.register_blueprint(rates_bp)
 
     # ========================================================
     # RATE LIMITING

@@ -10,6 +10,9 @@ from flask_jwt_extended import (
 
 from config.database import db
 from models.trip import Trip
+from models.user import User
+from routes.auth import VALID_CURRENCIES, VALID_LANGUAGES
+from routes.rates import convert_cost_from_usd
 from services.cost_service import calculate_trip_cost
 from services.itinerary_service import generate_itinerary
 
@@ -101,8 +104,28 @@ def _parse_trip_payload(data):
     }
 
 
-def _build_cost(payload):
-    return calculate_trip_cost(
+def _get_user_preferences(user_id):
+    """Return the user's preferred (language, currency).
+
+    Offline preferences sync from PATCH /api/auth/me; trip generation
+    falls back gracefully to the defaults when the user has none set.
+    """
+    user = db.session.get(User, user_id)
+
+    language = (user.preferred_language if user is not None else "") or "en"
+    currency = (user.preferred_currency if user is not None else "") or "USD"
+
+    if language not in VALID_LANGUAGES:
+        language = "en"
+
+    if currency not in VALID_CURRENCIES:
+        currency = "USD"
+
+    return language, currency
+
+
+def _build_cost(payload, currency="USD"):
+    cost = calculate_trip_cost(
         destination=payload["destination"],
         start_date=payload["start_date"],
         end_date=payload["end_date"],
@@ -110,8 +133,10 @@ def _build_cost(payload):
         budget=payload["budget"],
     )
 
+    return convert_cost_from_usd(cost, currency)
 
-def _build_itinerary(payload):
+
+def _build_itinerary(payload, language="en"):
     itinerary = generate_itinerary(
         destination=payload["destination"],
         start_date=payload["start_date"],
@@ -120,6 +145,7 @@ def _build_itinerary(payload):
         budget=payload["budget"],
         travel_style=payload["travel_style"],
         interests=payload["interests"],
+        language=language,
     )
 
     if not isinstance(itinerary, dict):
@@ -219,13 +245,48 @@ def generate_trip():
             "message": str(error),
         }), 400
 
+    # --------------------------------------------------------
+    # RESOLVE USER PREFERENCES
+    # --------------------------------------------------------
+
+    preferred_language, preferred_currency = _get_user_preferences(user_id)
+
+    # The client can override the saved account preferences for this
+    # request (used when the app re-syncs after a preference change).
+    request_language = (
+        str(data.get("preferredLanguage") or "").strip().lower()
+        if isinstance(data, dict)
+        else ""
+    )
+    request_currency = (
+        str(data.get("preferredCurrency") or "").strip().upper()
+        if isinstance(data, dict)
+        else ""
+    )
+
+    if request_language:
+        if request_language not in VALID_LANGUAGES:
+            return jsonify({
+                "success": False,
+                "message": "Language is invalid.",
+            }), 400
+        preferred_language = request_language
+
+    if request_currency:
+        if request_currency not in VALID_CURRENCIES:
+            return jsonify({
+                "success": False,
+                "message": "Currency is invalid.",
+            }), 400
+        preferred_currency = request_currency
+
     # ========================================================
     # CALCULATE ESTIMATED COST
     # ========================================================
 
     try:
 
-        cost = _build_cost(payload)
+        cost = _build_cost(payload, currency=preferred_currency)
 
     except ValueError as error:
 
@@ -252,7 +313,10 @@ def generate_trip():
 
     try:
 
-        generated_itinerary = _build_itinerary(payload)
+        generated_itinerary = _build_itinerary(
+            payload,
+            language=preferred_language,
+        )
 
         logger.info("AI itinerary generated successfully for user: %s", user_id)
 
@@ -500,7 +564,16 @@ def update_trip(trip_id):
 
     try:
         payload = _parse_trip_payload(data)
-        cost = _build_cost(payload)
+    except ValueError as error:
+        return jsonify({
+            "success": False,
+            "message": str(error),
+        }), 400
+
+    preferred_language, preferred_currency = _get_user_preferences(user_id)
+
+    try:
+        cost = _build_cost(payload, currency=preferred_currency)
     except ValueError as error:
         return jsonify({
             "success": False,
@@ -542,7 +615,10 @@ def update_trip(trip_id):
         trip.estimated_cost = cost
 
         if dates_changed:
-            trip.itinerary = _build_itinerary(payload)
+            trip.itinerary = _build_itinerary(
+                payload,
+                language=preferred_language,
+            )
 
         db.session.commit()
 
@@ -585,6 +661,8 @@ def regenerate_trip_itinerary(trip_id):
                 "message": "Trip not found.",
             }), 404
 
+        preferred_language, _ = _get_user_preferences(user_id)
+
         payload = {
             "destination": trip.destination,
             "start_date": trip.start_date.isoformat(),
@@ -595,7 +673,10 @@ def regenerate_trip_itinerary(trip_id):
             "interests": trip.interests or [],
         }
 
-        trip.itinerary = _build_itinerary(payload)
+        trip.itinerary = _build_itinerary(
+            payload,
+            language=preferred_language,
+        )
 
         db.session.commit()
 

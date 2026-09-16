@@ -1,4 +1,4 @@
-"""expenses, place cache, password reset, and numeric trip budget
+"""expenses, password reset, and numeric trip budget
 
 Revision ID: 3e2d1c0b9a87
 Revises: b2c3d4e5f6a7
@@ -15,9 +15,6 @@ Supported features added by this migration:
 - ``trip_expenses``: per-expense records (amount, currency, category, date,
   payment method) owned by a user and attached to a trip. Protected by RLS
   (``FORCE``) exactly like ``trip_documents``.
-- ``place_coordinates``: cached Nominatim geocoding results so the travel map
-  does not hammer the third-party geocoder with repeated lookups of the same
-  place.
 
 Ownership is enforced at the application layer (every route filters by the
 JWT user id) AND at the database layer with Row-Level Security, mirroring the
@@ -135,36 +132,8 @@ def upgrade():
         "FOR DELETE USING (user_id = %s)" % _RLS_SUB
     )
 
-    # ---------------------------------------------------------------
-    # PLACE COORDINATES (geocoding cache)
-    # ---------------------------------------------------------------
-    op.create_table(
-        'place_coordinates',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('query', sa.String(length=255), nullable=False),
-        sa.Column('name', sa.String(length=255), nullable=True),
-        sa.Column('display_name', sa.String(length=512), nullable=True),
-        sa.Column('latitude', sa.Numeric(precision=9, scale=6), nullable=True),
-        sa.Column('longitude', sa.Numeric(precision=9, scale=6), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index(
-        op.f('ix_place_coordinates_query'),
-        'place_coordinates',
-        ['query'],
-        unique=True,
-    )
-
 
 def downgrade():
-    op.drop_index(
-        op.f('ix_place_coordinates_query'),
-        table_name='place_coordinates',
-    )
-    op.drop_table('place_coordinates')
-
     op.execute(
         "DROP POLICY IF EXISTS trip_expenses_delete_owner ON trip_expenses"
     )

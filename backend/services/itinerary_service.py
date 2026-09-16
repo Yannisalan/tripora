@@ -37,6 +37,18 @@ ACTIVITY_CATEGORIES = [
     "Sightseeing",
 ]
 
+# Maps a user's preferred language code to a human-readable name used to
+# instruct Gemini which language the itinerary content should be written in.
+# Kept in sync with VALID_LANGUAGES in routes/auth.py.
+LANGUAGES_BY_CODE = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+}
+
 
 load_dotenv()
 
@@ -416,6 +428,7 @@ def generate_itinerary(
     budget,
     travel_style,
     interests,
+    language="en",
 ):
 
     # ========================================================
@@ -434,6 +447,25 @@ def generate_itinerary(
     model_transient_errors = 0
 
     categories_list = ", ".join(ACTIVITY_CATEGORIES)
+
+    language_name = LANGUAGES_BY_CODE.get(
+        (language or "en").lower(),
+        "English",
+    )
+
+    language_requirement = ""
+    if language_name != "English":
+        language_requirement = f"""
+
+LANGUAGE REQUIREMENT:
+
+Write ALL itinerary content — every day title, activity title,
+description, and location — in {language_name}.
+
+Keep the JSON keys, the 'time' values (e.g. "Morning"), and the
+'category' values in English. Everything a traveler would read
+(mainly the description fields) must be in {language_name}.
+"""
 
     # ========================================================
     # GENERATION LOOP
@@ -486,7 +518,7 @@ Travelers: {travelers}
 Budget: {budget}
 Travel style: {travel_style}
 Interests: {interests}
-
+{language_requirement}
 REQUIREMENTS:
 
 1. Create EXACTLY ONE itinerary entry for EVERY calendar day

@@ -316,13 +316,21 @@ def upload_trip_document(trip_id):
 
     try:
         db.session.add(document)
+
+        # Serialize BEFORE commit: after flush the row's identity (id) is
+        # populated and all attributes are available without a lazy refresh.
+        # Accessing attributes after commit would trigger a refresh against a
+        # session that may already be closed (DetachedInstanceError), so we
+        # capture everything we need now and never touch the ORM instance after
+        # db.session.commit().
         db.session.flush()
 
-        document_data = document.to_ditch()
+        document_data = document.to_dict()
+        document_id = document.id
 
         db.session.commit()
 
-        logger.info("Document uploaded: id=%s trip=%s user=%s", document.id, trip_id, user_id)
+        logger.info("Document uploaded: id=%s trip=%s user=%s", document_id, trip_id, user_id)
     except Exception as error:
         db.session.rollback()
 
@@ -378,12 +386,23 @@ def get_document_file(document_id):
                 "message": "Document not found.",
             }), 404
 
-        is_image = document.mime_type.startswith("image/")
+        # Capture every attribute we need as plain scalars BEFORE any generator
+        # runs. The stream() generator below is evaluated lazily by Flask after
+        # this view has returned — at that point the ORM instance may already be
+        # detached from its session, and touching document.* inside the
+        # generator would raise DetachedInstanceError. Reading everything now
+        # (while the row is still attached) and closing over only local scalars
+        # makes the streaming path safe regardless of session lifecycle.
+        storage_key = document.storage_key
+        mime_type = document.mime_type
+        file_name = document.file_name
+        file_size = document.file_size
+        is_image = mime_type.startswith("image/")
 
         def stream():
             try:
                 storage = get_storage_backend()
-                yield from storage.download(document.storage_key)
+                yield from storage.download(storage_key)
             except StorageError as error:
                 logger.warning("Document stream failure id=%s: %s", document_id, error)
                 raise
@@ -392,12 +411,12 @@ def get_document_file(document_id):
             stream(),
             status=200,
             headers={
-                "Content-Type": document.mime_type,
+                "Content-Type": mime_type,
                 "Content-Disposition": safe_content_disposition(
-                    document.file_name,
+                    file_name,
                     is_inline=is_image,
                 ),
-                "Content-Length": str(document.file_size),
+                "Content-Length": str(file_size),
                 "Cache-Control": "private, no-store",
                 "X-Content-Type-Options": "nosniff",
             },

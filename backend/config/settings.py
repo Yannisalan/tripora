@@ -335,9 +335,6 @@ class Config:
             "expenses.create_expense": cls._bucket(W, W_W, 30, 600),
             "expenses.update_expense": cls._bucket(W, W_W, 30, 600),
             "expenses.delete_expense": cls._bucket(W, W_W, 30, 600),
-            # ---- live interactive travel map (geocoding proxy) ----
-            "places.geocode": cls._bucket(R, R_W, 30, 60),
-            "places.route": cls._bucket(R, R_W, 30, 60),
             # ---- public page-view beacon ----
             "admin.track_page_view": cls._bucket(A, A_W, 10, 600),
             # ---- default read bucket ----

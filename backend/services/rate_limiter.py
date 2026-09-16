@@ -59,8 +59,6 @@ DEFAULT_BUCKETS = {
     "expenses.create_expense": {"limit": None, "window": 600},
     "expenses.update_expense": {"limit": None, "window": 600},
     "expenses.delete_expense": {"limit": None, "window": 600},
-    "places.geocode": {"limit": None, "window": 60},
-    "places.route": {"limit": None, "window": 60},
     "DEFAULT_READ": {"limit": None, "window": 60},
 }
 
