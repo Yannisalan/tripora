@@ -109,6 +109,7 @@ def _stub_generate_itinerary(
     budget,
     travel_style,
     interests,
+    language="en",
 ):
     """Deterministic itinerary stand-in for the Gemini service.
 

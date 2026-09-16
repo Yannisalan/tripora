@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import requests
 from flask import Blueprint, jsonify
@@ -26,6 +26,12 @@ weather_bp = Blueprint(
 
 _GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 _FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+
+# Open-Meteo serves forecasts up to 16 calendar days from today (today + 15),
+# and rejects any request whose end_date falls outside that window with HTTP
+# 400. We clamp the requested window to this horizon so a long trip still
+# returns the portion of the forecast that IS available instead of failing.
+_FORECAST_HORIZON_DAYS = 16
 
 # WMO weather code → human label + icon code
 _WMO_CODES = {
@@ -67,6 +73,15 @@ _CACHE_TTL_SECONDS = 30 * 60  # 30 minutes
 _cache: dict[int, dict] = {}
 
 
+def _utc_today() -> date:
+    """Return today's UTC calendar date.
+
+    Trips store date-only values with no timezone, so a deterministic server
+    "today" is what the weather window should be measured against.
+    """
+    return datetime.now(timezone.utc).date()
+
+
 # ============================================================
 # HELPERS
 # ============================================================
@@ -84,9 +99,20 @@ def _geocode_destination(destination: str):
             timeout=8,
         )
         if resp.status_code != 200:
+            logger.error(
+                "Open-Meteo geocoding HTTP %s for %r (body=%s)",
+                resp.status_code,
+                destination,
+                resp.text[:500],
+            )
             return None
         results = resp.json().get("results")
         if not results or not isinstance(results, list) or len(results) == 0:
+            logger.error(
+                "Open-Meteo geocoding returned no results for %r (body=%s)",
+                destination,
+                resp.text[:500],
+            )
             return None
         r = results[0]
         return (
@@ -96,37 +122,59 @@ def _geocode_destination(destination: str):
             r.get("longitude"),
         )
     except Exception as exc:
-        logger.warning("Geocoding failed for %r: %s", destination, exc)
+        logger.error("Open-Meteo geocoding failed for %r: %s", destination, exc)
         return None
 
 
 def _fetch_forecast(lat: float, lon: float, start: date, end: date):
-    """Fetch daily forecast from Open-Meteo. Returns a list of day dicts."""
+    """Fetch daily forecast from Open-Meteo. Returns a list of day dicts.
+
+    Returns ``None`` only when the provider call itself fails (network,
+    timeout, non-200 response, invalid JSON). A 200 response with fewer dates
+    than requested is returned as-is so callers can show the partial forecast.
+    """
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "daily": (
+            "weather_code,"
+            "temperature_2m_max,"
+            "temperature_2m_min,"
+            "precipitation_probability_max,"
+            "wind_speed_10m_max"
+        ),
+        "timezone": "auto",
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+    }
     try:
-        resp = requests.get(
-            _FORECAST_URL,
-            params={
-                "latitude": lat,
-                "longitude": lon,
-                "daily": (
-                    "weather_code,"
-                    "temperature_2m_max,"
-                    "temperature_2m_min,"
-                    "precipitation_probability_max,"
-                    "wind_speed_10m_max"
-                ),
-                "timezone": "auto",
-                "start_date": start.isoformat(),
-                "end_date": end.isoformat(),
-            },
-            timeout=10,
-        )
+        resp = requests.get(_FORECAST_URL, params=params, timeout=10)
         if resp.status_code != 200:
-            logger.warning("Open-Meteo forecast HTTP %s", resp.status_code)
+            logger.error(
+                "Open-Meteo forecast HTTP %s (start=%s end=%s url=%s body=%s)",
+                resp.status_code,
+                start.isoformat(),
+                end.isoformat(),
+                resp.url,
+                resp.text[:500],
+            )
             return None
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            logger.error(
+                "Open-Meteo forecast returned invalid JSON: %s (body=%s)",
+                exc,
+                resp.text[:500],
+            )
+            return None
         daily = data.get("daily")
         if not daily or not isinstance(daily, dict):
+            logger.error(
+                "Open-Meteo forecast response missing 'daily' data (url=%s body=%s)",
+                resp.url,
+                resp.text[:500],
+            )
             return None
         dates = daily.get("time", [])
         codes = daily.get("weather_code", [])
@@ -151,9 +199,23 @@ def _fetch_forecast(lat: float, lon: float, start: date, end: date):
                 ),
                 "windSpeedMax": wind[i] if i < len(wind) else None,
             })
+        logger.info(
+            "Open-Meteo forecast ok: requested %s..%s, got %d days (url=%s)",
+            start.isoformat(),
+            end.isoformat(),
+            n,
+            resp.url,
+        )
         return forecast
     except Exception as exc:
-        logger.warning("Open-Meteo forecast failed: %s", exc)
+        logger.error(
+            "Open-Meteo forecast request failed (lat=%s lon=%s start=%s end=%s): %s",
+            lat,
+            lon,
+            start.isoformat(),
+            end.isoformat(),
+            exc,
+        )
         return None
 
 
@@ -202,7 +264,10 @@ def get_trip_weather(trip_id: int):
             "destination": destination,
         }), 200
 
-    today = date.today()
+    # Use the UTC calendar date so "today" is deterministic on the server
+    # regardless of the host timezone.
+    today = _utc_today()
+
     if trip.end_date < today:
         return jsonify({
             "success": True,
@@ -240,9 +305,42 @@ def get_trip_weather(trip_id: int):
 
     geo_name, geo_country, lat, lon = geo
 
-    # Forecast — clamp start to today (Open-Meteo won't return past dates)
+    # Forecast window — clamp to the portion Open-Meteo can actually serve:
+    #   * start  → latest of (trip start, today)  (Open-Meteo won't return
+    #     past dates for the *daily* array, so only request from today on)
+    #   * end    → earliest of (trip end, today + 15)  (16-day horizon)
+    # Clamping the end (instead of sending a range Open-Meteo rejects with
+    # HTTP 400) lets long trips show the days that ARE available rather than
+    # failing the whole forecast.
     forecast_start = max(trip.start_date, today)
-    forecast_end = trip.end_date
+    max_forecast_end = today + timedelta(days=_FORECAST_HORIZON_DAYS - 1)
+    forecast_end = min(trip.end_date, max_forecast_end)
+
+    if forecast_start > forecast_end:
+        return jsonify({
+            "success": True,
+            "available": False,
+            "reason": "forecast_unavailable",
+            "message": (
+                "This trip falls outside the weather forecast window. "
+                "Forecasts are available up to 16 days from today."
+            ),
+            "destination": destination,
+            "dates": {
+                "start": trip.start_date.isoformat(),
+                "end": trip.end_date.isoformat(),
+                "forecastStart": forecast_start.isoformat(),
+                "forecastEnd": forecast_end.isoformat(),
+            },
+        }), 200
+
+    if forecast_end > max_forecast_end:
+        logger.info(
+            "Trip %s forecast end %s clamped to Open-Meteo horizon %s",
+            trip_id,
+            trip.end_date.isoformat(),
+            max_forecast_end.isoformat(),
+        )
 
     forecast = _fetch_forecast(lat, lon, forecast_start, forecast_end)
 
@@ -255,6 +353,12 @@ def get_trip_weather(trip_id: int):
                 "Weather forecast is temporarily unavailable."
             ),
             "destination": destination,
+            "dates": {
+                "start": trip.start_date.isoformat(),
+                "end": trip.end_date.isoformat(),
+                "forecastStart": forecast_start.isoformat(),
+                "forecastEnd": forecast_end.isoformat(),
+            },
         }), 200
 
     result = {

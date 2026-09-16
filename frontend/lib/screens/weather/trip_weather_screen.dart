@@ -23,17 +23,13 @@ class TripWeatherScreen extends StatefulWidget {
 
 class _TripWeatherScreenState extends State<TripWeatherScreen> {
   // ---- colours (Tripora palette) ----
-  static const Color _midnight = Color(0xFF1E1B4B);
   static const Color _midnightDark = Color(0xFF070235);
   static const Color _blue = Color(0xFF3B82F6);
-  static const Color _sky = Color(0xFF38BDF8);
   static const Color _amber = Color(0xFFF59E0B);
   static const Color _emerald = Color(0xFF10B981);
   static const Color _surface = Color(0xFFF8FAFC);
   static const Color _white = Colors.white;
   static const Color _border = Color(0xFFE2E8F0);
-  static const Color _slate100 = Color(0xFFF1F5F9);
-  static const Color _slate200 = Color(0xFFE2E8F0);
   static const Color _slate300 = Color(0xFFCBD5E1);
   static const Color _slate400 = Color(0xFF94A3B8);
   static const Color _slate500 = Color(0xFF64748B);
@@ -344,6 +340,20 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             _buildEmptyForecast(lang)
           else
             ...forecast.map((day) => _buildDayCard(day, currency, lang)),
+
+          const SizedBox(height: 24),
+
+          // ---- attribution ----
+          Center(
+            child: Text(
+              'Weather data by Open-Meteo.com',
+              style: const TextStyle(
+                fontSize: 11,
+                color: _slate400,
+                fontFamily: 'Manrope',
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -362,7 +372,6 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     final tempMax = day['tempMax'];
     final tempMin = day['tempMin'];
     final precipProb = day['precipitationProbability'];
-    final windMax = day['windSpeedMax'];
 
     final icon = _iconMap[iconCode] ?? Icons.help_outline;
 
