@@ -1137,7 +1137,7 @@ letterSpacing: -0.4,
 ),
 ),
 
-if (trailing != null) trailing,
+?trailing,
 ],
 );
 }

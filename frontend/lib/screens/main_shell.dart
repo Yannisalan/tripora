@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -11,9 +12,13 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/travel/flight_search_screen.dart';
 import '../screens/trips/trips_screen.dart';
 
-/// Width (CSS pixels) at which the app switches from the mobile bottom
-/// navigation to the desktop/tablet web top header.
-const double _webNavBreakpoint = 960;
+/// Width (CSS pixels) at which the web top header switches from the
+/// compact (icon + drawer) layout to the full labeled layout. This only
+/// affects which WEB header is shown — it does not affect whether the
+/// header is shown at all. That decision is [kIsWeb]: the web build
+/// always gets a top header, the native app build always gets the
+/// bottom nav, regardless of screen width.
+const double _webHeaderCompactBreakpoint = 960;
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -25,6 +30,8 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   // Built per-render (not const) so a language/currency/theme change —
   // which rebuilds MainShell through the ListenableBuilder below — also
   // rebuilds the tab contents instead of serving stale instances.
@@ -40,6 +47,11 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Platform decides top-vs-bottom nav, not screen width:
+    // - Web build (phone, tablet, or laptop browser) -> top header, always.
+    // - Native app build (iOS/Android) -> bottom nav, always.
+    const bool showWebHeader = kIsWeb;
+
     // Re-render the shell (nav labels, every tab) whenever preferences
     // change so translated labels and per-currency UI stay in sync.
     return ListenableBuilder(
@@ -50,34 +62,55 @@ class _MainShellState extends State<MainShell> {
           builder: (context, currentIndex, _) {
             return LayoutBuilder(
               builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= _webNavBreakpoint;
+                // Only used to pick which WEB header variant fits —
+                // never used to decide top-vs-bottom nav.
+                final isCompactWeb =
+                    constraints.maxWidth < _webHeaderCompactBreakpoint;
 
                 void selectTab(int index) {
                   MainShell.currentIndex.value = index;
+                  // Close the drawer (if open) after a selection on the
+                  // compact web header.
+                  if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+                    Navigator.of(context).pop();
+                  }
                 }
 
                 return Scaffold(
-                  // The IndexedStack stays at the same tree depth on both
-                  // layouts so tab state survives browser resizing across
-                  // the breakpoint. The web header swaps in/out instantly
-                  // (no retain-for-transition) so it is never laid out at
-                  // narrow widths where it would overflow.
-                  body: Column(
-                    children: [
-                      if (isWide)
-                        _TriporaWebHeader(
+                  key: _scaffoldKey,
+                  // The IndexedStack stays at the same tree depth in every
+                  // layout so tab state survives browser resizing across
+                  // the compact/full web breakpoint. The header variant
+                  // swaps in/out instantly (no retain-for-transition) so
+                  // the full header is never laid out at widths where it
+                  // would overflow.
+                  drawer: (showWebHeader && isCompactWeb)
+                      ? _TriporaWebDrawer(
                           currentIndex: currentIndex,
                           onSelected: selectTab,
-                        ),
+                        )
+                      : null,
+                  body: Column(
+                    children: [
+                      if (showWebHeader)
+                        isCompactWeb
+                            ? _TriporaCompactWebHeader(
+                                onMenuTap: () =>
+                                    _scaffoldKey.currentState?.openDrawer(),
+                              )
+                            : _TriporaWebHeader(
+                                currentIndex: currentIndex,
+                                onSelected: selectTab,
+                              ),
                       Expanded(
                         child: IndexedStack(
                           index: currentIndex,
-                          children: _buildPages(webChrome: isWide),
+                          children: _buildPages(webChrome: showWebHeader),
                         ),
                       ),
                     ],
                   ),
-                  bottomNavigationBar: isWide
+                  bottomNavigationBar: showWebHeader
                       ? null
                       : _TriporaBottomNav(
                           currentIndex: currentIndex,
@@ -140,7 +173,7 @@ List<_NavItem> _navItems(BuildContext context) {
 }
 
 // ---------------------------------------------------------------------------
-// Website top navigation
+// Website top navigation — full (wide browser windows)
 // ---------------------------------------------------------------------------
 
 class _TriporaWebHeader extends StatelessWidget {
@@ -341,7 +374,116 @@ class _TriporaPlanTripCta extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Mobile bottom navigation (Liquid Glass-inspired pill)
+// Website top navigation — compact (narrow browser windows, e.g. phone-width
+// Chrome). Same "nav on top" rule as the full header, just laid out so it
+// doesn't overflow at small widths: brand + a menu button that opens a
+// drawer with the full nav list.
+// ---------------------------------------------------------------------------
+
+class _TriporaCompactWebHeader extends StatelessWidget {
+  const _TriporaCompactWebHeader({required this.onMenuTap});
+
+  final VoidCallback onMenuTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(
+          bottom: BorderSide(color: colors.border, width: 0.8),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 56,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: onMenuTap,
+                  icon: const Icon(Icons.menu_rounded),
+                  tooltip: MaterialLocalizations.of(context)
+                      .openAppDrawerTooltip,
+                ),
+                const SizedBox(width: 4),
+                const _TriporaBrand(),
+                const Spacer(),
+                IconButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRoutes.planner);
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: context.tr('nav.planTrip'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TriporaWebDrawer extends StatelessWidget {
+  const _TriporaWebDrawer({
+    required this.currentIndex,
+    required this.onSelected,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _navItems(context);
+    final colors = context.triporaColors;
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: _TriporaBrand(),
+            ),
+            Divider(color: colors.border, height: 1),
+            for (var i = 0; i < items.length; i++)
+              ListTile(
+                leading: Icon(
+                  i == currentIndex ? items[i].selectedIcon : items[i].icon,
+                  color: i == currentIndex
+                      ? Theme.of(context).colorScheme.primary
+                      : colors.textSecondary,
+                ),
+                title: Text(
+                  items[i].label,
+                  style: GoogleFonts.manrope(
+                    fontWeight:
+                        i == currentIndex ? FontWeight.w700 : FontWeight.w600,
+                    color: i == currentIndex
+                        ? Theme.of(context).colorScheme.primary
+                        : colors.textPrimary,
+                  ),
+                ),
+                selected: i == currentIndex,
+                onTap: () => onSelected(i),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Native app bottom navigation (Liquid Glass-inspired pill)
 // ---------------------------------------------------------------------------
 
 class _TriporaBottomNav extends StatelessWidget {

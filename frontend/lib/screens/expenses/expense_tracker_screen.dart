@@ -812,8 +812,8 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                     decoration:
                     BoxDecoration(
                       color: Colors.white
-                          .withOpacity(
-                        0.12,
+                          .withValues(
+                        alpha: 0.12,
                       ),
                       borderRadius:
                       BorderRadius
