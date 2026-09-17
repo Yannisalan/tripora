@@ -1,8 +1,10 @@
 import 'dart:convert';
+
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
-import '../../core/l10n/app_localizations.dart';
+
 import '../../core/preferences/app_preferences.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
@@ -250,7 +252,10 @@ class ItineraryScreen extends StatelessWidget {
   // FORMAT DATE
   // ============================================================
 
-  String _formatDate(String? dateString) {
+  String _formatDate(
+    String? dateString,
+    BuildContext context,
+  ) {
     if (dateString == null || dateString.isEmpty) {
       return '';
     }
@@ -261,24 +266,26 @@ class ItineraryScreen extends StatelessWidget {
       return dateString;
     }
 
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+    const monthKeys = [
+      'january',
+      'february',
+      'march',
+      'april',
+      'may',
+      'june',
+      'july',
+      'august',
+      'september',
+      'october',
+      'november',
+      'december',
     ];
 
-    return '${months[date.month - 1]} '
-        '${date.day}, '
-        '${date.year}';
+    final month = context.tr(
+      'date.${monthKeys[date.month - 1]}',
+    );
+
+    return '$month ${date.day}, ${date.year}';
   }
 
   // ============================================================
@@ -359,9 +366,8 @@ class ItineraryScreen extends StatelessWidget {
         backgroundColor: _background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-
         leading: IconButton(
-          tooltip: 'Go back',
+          tooltip: context.tr('common.back'),
           icon: const Icon(
             Icons.arrow_back_rounded,
             color: _midnight,
@@ -370,10 +376,9 @@ class ItineraryScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-
-        title: const Text(
-          'Your Itinerary',
-          style: TextStyle(
+        title: Text(
+          context.tr('it.title'),
+          style: const TextStyle(
             fontFamily: 'Noto Serif',
             fontSize: 21,
             fontWeight: FontWeight.w700,
@@ -402,15 +407,7 @@ class ItineraryScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ==================================================
-                  // EDITORIAL TRIP HEADER
-                  // ==================================================
-
                   _buildTripHeader(context),
-
-                  // ==================================================
-                  // COST
-                  // ==================================================
 
                   if (estimatedCost != null) ...[
                     const SizedBox(height: 24),
@@ -419,17 +416,9 @@ class ItineraryScreen extends StatelessWidget {
 
                   const SizedBox(height: 48),
 
-                  // ==================================================
-                  // ITINERARY INTRO
-                  // ==================================================
-
-                  _buildSectionHeading(),
+                  _buildSectionHeading(context),
 
                   const SizedBox(height: 28),
-
-                  // ==================================================
-                  // ITINERARY
-                  // ==================================================
 
                   if (itinerary.isEmpty)
                     _buildEmptyItinerary(context),
@@ -449,7 +438,7 @@ class ItineraryScreen extends StatelessWidget {
                           date: day['date']?.toString(),
                           title: _stringValue(
                             day['title'],
-                            'Travel Day',
+                            context.tr('it.travelDay'),
                           ),
                           activities: _parseActivities(
                             day['activities'],
@@ -460,10 +449,6 @@ class ItineraryScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // ==================================================
-                  // ACTIONS
-                  // ==================================================
 
                   _buildActionButtons(context),
                 ],
@@ -490,8 +475,6 @@ class ItineraryScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // AI LABEL
-
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 11,
@@ -504,18 +487,18 @@ class ItineraryScreen extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.16),
               ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.auto_awesome,
                   size: 14,
                   color: Color(0xFF93C5FD),
                 ),
-                SizedBox(width: 7),
+                const SizedBox(width: 7),
                 Text(
-                  'AI-GENERATED TRAVEL PLAN',
-                  style: TextStyle(
+                  context.tr('it.aiGenerated'),
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -528,8 +511,6 @@ class ItineraryScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: 22),
-
-          // DESTINATION
 
           Text(
             destination,
@@ -545,8 +526,8 @@ class ItineraryScreen extends StatelessWidget {
           const SizedBox(height: 10),
 
           Text(
-            '${_formatDate(_dateIso(startDate))} — '
-            '${_formatDate(_dateIso(endDate))}',
+            '${_formatDate(_dateIso(startDate), context)} — '
+            '${_formatDate(_dateIso(endDate), context)}',
             style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
@@ -556,8 +537,6 @@ class ItineraryScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: 28),
-
-          // INFO ROW
 
           Wrap(
             spacing: 20,
@@ -575,11 +554,11 @@ class ItineraryScreen extends StatelessWidget {
               ),
               _buildHeaderInfo(
                 Icons.account_balance_wallet_outlined,
-                budget,
+                _localizedBudget(context),
               ),
               _buildHeaderInfo(
                 Icons.explore_outlined,
-                travelStyle,
+                _localizedTravelStyle(context),
               ),
             ],
           ),
@@ -595,7 +574,7 @@ class ItineraryScreen extends StatelessWidget {
             const SizedBox(height: 18),
 
             Text(
-              'INTERESTS',
+              context.tr('it.interests'),
               style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 10,
@@ -625,7 +604,10 @@ class ItineraryScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      interest,
+                      _localizedInterest(
+                        context,
+                        interest,
+                      ),
                       style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
@@ -641,6 +623,76 @@ class ItineraryScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ============================================================
+  // LOCALIZED PLANNER VALUES
+  // ============================================================
+
+  String _localizedBudget(BuildContext context) {
+    switch (budget.toLowerCase()) {
+      case 'moderate':
+        return context.tr('planner.moderate');
+
+      case 'high':
+        return context.tr('planner.high');
+
+      case 'luxury':
+        return context.tr('planner.luxury');
+
+      default:
+        return budget;
+    }
+  }
+
+  String _localizedTravelStyle(BuildContext context) {
+    switch (travelStyle.toLowerCase()) {
+      case 'balanced':
+        return context.tr('planner.balanced');
+
+      case 'relaxed':
+        return context.tr('planner.relaxed');
+
+      case 'adventure':
+        return context.tr('planner.adventure');
+
+      case 'luxury':
+        return context.tr('planner.luxury');
+
+      default:
+        return travelStyle;
+    }
+  }
+
+  String _localizedInterest(
+    BuildContext context,
+    String interest,
+  ) {
+    switch (interest.toLowerCase()) {
+      case 'culture':
+        return context.tr('planner.culture');
+
+      case 'food':
+        return context.tr('planner.food');
+
+      case 'nature':
+        return context.tr('planner.nature');
+
+      case 'adventure':
+        return context.tr('planner.adventure');
+
+      case 'shopping':
+        return context.tr('planner.shopping');
+
+      case 'nightlife':
+        return context.tr('planner.nightlife');
+
+      case 'relaxation':
+        return context.tr('planner.relaxation');
+
+      default:
+        return interest;
+    }
   }
 
   // ============================================================
@@ -677,13 +729,13 @@ class ItineraryScreen extends StatelessWidget {
   // SECTION HEADING
   // ============================================================
 
-  Widget _buildSectionHeading() {
+  Widget _buildSectionHeading(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'YOUR ITINERARY',
-          style: TextStyle(
+        Text(
+          context.tr('it.yourItinerary'),
+          style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 11,
             fontWeight: FontWeight.w800,
@@ -694,9 +746,9 @@ class ItineraryScreen extends StatelessWidget {
 
         const SizedBox(height: 7),
 
-        const Text(
-          'Days designed around you.',
-          style: TextStyle(
+        Text(
+          context.tr('it.daysDesigned'),
+          style: const TextStyle(
             fontFamily: 'Noto Serif',
             fontSize: 31,
             height: 1.15,
@@ -707,9 +759,9 @@ class ItineraryScreen extends StatelessWidget {
 
         const SizedBox(height: 8),
 
-        const Text(
-          'A suggested plan based on your preferences.',
-          style: TextStyle(
+        Text(
+          context.tr('it.suggestedPlan'),
+          style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             height: 1.5,
@@ -750,11 +802,13 @@ class ItineraryScreen extends StatelessWidget {
               color: _blue,
             ),
           ),
+
           const SizedBox(width: 14),
-          const Expanded(
+
+          Expanded(
             child: Text(
-              'No itinerary was generated.',
-              style: TextStyle(
+              context.tr('it.noItinerary'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -839,7 +893,9 @@ class ItineraryScreen extends StatelessWidget {
                         color: _mutedText,
                       ),
                     ),
+
                     const SizedBox(height: 3),
+
                     Text(
                       context.tr('it.tripBudgetOverview'),
                       style: const TextStyle(
@@ -858,7 +914,10 @@ class ItineraryScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           Text(
-            prefs.formatMoney(total, from: currency),
+            prefs.formatMoney(
+              total,
+              from: currency,
+            ),
             style: const TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 34,
@@ -947,8 +1006,12 @@ class ItineraryScreen extends StatelessWidget {
               ),
             ),
           ),
+
           Text(
-            AppPreferences.instance.formatMoney(value ?? 0, from: currency),
+            AppPreferences.instance.formatMoney(
+              value ?? 0,
+              from: currency,
+            ),
             style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 13,
@@ -985,10 +1048,6 @@ class ItineraryScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ------------------------------------------------------
-          // DAY HEADER
-          // ------------------------------------------------------
-
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1018,7 +1077,14 @@ class ItineraryScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'DAY ${day.toString().padLeft(2, '0')}',
+                      context.tr(
+                        'it.day',
+                        params: {
+                          'n': day
+                              .toString()
+                              .padLeft(2, '0'),
+                        },
+                      ),
                       style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
@@ -1032,7 +1098,7 @@ class ItineraryScreen extends StatelessWidget {
                       const SizedBox(height: 4),
 
                       Text(
-                        _formatDate(date),
+                        _formatDate(date, context),
                         style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
@@ -1062,14 +1128,10 @@ class ItineraryScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // ------------------------------------------------------
-          // ACTIVITIES
-          // ------------------------------------------------------
-
           if (activities.isEmpty)
-            const Text(
-              'No activities available for this day.',
-              style: TextStyle(
+            Text(
+              context.tr('it.noActivities'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 13,
                 color: _mutedText,
@@ -1109,8 +1171,6 @@ class ItineraryScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ICON
-
           Container(
             width: 40,
             height: 40,
@@ -1127,8 +1187,6 @@ class ItineraryScreen extends StatelessWidget {
           ),
 
           const SizedBox(width: 13),
-
-          // CONTENT
 
           Expanded(
             child: Column(
@@ -1161,6 +1219,7 @@ class ItineraryScreen extends StatelessWidget {
 
                 if (activity.description.isNotEmpty) ...[
                   const SizedBox(height: 5),
+
                   Text(
                     activity.description,
                     style: const TextStyle(
@@ -1186,8 +1245,6 @@ class ItineraryScreen extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       children: [
-        // EDIT
-
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -1199,9 +1256,9 @@ class ItineraryScreen extends StatelessWidget {
               Icons.edit_outlined,
               size: 18,
             ),
-            label: const Text(
-              'Edit Trip',
-              style: TextStyle(
+            label: Text(
+              context.tr('it.editTrip'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -1221,8 +1278,6 @@ class ItineraryScreen extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        // FLIGHTS
-
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -1234,9 +1289,9 @@ class ItineraryScreen extends StatelessWidget {
               Icons.flight_takeoff_outlined,
               size: 18,
             ),
-            label: const Text(
-              'Check flight prices',
-              style: TextStyle(
+            label: Text(
+              context.tr('it.checkFlightPrices'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -1254,8 +1309,6 @@ class ItineraryScreen extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        // CALENDAR
-
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -1267,9 +1320,9 @@ class ItineraryScreen extends StatelessWidget {
               Icons.event_outlined,
               size: 18,
             ),
-            label: const Text(
-              'Add to calendar',
-              style: TextStyle(
+            label: Text(
+              context.tr('it.addToCalendar'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -1316,9 +1369,19 @@ class ItineraryScreen extends StatelessWidget {
 
     try {
       final event = Event(
-        title: 'Trip to $destination',
+        title: context.tr(
+          'it.tripTo',
+          params: {
+            'destination': destination,
+          },
+        ),
         description: budget.isNotEmpty
-            ? 'Budget: $budget'
+            ? context.tr(
+                'it.budgetValue',
+                params: {
+                  'budget': budget,
+                },
+              )
             : null,
         location: destination,
         startDate: startDate,
@@ -1334,8 +1397,8 @@ class ItineraryScreen extends StatelessWidget {
           SnackBar(
             content: Text(
               added
-                  ? 'Trip added to calendar'
-                  : 'Could not open the calendar.',
+                  ? context.tr('it.calendarAdded')
+                  : context.tr('it.calendarError'),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1344,9 +1407,9 @@ class ItineraryScreen extends StatelessWidget {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Could not open the calendar.',
+              context.tr('it.calendarError'),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1382,8 +1445,7 @@ class ItineraryScreen extends StatelessWidget {
         continue;
       }
 
-      final category =
-          activity['category']?.toString();
+      final category = activity['category']?.toString();
 
       result.add(
         _Activity(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../core/utils/logger.dart';
 import '../../models/expense_model.dart';
 import '../../models/trip_model.dart';
@@ -10,10 +11,6 @@ import '../../services/trip_service.dart';
 import '../../widgets/gradient_button.dart';
 
 /// Full expense tracker for a single trip.
-///
-/// Shows budget vs. spent, animated budget progress,
-/// category breakdown and the list of expenses,
-/// with add / edit / delete and an editable trip budget.
 class ExpenseTrackerScreen extends StatefulWidget {
   final TripModel trip;
 
@@ -103,7 +100,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
   double get _totalSpent {
     return _expenses.fold(
       0.0,
-          (sum, expense) => sum + expense.amount,
+      (sum, expense) => sum + expense.amount,
     );
   }
 
@@ -115,16 +112,6 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     }
 
     return budget - _totalSpent;
-  }
-
-  double _spentRatio() {
-    final budget = _budgetAmount;
-
-    if (budget == null || budget <= 0) {
-      return 0;
-    }
-
-    return _totalSpent / budget;
   }
 
   String _formatAmount(double amount, [String? from]) {
@@ -140,7 +127,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     for (final expense in _expenses) {
       totals.update(
         expense.category,
-            (value) => value + expense.amount,
+        (value) => value + expense.amount,
         ifAbsent: () => expense.amount,
       );
     }
@@ -152,36 +139,24 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     switch (category.toLowerCase()) {
       case 'transport':
         return Icons.directions_car_outlined;
-
       case 'accommodation':
         return Icons.hotel_outlined;
-
       case 'food':
         return Icons.restaurant_outlined;
-
       case 'activities':
         return Icons.attractions_outlined;
-
       case 'shopping':
         return Icons.shopping_bag_outlined;
-
       case 'health':
         return Icons.favorite_outline;
-
       default:
         return Icons.receipt_long_outlined;
     }
   }
 
-  // ============================================================
-  // ADD / EDIT / DELETE
-  // ============================================================
-
   Future<void> _openExpenseSheet([
     ExpenseModel? existing,
   ]) async {
-    // A budget is required before expenses can be tracked
-    // meaningfully against the trip budget.
     if (_budgetAmount == null) {
       await _editBudget();
 
@@ -197,7 +172,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
       builder: (_) => _ExpenseFormSheet(
         existing: existing,
         currency: _budgetCurrency,
-        availableCurrencies: validCurrencies,
+        availableCurrencies: AppPreferences.validCurrencies,
       ),
     );
 
@@ -231,37 +206,41 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     }
   }
 
-  Future<void> _deleteExpense(
-      ExpenseModel expense,
-      ) async {
+  Future<void> _deleteExpense(ExpenseModel expense) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete expense?'),
-        content: const Text(
-          'This will permanently remove the expense from your trip.',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          dialogContext.tr('expense.deleteTitle'),
+        ),
+        content: Text(
+          dialogContext.tr('expense.deleteMessage'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(
-              context,
+              dialogContext,
               false,
             ),
-            child: const Text('Cancel'),
+            child: Text(
+              dialogContext.tr('common.cancel'),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(
-              context,
+              dialogContext,
               true,
             ),
             style: TextButton.styleFrom(
               foregroundColor:
-              Theme.of(context)
-                  .extension<AppStatusColors>()
-                  ?.error ??
-                  AppColors.error,
+                  Theme.of(dialogContext)
+                          .extension<AppStatusColors>()
+                          ?.error ??
+                      AppColors.error,
             ),
-            child: const Text('Delete'),
+            child: Text(
+              dialogContext.tr('common.delete'),
+            ),
           ),
         ],
       ),
@@ -341,9 +320,9 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
   }
 
   void _showMessage(
-      String message, {
-        bool isError = false,
-      }) {
+    String message, {
+    bool isError = false,
+  }) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -352,17 +331,13 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: isError
               ? Theme.of(context)
-              .extension<AppStatusColors>()
-              ?.error ??
-              AppColors.error
+                      .extension<AppStatusColors>()
+                      ?.error ??
+                  AppColors.error
               : null,
         ),
       );
   }
-
-  // ============================================================
-  // BUILD
-  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -378,16 +353,16 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     return Scaffold(
       backgroundColor: colors.backgroundColor,
       appBar: AppBar(
-        title: const Text('Expense Tracker'),
+        title: Text(
+          context.tr('expense.tracker'),
+        ),
         backgroundColor: colors.backgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            tooltip: 'Set trip budget',
-            onPressed: _isLoading
-                ? null
-                : _editBudget,
+            tooltip: context.tr('expense.setTripBudget'),
+            onPressed: _isLoading ? null : _editBudget,
             icon: const Icon(
               Icons.savings_outlined,
             ),
@@ -399,7 +374,9 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
             ? null
             : () => _openExpenseSheet(),
         icon: const Icon(Icons.add),
-        label: const Text('Add Expense'),
+        label: Text(
+          context.tr('expense.add'),
+        ),
       ),
       body: _buildBody(colors),
     );
@@ -436,7 +413,9 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
               GradientButton(
                 onPressed: _loadExpenses,
                 height: 44,
-                child: const Text('Try Again'),
+                child: Text(
+                  context.tr('common.retry'),
+                ),
               ),
             ],
           ),
@@ -446,14 +425,13 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
 
     final categories = _categoryTotals().entries.toList()
       ..sort(
-            (a, b) => b.value.compareTo(a.value),
+        (a, b) => b.value.compareTo(a.value),
       );
 
     return RefreshIndicator(
       onRefresh: _loadExpenses,
       child: ListView(
-        physics:
-        const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           16,
           16,
@@ -476,18 +454,10 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     );
   }
 
-  // ============================================================
-  // BUDGET SUMMARY
-  // ============================================================
-
   Widget _buildSummaryCard(
-      TriporaColors colors,
-      ) {
+    TriporaColors colors,
+  ) {
     final budget = _budgetAmount;
-
-    // ----------------------------------------------------------
-    // No budget yet
-    // ----------------------------------------------------------
 
     if (budget == null) {
       return Container(
@@ -497,8 +467,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(
               Icons.savings_outlined,
@@ -506,18 +475,18 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
               size: 32,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Set your trip budget',
-              style: TextStyle(
+            Text(
+              context.tr('expense.setBudgetTitle'),
+              style: const TextStyle(
                 fontSize: 21,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Set a budget to compare your spending and see how much you have left.',
-              style: TextStyle(
+            Text(
+              context.tr('expense.setBudgetDescription'),
+              style: const TextStyle(
                 fontSize: 13,
                 color: Colors.white70,
                 height: 1.4,
@@ -529,16 +498,15 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
               child: ElevatedButton.icon(
                 onPressed: _editBudget,
                 icon: const Icon(Icons.add),
-                label: const Text('Set Budget'),
+                label: Text(
+                  context.tr('expense.setBudget'),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor:
-                  colors.textPrimary,
+                  foregroundColor: colors.textPrimary,
                   elevation: 0,
-                  shape:
-                  RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -549,301 +517,237 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     }
 
     final spent = _totalSpent;
-    final ratio = budget > 0
-        ? spent / budget
-        : 0.0;
-
+    final ratio = budget > 0 ? spent / budget : 0.0;
     final overBudget = ratio > 1.0;
 
-    final progress =
-    ratio.clamp(0.0, 1.0);
+    final progress = ratio.clamp(0.0, 1.0);
 
     final progressColor = overBudget
         ? colors.appStatus.error
         : ratio >= 0.90
-        ? colors.appStatus.warning
-        : colors.appStatus.success;
-
-    final remaining = budget - spent;
-
-    // ----------------------------------------------------------
-    // Animated summary
-    // ----------------------------------------------------------
+            ? colors.appStatus.warning
+            : colors.appStatus.success;
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(
         begin: 0,
         end: spent,
       ),
-      duration:
-      const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 700),
       curve: Curves.easeOutCubic,
       builder: (
-          context,
-          animatedSpent,
-          child,
-          ) {
-        final animatedRatio = budget > 0
-            ? animatedSpent / budget
-            : 0.0;
+        context,
+        animatedSpent,
+        child,
+      ) {
+        final animatedRatio =
+            budget > 0 ? animatedSpent / budget : 0.0;
 
         final animatedProgress =
-        animatedRatio.clamp(0.0, 1.0);
+            animatedRatio.clamp(0.0, 1.0);
 
         final animatedRemaining =
             budget - animatedSpent;
 
         return Container(
-          padding:
-          const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient:
-            AppColors.brandGradient,
-            borderRadius:
-            BorderRadius.circular(20),
+            gradient: AppColors.brandGradient,
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 mainAxisAlignment:
-                MainAxisAlignment
-                    .spaceBetween,
+                    MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Trip Budget',
-                    style: TextStyle(
+                  Text(
+                    context.tr('expense.tripBudget'),
+                    style: const TextStyle(
                       fontSize: 13,
-                      fontWeight:
-                      FontWeight.w600,
-                      color:
-                      Colors.white70,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
                     ),
                   ),
                   TextButton.icon(
-                    onPressed:
-                    _editBudget,
-                    style:
-                    TextButton.styleFrom(
-                      foregroundColor:
-                      Colors.white,
-                      padding:
-                      EdgeInsets.zero,
-                      minimumSize:
-                      const Size(0, 32),
+                    onPressed: _editBudget,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 32),
                     ),
                     icon: const Icon(
                       Icons.edit_outlined,
                       size: 16,
                     ),
-                    label:
-                    const Text('Edit'),
+                    label: Text(
+                      context.tr('common.edit'),
+                    ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 4),
-
-              // Budget amount
               Text(
                 _formatAmount(budget),
                 style: const TextStyle(
                   fontSize: 28,
-                  fontWeight:
-                  FontWeight.w800,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
-
               const SizedBox(height: 18),
-
-              // Spent
               Row(
                 mainAxisAlignment:
-                MainAxisAlignment
-                    .spaceBetween,
+                    MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Spent',
-                    style: TextStyle(
+                  Text(
+                    context.tr('expense.spent'),
+                    style: const TextStyle(
                       fontSize: 13,
-                      color:
-                      Colors.white70,
+                      color: Colors.white70,
                     ),
                   ),
                   Text(
-                    _formatAmount(
-                      animatedSpent,
-                    ),
-                    style:
-                    const TextStyle(
+                    _formatAmount(animatedSpent),
+                    style: const TextStyle(
                       fontSize: 15,
-                      fontWeight:
-                      FontWeight.w800,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 8),
-
-              // Animated progress
               ClipRRect(
-                borderRadius:
-                BorderRadius.circular(
-                  10,
-                ),
-                child:
-                TweenAnimationBuilder<
-                    double>(
+                borderRadius: BorderRadius.circular(10),
+                child: TweenAnimationBuilder<double>(
                   tween: Tween<double>(
                     begin: 0,
                     end: animatedProgress,
                   ),
-                  duration:
-                  const Duration(
+                  duration: const Duration(
                     milliseconds: 700,
                   ),
-                  curve:
-                  Curves.easeOutCubic,
+                  curve: Curves.easeOutCubic,
                   builder: (
-                      context,
-                      progressValue,
-                      _,
-                      ) {
+                    context,
+                    progressValue,
+                    _,
+                  ) {
                     return LinearProgressIndicator(
                       value: progressValue,
                       minHeight: 9,
-                      backgroundColor:
-                      Colors.white24,
+                      backgroundColor: Colors.white24,
                       valueColor:
-                      AlwaysStoppedAnimation<
-                          Color>(
+                          AlwaysStoppedAnimation<Color>(
                         progressColor,
                       ),
                     );
                   },
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Percentage + remaining
               Row(
-                mainAxisAlignment:
-                MainAxisAlignment
-                    .spaceBetween,
                 crossAxisAlignment:
-                CrossAxisAlignment.start,
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${(animatedRatio * 100).toStringAsFixed(0)}% used',
-                    style:
-                    const TextStyle(
+                    context.tr(
+                      'expense.percentUsed',
+                      params: {
+                        'n': (animatedRatio * 100)
+                            .toStringAsFixed(0),
+                      },
+                    ),
+                    style: const TextStyle(
                       fontSize: 12,
-                      color:
-                      Colors.white70,
+                      color: Colors.white70,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       animatedRatio > 1
-                          ? 'Over budget by ${_formatAmount(-animatedRemaining)}'
-                          : '${_formatAmount(animatedRemaining)} remaining',
-                      textAlign:
-                      TextAlign.end,
-                      style:
-                      const TextStyle(
+                          ? context.tr(
+                              'expense.overBudgetBy',
+                              params: {
+                                'amount': _formatAmount(
+                                  -animatedRemaining,
+                                ),
+                              },
+                            )
+                          : context.tr(
+                              'expense.remaining',
+                              params: {
+                                'amount': _formatAmount(
+                                  animatedRemaining,
+                                ),
+                              },
+                            ),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
                         fontSize: 12,
-                        fontWeight:
-                        FontWeight.w700,
-                        color:
-                        Colors.white,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ],
               ),
-
-              // Over budget warning
               if (overBudget) ...[
                 const SizedBox(height: 14),
-                TweenAnimationBuilder<
-                    double>(
+                TweenAnimationBuilder<double>(
                   tween: Tween<double>(
                     begin: 0.0,
                     end: 1.0,
                   ),
-                  duration:
-                  const Duration(
+                  duration: const Duration(
                     milliseconds: 500,
                   ),
-                  curve:
-                  Curves.easeOutBack,
+                  curve: Curves.easeOutBack,
                   builder: (
-                      context,
-                      value,
-                      child,
-                      ) {
+                    context,
+                    value,
+                    child,
+                  ) {
                     return Opacity(
-                      opacity: value.clamp(
-                        0.0,
-                        1.0,
-                      ),
-                      child:
-                      Transform.scale(
-                        scale: 0.96 +
-                            (0.04 * value),
+                      opacity: value.clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: 0.96 + (0.04 * value),
                         child: child,
                       ),
                     );
                   },
                   child: Container(
-                    padding:
-                    const EdgeInsets
-                        .symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 10,
                     ),
-                    decoration:
-                    BoxDecoration(
-                      color: Colors.white
-                          .withValues(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(
                         alpha: 0.12,
                       ),
                       borderRadius:
-                      BorderRadius
-                          .circular(
-                        12,
-                      ),
+                          BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(
-                          Icons
-                              .warning_amber_rounded,
-                          color:
-                          Colors.white,
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
                           size: 20,
                         ),
-                        SizedBox(
-                          width: 8,
-                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'You have exceeded your trip budget.',
-                            style:
-                            TextStyle(
+                            context.tr(
+                              'expense.overBudgetWarning',
+                            ),
+                            style: const TextStyle(
                               fontSize: 12,
-                              fontWeight:
-                              FontWeight
-                                  .w600,
-                              color:
-                              Colors.white,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -859,37 +763,29 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     );
   }
 
-  // ============================================================
-  // CATEGORY BREAKDOWN
-  // ============================================================
-
   Widget _buildCategoryBreakdown(
-      TriporaColors colors,
-      List<MapEntry<String, double>>
-      categories,
-      ) {
+    TriporaColors colors,
+    List<MapEntry<String, double>> categories,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius:
-        BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: colors.border,
         ),
       ),
       child: Column(
         crossAxisAlignment:
-        CrossAxisAlignment.start,
+            CrossAxisAlignment.start,
         children: [
           Text(
-            'By Category',
+            context.tr('expense.byCategory'),
             style: TextStyle(
               fontSize: 15,
-              fontWeight:
-              FontWeight.w700,
-              color:
-              colors.textPrimary,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -899,38 +795,29 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
             children: categories
                 .map(
                   (entry) => Chip(
-                avatar: Icon(
-                  _categoryIcon(
-                    entry.key,
-                  ),
-                  size: 16,
-                  color:
-                  colors.textSecondary,
-                ),
-                label: Text(
-                  '${expenseCategoryLabel(entry.key)}  '
+                    avatar: Icon(
+                      _categoryIcon(entry.key),
+                      size: 16,
+                      color: colors.textSecondary,
+                    ),
+                    label: Text(
+                      '${expenseCategoryLabel(entry.key)}  '
                       '${_formatAmount(entry.value)}',
-                ),
-                side: BorderSide(
-                  color:
-                  colors.border,
-                ),
-                backgroundColor:
-                colors
-                    .surfaceSecondary,
-                labelStyle:
-                TextStyle(
-                  color: colors
-                      .textSecondary,
-                  fontSize: 12,
-                  fontWeight:
-                  FontWeight.w600,
-                ),
-                visualDensity:
-                VisualDensity
-                    .compact,
-              ),
-            )
+                    ),
+                    side: BorderSide(
+                      color: colors.border,
+                    ),
+                    backgroundColor:
+                        colors.surfaceSecondary,
+                    labelStyle: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    visualDensity:
+                        VisualDensity.compact,
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -938,21 +825,15 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     );
   }
 
-  // ============================================================
-  // EXPENSE LIST
-  // ============================================================
-
   Widget _buildExpenseList(
-      TriporaColors colors,
-      ) {
+    TriporaColors colors,
+  ) {
     if (_expenses.isEmpty) {
       return Container(
-        padding:
-        const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius:
-          BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: colors.border,
           ),
@@ -966,33 +847,29 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              'No expenses yet',
+              context.tr('expense.noExpenses'),
               style: TextStyle(
                 fontSize: 15,
-                fontWeight:
-                FontWeight.w700,
-                color:
-                colors.textPrimary,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 5),
             Text(
-              'Add your first expense to start tracking your trip spending.',
-              textAlign:
-              TextAlign.center,
+              context.tr('expense.noExpensesDescription'),
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color:
-                colors.textMuted,
+                color: colors.textMuted,
               ),
             ),
             const SizedBox(height: 14),
             GradientButton(
-              onPressed:
-                  () => _openExpenseSheet(),
+              onPressed: () => _openExpenseSheet(),
               height: 44,
-              child:
-              const Text('Add Expense'),
+              child: Text(
+                context.tr('expense.add'),
+              ),
             ),
           ],
         ),
@@ -1000,48 +877,38 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     }
 
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'All Expenses',
+          context.tr('expense.allExpenses'),
           style: TextStyle(
             fontSize: 15,
-            fontWeight:
-            FontWeight.w700,
-            color:
-            colors.textPrimary,
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
         ..._expenses.map(
-              (expense) => _buildExpenseTile(
+          (expense) => _buildExpenseTile(
             expense: expense,
             icon: _categoryIcon(
               expense.category,
             ),
-            formattedAmount:
-            _formatAmount(
+            formattedAmount: _formatAmount(
               expense.amount,
               expense.currency,
             ),
-            onTap: () =>
-                _openExpenseSheet(
-                  expense,
-                ),
-            onDelete: () =>
-                _deleteExpense(
-                  expense,
-                ),
+            onTap: () => _openExpenseSheet(
+              expense,
+            ),
+            onDelete: () => _deleteExpense(
+              expense,
+            ),
           ),
         ),
       ],
     );
   }
-
-  // ============================================================
-  // EXPENSE TILE
-  // ============================================================
 
   Widget _buildExpenseTile({
     required ExpenseModel expense,
@@ -1050,30 +917,26 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     required VoidCallback onTap,
     required VoidCallback onDelete,
   }) {
+    final colors = context.triporaColors;
+
     return Container(
-      margin:
-      const EdgeInsets.only(
+      margin: const EdgeInsets.only(
         bottom: 10,
       ),
       decoration: BoxDecoration(
-        color:
-        context.triporaColors.surface,
-        borderRadius:
-        BorderRadius.circular(14),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color:
-          context.triporaColors.border,
+          color: colors.border,
         ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius:
-          BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding:
-            const EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
             ),
@@ -1082,65 +945,45 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration:
-                  BoxDecoration(
-                    color: context
-                        .triporaColors
-                        .surfaceSecondary,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceSecondary,
                     borderRadius:
-                    BorderRadius.circular(
-                      12,
-                    ),
+                        BorderRadius.circular(12),
                   ),
                   child: Icon(
                     icon,
                     size: 20,
-                    color: context
-                        .triporaColors
-                        .textSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment:
-                    CrossAxisAlignment
-                        .start,
+                        CrossAxisAlignment.start,
                     children: [
                       Text(
-                        expense.description
-                            .isNotEmpty
-                            ? expense
-                            .description
+                        expense.description.isNotEmpty
+                            ? expense.description
                             : expenseCategoryLabel(
-                          expense
-                              .category,
-                        ),
+                                expense.category,
+                              ),
                         maxLines: 1,
                         overflow:
-                        TextOverflow
-                            .ellipsis,
+                            TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight:
-                          FontWeight
-                              .w600,
-                          color: context
-                              .triporaColors
-                              .textPrimary,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
                         ),
                       ),
-                      const SizedBox(
-                        height: 2,
-                      ),
+                      const SizedBox(height: 2),
                       Text(
                         '${expenseCategoryLabel(expense.category)} · '
-                            '${_formatDate(expense.date)}',
+                        '${_formatDate(expense.date)}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: context
-                              .triporaColors
-                              .textMuted,
+                          color: colors.textMuted,
                         ),
                       ),
                     ],
@@ -1149,41 +992,34 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                 const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment:
-                  CrossAxisAlignment
-                      .end,
+                      CrossAxisAlignment.end,
                   children: [
                     Text(
                       formattedAmount,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight:
-                        FontWeight.w700,
-                        color: context
-                            .triporaColors
-                            .textPrimary,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
                       paymentMethodLabel(
-                        expense
-                            .paymentMethod,
+                        expense.paymentMethod,
                       ),
                       style: TextStyle(
                         fontSize: 11,
-                        color: context
-                            .triporaColors
-                            .textMuted,
+                        color: colors.textMuted,
                       ),
                     ),
                   ],
                 ),
                 IconButton(
-                  tooltip: 'Delete',
+                  tooltip: context.tr(
+                    'common.delete',
+                  ),
                   onPressed: onDelete,
                   iconSize: 18,
-                  color: context
-                      .triporaColors
-                      .textMuted,
+                  color: colors.textMuted,
                   icon: const Icon(
                     Icons.delete_outline,
                   ),
@@ -1240,14 +1076,10 @@ class _ExpenseFormSheet extends StatefulWidget {
 
 class _ExpenseFormSheetState
     extends State<_ExpenseFormSheet> {
-  final _formKey =
-  GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
 
-  late final TextEditingController
-  _amountController;
-
-  late final TextEditingController
-  _descriptionController;
+  late final TextEditingController _amountController;
+  late final TextEditingController _descriptionController;
 
   late String _currency;
   late String _category;
@@ -1260,34 +1092,21 @@ class _ExpenseFormSheetState
 
     final existing = widget.existing;
 
-    _amountController =
-        TextEditingController(
-          text: existing != null
-              ? existing.amount
-              .toStringAsFixed(2)
-              : '',
-        );
+    _amountController = TextEditingController(
+      text: existing != null
+          ? existing.amount.toStringAsFixed(2)
+          : '',
+    );
 
-    _descriptionController =
-        TextEditingController(
-          text:
-          existing?.description ?? '',
-        );
+    _descriptionController = TextEditingController(
+      text: existing?.description ?? '',
+    );
 
-    _currency =
-        existing?.currency ??
-            widget.currency;
-
-    _category =
-        existing?.category ?? 'other';
-
-    _date =
-        existing?.date ??
-            DateTime.now();
-
+    _currency = existing?.currency ?? widget.currency;
+    _category = existing?.category ?? 'other';
+    _date = existing?.date ?? DateTime.now();
     _paymentMethod =
-        existing?.paymentMethod ??
-            'other';
+        existing?.paymentMethod ?? 'other';
   }
 
   @override
@@ -1298,19 +1117,13 @@ class _ExpenseFormSheetState
   }
 
   Future<void> _pickDate() async {
-    final picked =
-    await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
-      initialDate:
-      _date.isAfter(
-        DateTime.now(),
-      )
+      initialDate: _date.isAfter(DateTime.now())
           ? DateTime.now()
           : _date,
-      firstDate:
-      DateTime(2000),
-      lastDate:
-      DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
     );
 
     if (picked != null) {
@@ -1321,20 +1134,17 @@ class _ExpenseFormSheetState
   }
 
   void _save() {
-    if (!_formKey.currentState!
-        .validate()) {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final amount =
-    double.tryParse(
+    final amount = double.tryParse(
       _amountController.text.trim(),
     );
 
-    if (amount == null ||
-        amount <= 0) {
+    if (amount == null || amount <= 0) {
       _showError(
-        'Please enter a valid amount.',
+        context.tr('expense.invalidAmount'),
       );
       return;
     }
@@ -1343,326 +1153,231 @@ class _ExpenseFormSheetState
       context,
       ExpenseModel(
         id: widget.existing?.id,
-        tripId:
-        widget.existing?.tripId,
+        tripId: widget.existing?.tripId,
         amount: amount,
         currency: _currency,
         category: _category,
         description:
-        _descriptionController
-            .text
-            .trim(),
+            _descriptionController.text.trim(),
         date: _date,
-        paymentMethod:
-        _paymentMethod,
+        paymentMethod: _paymentMethod,
       ),
     );
   }
 
-  void _showError(
-      String message,
-      ) {
+  void _showError(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content:
-          Text(message),
-          behavior:
-          SnackBarBehavior
-              .floating,
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
         ),
       );
   }
 
   @override
-  Widget build(
-      BuildContext context,
-      ) {
-    final colors =
-        context.triporaColors;
-
-    final existing =
-        widget.existing;
+  Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final existing = widget.existing;
 
     return Padding(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(
-          context,
-        ).viewInsets.bottom +
-            16,
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
+                16,
       ),
       child: Container(
-        decoration:
-        BoxDecoration(
+        decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius:
-          BorderRadius.circular(
-            20,
-          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        padding:
-        const EdgeInsets.all(20),
-        child:
-        SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisSize:
-              MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment:
-              CrossAxisAlignment
-                  .stretch,
+                  CrossAxisAlignment.stretch,
               children: [
                 Text(
                   existing == null
-                      ? 'Add Expense'
-                      : 'Edit Expense',
+                      ? context.tr('expense.add')
+                      : context.tr('expense.edit'),
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight:
-                    FontWeight.w800,
-                    color: colors
-                        .textPrimary,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
                   ),
                 ),
+                const SizedBox(height: 16),
 
-                const SizedBox(
-                  height: 16,
-                ),
-
-                // IMPORTANT:
-                // Amount and currency remain in
-                // a Column because this layout
-                // fixed the keyboard/input issue.
-                Column(
-                  children: [
-                    TextFormField(
-                      controller:
-                      _amountController,
-                      keyboardType:
-                      TextInputType
-                          .number,
-                      decoration:
-                      const InputDecoration(
-                        labelText:
-                        'Amount',
-                        hintText:
-                        '0.00',
-                      ),
-                      validator:
-                          (value) {
-                        final parsed =
-                        double.tryParse(
-                          value?.trim() ??
-                              '',
-                        );
-
-                        if (parsed ==
-                            null ||
-                            parsed <=
-                                0) {
-                          return 'Enter a positive amount.';
-                        }
-
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(
-                      height: 16,
-                    ),
-
-                    DropdownButtonFormField<
-                        String>(
-                      initialValue:
-                      _currency,
-                      decoration:
-                      const InputDecoration(
-                        labelText:
-                        'Currency',
-                      ),
-                      items: widget
-                          .availableCurrencies
-                          .map(
-                            (currency) =>
-                            DropdownMenuItem<
-                                String>(
-                              value:
-                              currency,
-                              child:
-                              Text(
-                                currency,
-                              ),
-                            ),
-                      ).toList(),
-                      onChanged:
-                          (value) {
-                        if (value !=
-                            null) {
-                          setState(() {
-                            _currency =
-                                value;
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(
-                  height: 16,
-                ),
-
-                DropdownButtonFormField<
-                    String>(
-                  initialValue:
-                  _category,
-                  decoration:
-                  const InputDecoration(
+                TextFormField(
+                  controller: _amountController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
                     labelText:
-                    'Category',
+                        context.tr('expense.amount'),
+                    hintText: '0.00',
                   ),
-                  items:
-                  expenseCategories
+                  validator: (value) {
+                    final parsed = double.tryParse(
+                      value?.trim() ?? '',
+                    );
+
+                    if (parsed == null || parsed <= 0) {
+                      return context.tr(
+                        'expense.positiveAmount',
+                      );
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  initialValue: _currency,
+                  decoration: InputDecoration(
+                    labelText:
+                        context.tr('expense.currency'),
+                  ),
+                  items: widget.availableCurrencies
+                      .map(
+                        (currency) =>
+                            DropdownMenuItem<String>(
+                          value: currency,
+                          child: Text(currency),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _currency = value;
+                      });
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  initialValue: _category,
+                  decoration: InputDecoration(
+                    labelText:
+                        context.tr('expense.category'),
+                  ),
+                  items: expenseCategories
                       .map(
                         (category) =>
-                        DropdownMenuItem<
-                            String>(
-                          value:
-                          category,
+                            DropdownMenuItem<String>(
+                          value: category,
                           child: Text(
                             expenseCategoryLabel(
                               category,
                             ),
                           ),
                         ),
-                  ).toList(),
-                  onChanged:
-                      (value) {
-                    if (value !=
-                        null) {
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
                       setState(() {
-                        _category =
-                            value;
+                        _category = value;
                       });
                     }
                   },
                 ),
 
-                const SizedBox(
-                  height: 16,
-                ),
+                const SizedBox(height: 16),
 
                 TextFormField(
-                  controller:
-                  _descriptionController,
+                  controller: _descriptionController,
                   maxLength: 255,
-                  decoration:
-                  const InputDecoration(
+                  decoration: InputDecoration(
                     labelText:
-                    'Description (optional)',
-                    hintText:
-                    'e.g. Dinner at the waterfront',
+                        context.tr('expense.description'),
+                    hintText: context.tr(
+                      'expense.descriptionHint',
+                    ),
                   ),
                 ),
 
-                const SizedBox(
-                  height: 8,
-                ),
+                const SizedBox(height: 8),
 
                 InkWell(
                   onTap: _pickDate,
                   borderRadius:
-                  BorderRadius.circular(
-                    12,
-                  ),
-                  child:
-                  InputDecorator(
-                    decoration:
-                    InputDecoration(
+                      BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
                       labelText:
-                      'Date',
-                      border:
-                      OutlineInputBorder(
+                          context.tr('expense.date'),
+                      border: OutlineInputBorder(
                         borderRadius:
-                        BorderRadius
-                            .circular(
-                          12,
-                        ),
+                            BorderRadius.circular(12),
                       ),
-                      suffixIcon:
-                      const Icon(
-                        Icons
-                            .calendar_today_outlined,
+                      suffixIcon: const Icon(
+                        Icons.calendar_today_outlined,
                       ),
                     ),
                     child: Text(
                       '${_date.year}-'
-                          '${_date.month.toString().padLeft(2, '0')}-'
-                          '${_date.day.toString().padLeft(2, '0')}',
+                      '${_date.month.toString().padLeft(2, '0')}-'
+                      '${_date.day.toString().padLeft(2, '0')}',
                     ),
                   ),
                 ),
 
-                const SizedBox(
-                  height: 16,
-                ),
+                const SizedBox(height: 16),
 
-                DropdownButtonFormField<
-                    String>(
-                  initialValue:
-                  _paymentMethod,
-                  decoration:
-                  const InputDecoration(
-                    labelText:
-                    'Payment method',
+                DropdownButtonFormField<String>(
+                  initialValue: _paymentMethod,
+                  decoration: InputDecoration(
+                    labelText: context.tr(
+                      'expense.paymentMethod',
+                    ),
                   ),
-                  items:
-                  paymentMethods
+                  items: paymentMethods
                       .map(
                         (method) =>
-                        DropdownMenuItem<
-                            String>(
-                          value:
-                          method,
+                            DropdownMenuItem<String>(
+                          value: method,
                           child: Text(
-                            paymentMethodLabel(
-                              method,
-                            ),
+                            paymentMethodLabel(method),
                           ),
                         ),
-                  ).toList(),
-                  onChanged:
-                      (value) {
-                    if (value !=
-                        null) {
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
                       setState(() {
-                        _paymentMethod =
-                            value;
+                        _paymentMethod = value;
                       });
                     }
                   },
                 ),
 
-                const SizedBox(
-                  height: 20,
-                ),
+                const SizedBox(height: 20),
 
                 SizedBox(
                   height: 52,
-                  child:
-                  GradientButton(
-                    onPressed:
-                    _save,
+                  child: GradientButton(
+                    onPressed: _save,
                     height: 52,
                     child: Text(
                       existing == null
-                          ? 'Add Expense'
-                          : 'Save',
+                          ? context.tr('expense.add')
+                          : context.tr('common.save'),
                     ),
                   ),
                 ),
@@ -1679,8 +1394,7 @@ class _ExpenseFormSheetState
 // BUDGET EDITOR SHEET
 // ============================================================
 
-class _BudgetSheet
-    extends StatefulWidget {
+class _BudgetSheet extends StatefulWidget {
   final double? current;
   final String currency;
 
@@ -1694,24 +1408,18 @@ class _BudgetSheet
       _BudgetSheetState();
 }
 
-class _BudgetSheetState
-    extends State<_BudgetSheet> {
-  final _formKey =
-  GlobalKey<FormState>();
+class _BudgetSheetState extends State<_BudgetSheet> {
+  final _formKey = GlobalKey<FormState>();
 
-  late final TextEditingController
-  _budgetController;
+  late final TextEditingController _budgetController;
 
   @override
   void initState() {
     super.initState();
 
-    _budgetController =
-        TextEditingController(
-          text: widget.current
-              ?.toStringAsFixed(2) ??
-              '',
-        );
+    _budgetController = TextEditingController(
+      text: widget.current?.toStringAsFixed(2) ?? '',
+    );
   }
 
   @override
@@ -1721,13 +1429,11 @@ class _BudgetSheetState
   }
 
   void _save() {
-    if (!_formKey.currentState!
-        .validate()) {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final value =
-    double.parse(
+    final value = double.parse(
       _budgetController.text.trim(),
     );
 
@@ -1740,104 +1446,82 @@ class _BudgetSheetState
   }
 
   @override
-  Widget build(
-      BuildContext context,
-      ) {
-    final colors =
-        context.triporaColors;
+  Widget build(BuildContext context) {
+    final colors = context.triporaColors;
 
     return Padding(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(
-          context,
-        ).viewInsets.bottom +
-            16,
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
+                16,
       ),
       child: Container(
-        decoration:
-        BoxDecoration(
+        decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius:
-          BorderRadius.circular(
-            20,
-          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        padding:
-        const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
-            mainAxisSize:
-            MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment:
-            CrossAxisAlignment
-                .stretch,
+                CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Set Trip Budget',
+                context.tr('expense.setTripBudget'),
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight:
-                  FontWeight.w800,
-                  color:
-                  colors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
                 ),
               ),
 
-              const SizedBox(
-                height: 16,
-              ),
+              const SizedBox(height: 16),
 
               TextFormField(
-                controller:
-                _budgetController,
+                controller: _budgetController,
                 autofocus: true,
                 keyboardType:
-                const TextInputType
-                    .numberWithOptions(
+                    const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration:
-                InputDecoration(
-                  labelText:
-                  'Budget (${widget.currency})',
-                  hintText:
-                  '0.00',
+                decoration: InputDecoration(
+                  labelText: context.tr(
+                    'expense.budgetCurrency',
+                    params: {
+                      'currency': widget.currency,
+                    },
+                  ),
+                  hintText: '0.00',
                 ),
-                validator:
-                    (value) {
-                  final parsed =
-                  double.tryParse(
-                    value?.trim() ??
-                        '',
+                validator: (value) {
+                  final parsed = double.tryParse(
+                    value?.trim() ?? '',
                   );
 
-                  if (parsed ==
-                      null ||
-                      parsed <= 0) {
-                    return 'Enter a positive budget.';
+                  if (parsed == null || parsed <= 0) {
+                    return context.tr(
+                      'expense.positiveBudget',
+                    );
                   }
 
                   return null;
                 },
               ),
 
-              const SizedBox(
-                height: 20,
-              ),
+              const SizedBox(height: 20),
 
               SizedBox(
                 height: 52,
-                child:
-                GradientButton(
-                  onPressed:
-                  _save,
+                child: GradientButton(
+                  onPressed: _save,
                   height: 52,
-                  child: const Text(
-                    'Save Budget',
+                  child: Text(
+                    context.tr('expense.saveBudget'),
                   ),
                 ),
               ),

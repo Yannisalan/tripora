@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../data/destinations.dart';
 import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
@@ -11,7 +13,10 @@ import '../../widgets/shimmer_loader.dart';
 class PlannerScreen extends StatefulWidget {
   final String? initialDestination;
 
-  const PlannerScreen({super.key, this.initialDestination});
+  const PlannerScreen({
+    super.key,
+    this.initialDestination,
+  });
 
   @override
   State<PlannerScreen> createState() => _PlannerScreenState();
@@ -78,21 +83,137 @@ class _PlannerScreenState extends State<PlannerScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------
-  // Progress (real, based on filled fields — not a fabricated step count)
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // LOCALIZED VALUES
+  // ============================================================
+
+  String _localizedInterest(
+    BuildContext context,
+    String value,
+  ) {
+    switch (value) {
+      case 'Culture':
+        return context.tr('planner.culture');
+      case 'Food':
+        return context.tr('planner.food');
+      case 'Nature':
+        return context.tr('planner.nature');
+      case 'Adventure':
+        return context.tr('planner.adventure');
+      case 'Shopping':
+        return context.tr('planner.shopping');
+      case 'Nightlife':
+        return context.tr('planner.nightlife');
+      case 'Relaxation':
+        return context.tr('planner.relaxation');
+      default:
+        return value;
+    }
+  }
+
+  String _localizedBudget(
+    BuildContext context,
+    String value,
+  ) {
+    switch (value) {
+      case 'Moderate':
+        return context.tr('planner.moderate');
+      case 'High':
+        return context.tr('planner.high');
+      case 'Luxury':
+        return context.tr('planner.luxury');
+      case 'Budget':
+        return context.tr('planner.budget');
+      default:
+        return value;
+    }
+  }
+
+  String _localizedTravelStyle(
+    BuildContext context,
+    String value,
+  ) {
+    switch (value) {
+      case 'Relaxed':
+        return context.tr('planner.relaxed');
+      case 'Balanced':
+        return context.tr('planner.balanced');
+      case 'Adventure':
+        return context.tr('planner.adventure');
+      case 'Luxury':
+        return context.tr('planner.luxury');
+      case 'Packed':
+        return context.tr('planner.packed');
+      default:
+        return value;
+    }
+  }
+
+  String _localizedTravelerType(
+    BuildContext context,
+    String value) {
+    switch (value) {
+      case 'Solo':
+        return context.tr('planner.solo');
+      case 'Couple':
+        return context.tr('planner.couple');
+      case 'Family':
+        return context.tr('planner.family');
+      case 'Friends':
+        return context.tr('planner.friends');
+      default:
+        return value;
+    }
+  }
+
+  String _localizedPacingPreset(
+    BuildContext context,
+    String value,
+  ) {
+    switch (value) {
+      case 'Flexible':
+        return context.tr('planner.flexible');
+      case 'Weekend':
+        return context.tr('planner.weekend');
+      case '1 Week':
+        return context.tr('planner.oneWeek');
+      case '2 Weeks':
+        return context.tr('planner.twoWeeks');
+      default:
+        return value;
+    }
+  }
+
+  // ============================================================
+  // PROGRESS
+  // ============================================================
 
   double get _completionProgress {
     int filled = 0;
     const int total = 4;
 
-    if (destinationController.text.trim().isNotEmpty) filled++;
-    if (startDate != null && endDate != null) filled++;
-    if (travelers >= 1) filled++;
-    if (budget.isNotEmpty) filled++;
+    if (destinationController.text.trim().isNotEmpty) {
+      filled++;
+    }
+
+    if (startDate != null && endDate != null) {
+      filled++;
+    }
+
+    if (travelers >= 1) {
+      filled++;
+    }
+
+    if (budget.isNotEmpty) {
+      filled++;
+    }
 
     return filled / total;
   }
+
+  // ============================================================
+  // RESET
+  // ============================================================
 
   void _resetForm() {
     setState(() {
@@ -106,13 +227,20 @@ class _PlannerScreenState extends State<PlannerScreen> {
     });
   }
 
-  // ---------------------------------------------------------------------
-  // Date handling
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // DATE HANDLING
+  // ============================================================
 
-  Future<void> selectDate({required bool isStartDate}) async {
+  Future<void> selectDate({
+    required bool isStartDate,
+  }) async {
     final DateTime now = DateTime.now();
-    final DateTime today = DateTime(now.year, now.month, now.day);
+
+    final DateTime today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
 
     DateTime initialDate;
 
@@ -150,10 +278,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: _midnight,
-              surface: _white,
-            ),
+            colorScheme: Theme.of(context)
+                .colorScheme
+                .copyWith(
+                  primary: _midnight,
+                  surface: _white,
+                ),
           ),
           child: child!,
         );
@@ -174,7 +304,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
       setState(() {
         startDate = selectedDate;
 
-        if (endDate != null && endDate!.isBefore(selectedDate)) {
+        if (endDate != null &&
+            endDate!.isBefore(selectedDate)) {
           endDate = null;
         }
       });
@@ -182,9 +313,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
       return;
     }
 
-    if (startDate != null && selectedDate.isBefore(startDate!)) {
+    if (startDate != null &&
+        selectedDate.isBefore(startDate!)) {
       _showMessage(
-        'End date cannot be before the start date.',
+        context.tr('planner.endDateBeforeStart'),
         isError: true,
       );
       return;
@@ -195,26 +327,37 @@ class _PlannerScreenState extends State<PlannerScreen> {
     });
   }
 
-  /// Applies a pacing preset by setting dates relative to today (or the
-  /// existing start date, if one is already chosen).
+  // ============================================================
+  // PACING
+  // ============================================================
+
   void _applyPacingPreset(String preset) {
-    final DateTime base = startDate ?? DateTime.now();
-    final DateTime start = DateTime(base.year, base.month, base.day);
+    final DateTime base =
+        startDate ?? DateTime.now();
+
+    final DateTime start = DateTime(
+      base.year,
+      base.month,
+      base.day,
+    );
 
     int days;
+
     switch (preset) {
       case 'Weekend':
         days = 2;
         break;
+
       case '1 Week':
         days = 7;
         break;
+
       case '2 Weeks':
         days = 14;
         break;
+
       case 'Flexible':
       default:
-      // Flexible just clears dates so the user can pick their own.
         setState(() {
           startDate = null;
           endDate = null;
@@ -224,7 +367,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     setState(() {
       startDate = start;
-      endDate = start.add(Duration(days: days));
+      endDate = start.add(
+        Duration(days: days - 1),
+      );
     });
   }
 
@@ -233,58 +378,91 @@ class _PlannerScreenState extends State<PlannerScreen> {
       return null;
     }
 
-    final int days = endDate!.difference(startDate!).inDays;
+    final int days =
+        endDate!.difference(startDate!).inDays + 1;
 
-    if (days == 2) return 'Weekend';
-    if (days == 7) return '1 Week';
-    if (days == 14) return '2 Weeks';
+    if (days == 2) {
+      return 'Weekend';
+    }
+
+    if (days == 7) {
+      return '1 Week';
+    }
+
+    if (days == 14) {
+      return '2 Weeks';
+    }
 
     return null;
   }
 
-  String _displayDate(DateTime? date) {
+  // ============================================================
+  // DATE DISPLAY
+  // ============================================================
+
+  String _displayDate(
+    BuildContext context,
+    DateTime? date,
+  ) {
     if (date == null) {
-      return 'Select date';
+      return context.tr('planner.selectDate');
     }
 
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
     ];
 
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    final month = context.tr(
+      'date.short.${months[date.month - 1]}',
+    );
+
+    return '$month ${date.day}, ${date.year}';
   }
 
-  String _dayOfWeek(DateTime date) {
+  String _dayOfWeek(
+    BuildContext context,
+    DateTime date,
+  ) {
     const days = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
     ];
 
-    return days[date.weekday - 1];
+    return context.tr(
+      'date.${days[date.weekday - 1]}',
+    );
   }
 
-  void _showMessage(String message, {bool isError = false}) {
+  // ============================================================
+  // MESSAGE
+  // ============================================================
+
+  void _showMessage(
+    String message, {
+    bool isError = false,
+  }) {
     if (!mounted) {
       return;
     }
 
-    final statusColors = Theme.of(context).extension<AppStatusColors>();
+    final statusColors =
+        Theme.of(context).extension<AppStatusColors>();
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -299,7 +477,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
             ),
           ),
           backgroundColor: isError
-              ? statusColors?.error ?? Theme.of(context).colorScheme.error
+              ? statusColors?.error ??
+                  Theme.of(context).colorScheme.error
               : statusColors?.info ?? _blue,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -310,20 +489,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
       );
   }
 
-  // ---------------------------------------------------------------------
-  // Trip generation
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // GENERATE TRIP
+  // ============================================================
 
   Future<void> generateTrip() async {
     if (isGenerating) {
       return;
     }
 
-    final String destination = destinationController.text.trim();
+    final String destination =
+        destinationController.text.trim();
 
     if (destination.isEmpty) {
       _showMessage(
-        'Please enter a destination.',
+        context.tr('planner.enterDestination'),
         isError: true,
       );
       return;
@@ -331,7 +511,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     if (startDate == null || endDate == null) {
       _showMessage(
-        'Please select your travel dates.',
+        context.tr('planner.selectDates'),
         isError: true,
       );
       return;
@@ -339,7 +519,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     if (endDate!.isBefore(startDate!)) {
       _showMessage(
-        'End date cannot be before the start date.',
+        context.tr('planner.endDateBeforeStart'),
         isError: true,
       );
       return;
@@ -347,7 +527,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     if (travelers < 1) {
       _showMessage(
-        'There must be at least one traveler.',
+        context.tr('planner.atLeastOneTraveler'),
         isError: true,
       );
       return;
@@ -384,7 +564,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     try {
       final Map<String, dynamic> response =
-      await tripService.generateTrip(trip);
+          await tripService.generateTrip(trip);
 
       if (mounted) {
         Navigator.of(
@@ -407,39 +587,46 @@ class _PlannerScreenState extends State<PlannerScreen> {
       if (response['success'] != true) {
         _showMessage(
           response['message']?.toString() ??
-              'Trip generation failed.',
+              context.tr('planner.generationFailed'),
           isError: true,
         );
         return;
       }
 
-      final dynamic tripData = response['trip'];
+      final dynamic tripData =
+          response['trip'];
 
       if (tripData is! Map) {
         _showMessage(
-          'Trip was generated, but no trip data was returned.',
+          context.tr('planner.noTripData'),
           isError: true,
         );
         return;
       }
 
       final Map<String, dynamic> tripMap =
-      Map<String, dynamic>.from(tripData);
+          Map<String, dynamic>.from(tripData);
 
       if (kDebugMode) {
         debugPrint('====================================');
         debugPrint('GENERATED TRIP');
         debugPrint('TRIP ID: ${tripMap['id']}');
-        debugPrint('DESTINATION: ${tripMap['destination']}');
-        debugPrint('START DATE: ${tripMap['startDate']}');
-        debugPrint('END DATE: ${tripMap['endDate']}');
+        debugPrint(
+          'DESTINATION: ${tripMap['destination']}',
+        );
+        debugPrint(
+          'START DATE: ${tripMap['startDate']}',
+        );
+        debugPrint(
+          'END DATE: ${tripMap['endDate']}',
+        );
         debugPrint(
           'ITINERARY TYPE: '
-              '${tripMap['itinerary']?.runtimeType}',
+          '${tripMap['itinerary']?.runtimeType}',
         );
         debugPrint(
           'ITINERARY LENGTH: '
-              '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
+          '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
         );
         debugPrint('====================================');
       }
@@ -474,7 +661,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
       _showMessage(
         message.isEmpty
-            ? 'Something went wrong while generating your trip.'
+            ? context.tr('planner.generationError')
             : message,
         isError: true,
       );
@@ -487,85 +674,131 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            _buildProgressBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 920),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 48),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'The Essentials',
-                            style: TextStyle(
-                              fontFamily: 'Noto Serif',
-                              fontSize: 28,
-                              fontWeight: FontWeight.w600,
-                              color: _midnight,
-                            ),
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: _canvas,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(context),
+                _buildProgressBar(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: 920,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            16,
+                            20,
+                            16,
+                            48,
                           ),
-                          const SizedBox(height: 20),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr(
+                                  'planner.essentials',
+                                ),
+                                style: const TextStyle(
+                                  fontFamily: 'Noto Serif',
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w600,
+                                  color: _midnight,
+                                ),
+                              ),
 
-                          _buildDestinationSection(),
-                          const SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
-                          _buildDatesSection(),
-                          const SizedBox(height: 20),
+                              _buildDestinationSection(
+                                context,
+                              ),
 
-                          _buildTravelersSection(),
-                          const SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
-                          _buildBudgetSection(),
-                          const SizedBox(height: 20),
+                              _buildDatesSection(
+                                context,
+                              ),
 
-                          _buildTravelStyleSection(),
-                          const SizedBox(height: 40),
+                              const SizedBox(height: 20),
 
-                          _buildGenerateButton(),
-                        ],
+                              _buildTravelersSection(
+                                context,
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              _buildBudgetSection(
+                                context,
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              _buildTravelStyleSection(
+                                context,
+                              ),
+
+                              const SizedBox(height: 40),
+
+                              _buildGenerateButton(
+                                context,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Top bar + progress
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // TOP BAR
+  // ============================================================
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(
+    BuildContext context,
+  ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        8,
+        12,
+        8,
+      ),
       child: Row(
         children: [
           TextButton.icon(
-            onPressed: isGenerating ? null : () => Navigator.maybePop(context),
-            icon: const Icon(Icons.close, size: 20, color: _textPrimary),
-            label: const Text(
-              'Cancel',
-              style: TextStyle(
+            onPressed: isGenerating
+                ? null
+                : () => Navigator.maybePop(context),
+            icon: const Icon(
+              Icons.close,
+              size: 20,
+              color: _textPrimary,
+            ),
+            label: Text(
+              context.tr('common.cancel'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -573,9 +806,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
               ),
             ),
           ),
+
           const Spacer(),
+
           Text(
-            '${(_completionProgress * 100).round()}% COMPLETE',
+            '${(_completionProgress * 100).round()}% '
+            '${context.tr('planner.complete').toUpperCase()}',
             style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 11,
@@ -584,12 +820,16 @@ class _PlannerScreenState extends State<PlannerScreen> {
               color: _blue,
             ),
           ),
+
           const Spacer(),
+
           TextButton(
-            onPressed: isGenerating ? null : _resetForm,
-            child: const Text(
-              'Reset',
-              style: TextStyle(
+            onPressed: isGenerating
+                ? null
+                : _resetForm,
+            child: Text(
+              context.tr('planner.reset'),
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -613,19 +853,28 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Destination section (with trending curations)
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // DESTINATION
+  // ============================================================
 
-  Widget _buildDestinationSection() {
-    final matchedDestination = _matchDestination(destinationController.text);
+  Widget _buildDestinationSection(
+    BuildContext context,
+  ) {
+    final matchedDestination =
+        _matchDestination(
+      destinationController.text,
+    );
 
     return _buildSection(
+      context: context,
       number: 1,
-      title: 'Where does your story begin?',
+      title: context.tr(
+        'planner.destinationQuestion',
+      ),
       trailingIcon: Icons.public,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           TextField(
             controller: destinationController,
@@ -638,28 +887,37 @@ class _PlannerScreenState extends State<PlannerScreen> {
             ),
             onChanged: (_) => setState(() {}),
             decoration: _inputDecoration(
-              hintText: 'e.g. Paris, France',
-              icon: Icons.location_on_outlined,
-              suffixIcon: destinationController.text.isEmpty
-                  ? null
-                  : IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: isGenerating
-                    ? null
-                    : () {
-                  setState(() {
-                    destinationController.clear();
-                  });
-                },
+              hintText: context.tr(
+                'planner.destinationHint',
               ),
+              icon: Icons.location_on_outlined,
+              suffixIcon:
+                  destinationController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            size: 18,
+                          ),
+                          onPressed: isGenerating
+                              ? null
+                              : () {
+                                  setState(() {
+                                    destinationController
+                                        .clear();
+                                  });
+                                },
+                        ),
             ),
           ),
 
           const SizedBox(height: 16),
 
-          const Text(
-            'TRENDING CURATIONS',
-            style: TextStyle(
+          Text(
+            context
+                .tr('planner.trendingCurations')
+                .toUpperCase(),
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -673,15 +931,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _trendingCities.map((city) {
-              final destination = destinations.firstWhere(
-                    (d) => d.city == city,
-                orElse: () => destinations.first,
+            children:
+                _trendingCities.map((city) {
+              final destination =
+                  destinations.firstWhere(
+                (d) => d.city == city,
+                orElse: () =>
+                    destinations.first,
               );
 
               final selected =
-                  destinationController.text.trim().toLowerCase() ==
-                      destination.fullName.toLowerCase();
+                  destinationController.text
+                          .trim()
+                          .toLowerCase() ==
+                      destination.fullName
+                          .toLowerCase();
 
               return ChoiceChip(
                 label: Text(
@@ -689,55 +953,80 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
-                    fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? Colors.white : _midnight,
+                    fontWeight: selected
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                    color: selected
+                        ? Colors.white
+                        : _midnight,
                   ),
                 ),
                 selected: selected,
                 showCheckmark: false,
-                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundColor:
+                    const Color(0xFFF1F5F9),
                 selectedColor: _midnight,
                 side: BorderSide(
-                  color: selected ? _midnight : _borderStrong,
+                  color: selected
+                      ? _midnight
+                      : _borderStrong,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(999),
                 ),
                 onSelected: isGenerating
                     ? null
                     : (_) {
-                  setState(() {
-                    destinationController.text = destination.fullName;
-                    destinationController.selection =
-                        TextSelection.collapsed(
-                          offset: destinationController.text.length,
-                        );
-                  });
-                },
+                        setState(() {
+                          destinationController
+                                  .text =
+                              destination.fullName;
+
+                          destinationController
+                                  .selection =
+                              TextSelection
+                                  .collapsed(
+                            offset:
+                                destinationController
+                                    .text
+                                    .length,
+                          );
+                        });
+                      },
               );
             }).toList(),
           ),
 
           if (matchedDestination != null) ...[
             const SizedBox(height: 16),
-            _buildDestinationCard(matchedDestination),
+            _buildDestinationCard(
+              matchedDestination,
+            ),
           ],
         ],
       ),
     );
   }
 
-  dynamic _matchDestination(String query) {
-    final trimmed = query.trim().toLowerCase();
+  dynamic _matchDestination(
+    String query,
+  ) {
+    final trimmed =
+        query.trim().toLowerCase();
 
     if (trimmed.isEmpty) {
       return null;
     }
 
     for (final destination in destinations) {
-      if (destination.fullName.toLowerCase() == trimmed ||
-          destination.city.toLowerCase() == trimmed) {
+      if (destination.fullName
+              .toLowerCase() ==
+          trimmed ||
+          destination.city
+                  .toLowerCase() ==
+              trimmed) {
         return destination;
       }
     }
@@ -745,9 +1034,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
     return null;
   }
 
-  Widget _buildDestinationCard(dynamic destination) {
+  Widget _buildDestinationCard(
+    dynamic destination,
+  ) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius:
+          BorderRadius.circular(16),
       child: SizedBox(
         height: 140,
         width: double.infinity,
@@ -757,49 +1049,71 @@ class _PlannerScreenState extends State<PlannerScreen> {
             Image.network(
               destination.imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: const Color(0xFFF1F5F9),
+              errorBuilder: (_, _, _) =>
+                  Container(
+                color:
+                    const Color(0xFFF1F5F9),
                 child: const Icon(
-                  Icons.image_not_supported_outlined,
+                  Icons
+                      .image_not_supported_outlined,
                   color: _textMuted,
                 ),
               ),
             ),
+
             DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+              decoration:
+                  BoxDecoration(
+                gradient:
+                    LinearGradient(
+                  begin:
+                      Alignment.topCenter,
+                  end:
+                      Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    _midnight.withValues(alpha: 0.78),
+                    _midnight.withValues(
+                      alpha: 0.78,
+                    ),
                   ],
                 ),
               ),
             ),
+
             Positioned(
               left: 16,
               right: 16,
               bottom: 14,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${destination.city} ${destination.country}',
-                    style: const TextStyle(
-                      fontFamily: 'Noto Serif',
-                      color: Colors.white,
+                    '${destination.city} '
+                    '${destination.country}',
+                    style:
+                        const TextStyle(
+                      fontFamily:
+                          'Noto Serif',
+                      color:
+                          Colors.white,
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                          FontWeight.w600,
                     ),
                   ),
+
                   const SizedBox(height: 3),
+
                   Text(
                     destination.description,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFFE2E8F0),
+                    overflow:
+                        TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(
+                      color:
+                          Color(0xFFE2E8F0),
                       fontSize: 12,
                     ),
                   ),
@@ -812,81 +1126,146 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Dates + pacing presets
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // DATES
+  // ============================================================
 
-  Widget _buildDatesSection() {
-    final activePreset = _activePacingPreset();
+  Widget _buildDatesSection(
+    BuildContext context,
+  ) {
+    final activePreset =
+        _activePacingPreset();
 
     return _buildSection(
+      context: context,
       number: 2,
-      title: 'Dates & Duration',
-      trailingIcon: Icons.calendar_month_outlined,
+      title: context.tr(
+        'planner.datesDuration',
+      ),
+      trailingIcon:
+          Icons.calendar_month_outlined,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(14),
+            padding:
+                const EdgeInsets.all(14),
+            decoration:
+                BoxDecoration(
+              color:
+                  const Color(0xFFF1F5F9),
+              borderRadius:
+                  BorderRadius.circular(14),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _buildDateField(
-                        label: 'Departure',
+                      child:
+                          _buildDateField(
+                        context: context,
+                        label: context.tr(
+                          'planner.departure',
+                        ),
                         date: startDate,
-                        onTap: () => selectDate(isStartDate: true),
+                        onTap: () =>
+                            selectDate(
+                          isStartDate:
+                              true,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    if (startDate != null && endDate != null)
+
+                    const SizedBox(
+                      width: 10,
+                    ),
+
+                    if (startDate !=
+                            null &&
+                        endDate !=
+                            null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 20),
-                        child: Column(
+                        padding:
+                            const EdgeInsets
+                                .only(
+                          top: 20,
+                        ),
+                        child:
+                            Column(
                           children: [
                             const Icon(
-                              Icons.arrow_forward,
+                              Icons
+                                  .arrow_forward,
                               size: 16,
-                              color: _blue,
+                              color:
+                                  _blue,
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(
+                              height: 2,
+                            ),
                             Text(
-                              '${endDate!.difference(startDate!).inDays} Days',
-                              style: const TextStyle(
-                                fontFamily: 'Manrope',
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: _blue,
+                              '${endDate!.difference(startDate!).inDays + 1} '
+                              '${context.tr('planner.days')}',
+                              style:
+                                  const TextStyle(
+                                fontFamily:
+                                    'Manrope',
+                                fontSize:
+                                    10,
+                                fontWeight:
+                                    FontWeight
+                                        .w700,
+                                color:
+                                    _blue,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    const SizedBox(width: 10),
+
+                    const SizedBox(
+                      width: 10,
+                    ),
+
                     Expanded(
-                      child: _buildDateField(
-                        label: 'Return',
+                      child:
+                          _buildDateField(
+                        context: context,
+                        label: context.tr(
+                          'planner.return',
+                        ),
                         date: endDate,
-                        onTap: () => selectDate(isStartDate: false),
+                        onTap: () =>
+                            selectDate(
+                          isStartDate:
+                              false,
+                        ),
                       ),
                     ),
                   ],
                 ),
+
                 if (startDate != null) ...[
                   const SizedBox(height: 10),
+
                   Text(
-                    _dayOfWeek(startDate!),
-                    style: const TextStyle(
-                      fontFamily: 'Manrope',
+                    _dayOfWeek(
+                      context,
+                      startDate!,
+                    ),
+                    style:
+                        const TextStyle(
+                      fontFamily:
+                          'Manrope',
                       fontSize: 11,
-                      color: _textMuted,
+                      color:
+                          _textMuted,
                     ),
                   ),
                 ],
@@ -896,9 +1275,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
           const SizedBox(height: 16),
 
-          const Text(
-            'PACING PRESETS',
-            style: TextStyle(
+          Text(
+            context
+                .tr('planner.pacingPresets')
+                .toUpperCase(),
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -912,38 +1293,60 @@ class _PlannerScreenState extends State<PlannerScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: ['Flexible', 'Weekend', '1 Week', '2 Weeks'].map((
-                preset,
-                ) {
-              final selected = activePreset == preset ||
+            children: [
+              'Flexible',
+              'Weekend',
+              '1 Week',
+              '2 Weeks',
+            ].map((preset) {
+              final selected =
+                  activePreset == preset ||
                   (preset == 'Flexible' &&
                       startDate == null &&
                       endDate == null);
 
               return ChoiceChip(
                 label: Text(
-                  preset,
+                  _localizedPacingPreset(
+                    context,
+                    preset,
+                  ),
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily:
+                        'Manrope',
                     fontSize: 12,
-                    fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? Colors.white : _midnight,
+                    fontWeight: selected
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                    color: selected
+                        ? Colors.white
+                        : _midnight,
                   ),
                 ),
                 selected: selected,
                 showCheckmark: false,
-                backgroundColor: const Color(0xFFF1F5F9),
-                selectedColor: _midnight,
+                backgroundColor:
+                    const Color(0xFFF1F5F9),
+                selectedColor:
+                    _midnight,
                 side: BorderSide(
-                  color: selected ? _midnight : _borderStrong,
+                  color: selected
+                      ? _midnight
+                      : _borderStrong,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(
+                    999,
+                  ),
                 ),
                 onSelected: isGenerating
                     ? null
-                    : (_) => _applyPacingPreset(preset),
+                    : (_) =>
+                        _applyPacingPreset(
+                          preset,
+                        ),
               );
             }).toList(),
           ),
@@ -952,51 +1355,92 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Travelers (type cards)
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // TRAVELERS
+  // ============================================================
 
-  Widget _buildTravelersSection() {
+  Widget _buildTravelersSection(
+    BuildContext context,
+  ) {
     return _buildSection(
+      context: context,
       number: 3,
-      title: 'Travelers',
-      trailingIcon: Icons.people_alt_outlined,
+      title: context.tr(
+        'planner.travelers',
+      ),
+      trailingIcon:
+          Icons.people_alt_outlined,
       child: LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = constraints.maxWidth >= 500 ? 2 : 1;
+        builder: (
+          context,
+          constraints,
+        ) {
+          final columns =
+              constraints.maxWidth >= 500
+                  ? 2
+                  : 1;
 
           final cards = [
             _travelerCard(
+              context: context,
               icon: Icons.person_outline,
               title: 'Solo',
-              subtitle: 'Independent pace',
+              subtitle: context.tr(
+                'planner.independentPace',
+              ),
               rangeLabel: '1',
-              isSelected: travelers == 1,
-              onTap: () => setState(() => travelers = 1),
+              isSelected:
+                  travelers == 1,
+              onTap: () => setState(
+                () => travelers = 1,
+              ),
             ),
+
             _travelerCard(
+              context: context,
               icon: Icons.favorite_border,
               title: 'Couple',
-              subtitle: 'Curated for two',
+              subtitle: context.tr(
+                'planner.curatedForTwo',
+              ),
               rangeLabel: '2',
-              isSelected: travelers == 2,
-              onTap: () => setState(() => travelers = 2),
+              isSelected:
+                  travelers == 2,
+              onTap: () => setState(
+                () => travelers = 2,
+              ),
             ),
+
             _travelerCard(
-              icon: Icons.escalator_warning_outlined,
+              context: context,
+              icon: Icons
+                  .escalator_warning_outlined,
               title: 'Family',
-              subtitle: 'Kid-friendly rhythm',
+              subtitle: context.tr(
+                'planner.kidFriendlyRhythm',
+              ),
               rangeLabel: '3–5',
-              isSelected: travelers >= 3 && travelers <= 5,
-              onTap: () => setState(() => travelers = 4),
+              isSelected:
+                  travelers >= 3 &&
+                  travelers <= 5,
+              onTap: () => setState(
+                () => travelers = 4,
+              ),
             ),
+
             _travelerCard(
+              context: context,
               icon: Icons.groups_outlined,
               title: 'Friends',
-              subtitle: 'Shared memories',
+              subtitle: context.tr(
+                'planner.sharedMemories',
+              ),
               rangeLabel: '6+',
-              isSelected: travelers >= 6,
-              onTap: () => setState(() => travelers = 6),
+              isSelected:
+                  travelers >= 6,
+              onTap: () => setState(
+                () => travelers = 6,
+              ),
             ),
           ];
 
@@ -1005,8 +1449,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: columns == 2 ? 1.7 : 3.0,
+            physics:
+                const NeverScrollableScrollPhysics(),
+            childAspectRatio:
+                columns == 2
+                    ? 1.7
+                    : 3.0,
             children: cards,
           );
         },
@@ -1015,6 +1463,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _travelerCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
@@ -1023,61 +1472,97 @@ class _PlannerScreenState extends State<PlannerScreen> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: isSelected ? _midnight : _white,
-      borderRadius: BorderRadius.circular(14),
+      color: isSelected
+          ? _midnight
+          : _white,
+      borderRadius:
+          BorderRadius.circular(14),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: isGenerating ? null : onTap,
+        borderRadius:
+            BorderRadius.circular(14),
+        onTap: isGenerating
+            ? null
+            : onTap,
         child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+          padding:
+              const EdgeInsets.all(14),
+          decoration:
+              BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? _midnight : _border,
+              color: isSelected
+                  ? _midnight
+                  : _border,
             ),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Icon(
                     icon,
                     size: 20,
-                    color: isSelected ? Colors.white : _midnight,
+                    color: isSelected
+                        ? Colors.white
+                        : _midnight,
                   ),
+
                   const Spacer(),
+
                   Text(
                     rangeLabel,
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily:
+                          'Manrope',
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      fontWeight:
+                          FontWeight.w700,
                       color: isSelected
-                          ? Colors.white.withValues(alpha: 0.7)
+                          ? Colors.white
+                              .withValues(
+                              alpha: 0.7,
+                            )
                           : _textMuted,
                     ),
                   ),
                 ],
               ),
+
               const Spacer(),
+
               Text(
-                title,
+                _localizedTravelerType(
+                  context,
+                  title,
+                ),
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily:
+                      'Manrope',
                   fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : _textPrimary,
+                  fontWeight:
+                      FontWeight.w700,
+                  color: isSelected
+                      ? Colors.white
+                      : _textPrimary,
                 ),
               ),
+
               const SizedBox(height: 2),
+
               Text(
                 subtitle,
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily:
+                      'Manrope',
                   fontSize: 11,
                   color: isSelected
-                      ? Colors.white.withValues(alpha: 0.75)
+                      ? Colors.white
+                          .withValues(
+                          alpha: 0.75,
+                        )
                       : _textMuted,
                 ),
               ),
@@ -1088,40 +1573,88 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Budget tier + highlights priority (interests)
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // BUDGET
+  // ============================================================
 
-  Widget _buildBudgetSection() {
+  Widget _buildBudgetSection(
+    BuildContext context,
+  ) {
     return _buildSection(
+      context: context,
       number: 4,
-      title: 'Budget Tier',
+      title: context.tr(
+        'planner.budgetTier',
+      ),
       trailingWidget: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(999),
+        padding:
+            const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 5,
+        ),
+        decoration:
+            BoxDecoration(
+          color:
+              const Color(0xFFF1F5F9),
+          borderRadius:
+              BorderRadius.circular(999),
         ),
         child: Text(
-          budgetEstimateLabel(),
-          style: const TextStyle(
-            fontFamily: 'Manrope',
+          budgetEstimateLabel(
+            context,
+          ),
+          style:
+              const TextStyle(
+            fontFamily:
+                'Manrope',
             fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: _textMuted,
+            fontWeight:
+                FontWeight.w700,
+            color:
+                _textMuted,
           ),
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(child: _budgetTierChip('Backpacker', r'($)')),
-              const SizedBox(width: 8),
-              Expanded(child: _budgetTierChip('Comfort', r'($$)')),
-              const SizedBox(width: 8),
-              Expanded(child: _budgetTierChip('Luxury', r'($$$)')),
+              Expanded(
+                child:
+                    _budgetTierChip(
+                  context,
+                  'Backpacker',
+                  r'($)',
+                ),
+              ),
+
+              const SizedBox(
+                width: 8,
+              ),
+
+              Expanded(
+                child:
+                    _budgetTierChip(
+                  context,
+                  'Comfort',
+                  r'($$)',
+                ),
+              ),
+
+              const SizedBox(
+                width: 8,
+              ),
+
+              Expanded(
+                child:
+                    _budgetTierChip(
+                  context,
+                  'Luxury',
+                  r'($$$)',
+                ),
+              ),
             ],
           ),
 
@@ -1129,23 +1662,38 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
           Row(
             children: [
-              const Text(
-                'HIGHLIGHTS PRIORITY',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
+              Text(
+                context
+                    .tr(
+                      'planner.highlightsPriority',
+                    )
+                    .toUpperCase(),
+                style:
+                    const TextStyle(
+                  fontFamily:
+                      'Manrope',
                   fontSize: 10,
-                  fontWeight: FontWeight.w700,
+                  fontWeight:
+                      FontWeight.w700,
                   letterSpacing: 1,
-                  color: _textMuted,
+                  color:
+                      _textMuted,
                 ),
               ),
+
               const Spacer(),
+
               Text(
-                'Select as many as you like',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
+                context.tr(
+                  'planner.selectAsMany',
+                ),
+                style:
+                    const TextStyle(
+                  fontFamily:
+                      'Manrope',
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
+                  fontWeight:
+                      FontWeight.w600,
                   color: _blue,
                 ),
               ),
@@ -1157,115 +1705,203 @@ class _PlannerScreenState extends State<PlannerScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: interests.map((interest) {
-              final selected = selectedInterests.contains(interest);
-
-              return FilterChip(
-                label: Text(
+            children:
+                interests.map(
+              (interest) {
+                final selected =
+                    selectedInterests
+                        .contains(
                   interest,
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    fontSize: 12,
-                    fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? Colors.white : _midnight,
+                );
+
+                return FilterChip(
+                  label: Text(
+                    _localizedInterest(
+                      context,
+                      interest,
+                    ),
+                    style: TextStyle(
+                      fontFamily:
+                          'Manrope',
+                      fontSize: 12,
+                      fontWeight: selected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      color: selected
+                          ? Colors.white
+                          : _midnight,
+                    ),
                   ),
-                ),
-                selected: selected,
-                showCheckmark: false,
-                backgroundColor: const Color(0xFFF1F5F9),
-                selectedColor: _blue,
-                side: BorderSide(
-                  color: selected ? _blue : _borderStrong,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                onSelected: isGenerating
-                    ? null
-                    : (value) {
-                  setState(() {
-                    if (value) {
-                      selectedInterests.add(interest);
-                    } else {
-                      selectedInterests.remove(interest);
-                    }
-                  });
-                },
-              );
-            }).toList(),
+                  selected: selected,
+                  showCheckmark: false,
+                  backgroundColor:
+                      const Color(
+                    0xFFF1F5F9,
+                  ),
+                  selectedColor: _blue,
+                  side: BorderSide(
+                    color: selected
+                        ? _blue
+                        : _borderStrong,
+                  ),
+                  shape:
+                      RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(
+                      999,
+                    ),
+                  ),
+                  onSelected:
+                      isGenerating
+                          ? null
+                          : (value) {
+                              setState(() {
+                                if (value) {
+                                  selectedInterests
+                                      .add(
+                                    interest,
+                                  );
+                                } else {
+                                  selectedInterests
+                                      .remove(
+                                    interest,
+                                  );
+                                }
+                              });
+                            },
+                );
+              },
+            ).toList(),
           ),
         ],
       ),
     );
   }
 
-  /// Rough per-tier estimate for display only — a lightweight visual
-  /// echo of the mockup's "Est. $2,500" badge. Not used for trip
-  /// generation; the backend/AI still computes the real estimate.
-  String budgetEstimateLabel() {
-    final int days = (startDate != null && endDate != null)
-        ? endDate!.difference(startDate!).inDays.clamp(1, 60)
-        : 5;
+  // ============================================================
+  // BUDGET ESTIMATE
+  // ============================================================
 
-    final int perDayPerPerson = switch (budget) {
+  String budgetEstimateLabel(
+    BuildContext context,
+  ) {
+    final int days =
+        (startDate != null &&
+                endDate != null)
+            ? (endDate!
+                    .difference(
+                      startDate!,
+                    )
+                    .inDays +
+                1)
+            : 5;
+
+    final int perDayPerPerson =
+        switch (budget) {
       'Budget' => 60,
       'Luxury' => 400,
       _ => 150,
     };
 
-    final int estimate = perDayPerPerson * days * travelers;
+    final int estimate =
+        perDayPerPerson *
+            days *
+            travelers;
 
-    return 'Est. \$$estimate';
+    return context.tr(
+      'planner.estimatedAmount',
+      params: {
+        'amount': estimate.toString(),
+      },
+    );
   }
 
-  Widget _budgetTierChip(String label, String priceHint) {
-    final String mapped = switch (label) {
+  Widget _budgetTierChip(
+    BuildContext context,
+    String label,
+    String priceHint,
+  ) {
+    final String mapped =
+        switch (label) {
       'Backpacker' => 'Budget',
       'Luxury' => 'Luxury',
       _ => 'Moderate',
     };
 
-    final selected = budget == mapped;
+    final selected =
+        budget == mapped;
 
     return InkWell(
       onTap: isGenerating
           ? null
           : () {
-        setState(() {
-          budget = mapped;
-        });
-      },
-      borderRadius: BorderRadius.circular(10),
+              setState(() {
+                budget = mapped;
+              });
+            },
+      borderRadius:
+          BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? _white : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(10),
+        padding:
+            const EdgeInsets.symmetric(
+          vertical: 12,
+        ),
+        alignment:
+            Alignment.center,
+        decoration:
+            BoxDecoration(
+          color: selected
+              ? _white
+              : const Color(
+                  0xFFF1F5F9,
+                ),
+          borderRadius:
+              BorderRadius.circular(
+            10,
+          ),
           border: Border.all(
-            color: selected ? _midnight : Colors.transparent,
-            width: selected ? 1.4 : 1,
+            color: selected
+                ? _midnight
+                : Colors.transparent,
+            width:
+                selected ? 1.4 : 1,
           ),
         ),
         child: Column(
           children: [
             Text(
-              label,
+              context.tr(
+                label == 'Backpacker'
+                    ? 'planner.backpacker'
+                    : label == 'Comfort'
+                        ? 'planner.comfort'
+                        : 'planner.luxury',
+              ),
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily:
+                    'Manrope',
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: selected ? _midnight : _textSecondary,
+                fontWeight:
+                    FontWeight.w700,
+                color: selected
+                    ? _midnight
+                    : _textSecondary,
               ),
             ),
-            const SizedBox(height: 2),
+
+            const SizedBox(
+              height: 2,
+            ),
+
             Text(
               priceHint,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily:
+                    'Manrope',
                 fontSize: 10,
-                color: selected ? _midnight : _textMuted,
+                color: selected
+                    ? _midnight
+                    : _textMuted,
               ),
             ),
           ],
@@ -1274,86 +1910,143 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Travel style (kept from the original — pacing beyond dates)
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // TRAVEL STYLE
+  // ============================================================
 
-  Widget _buildTravelStyleSection() {
+  Widget _buildTravelStyleSection(
+    BuildContext context,
+  ) {
     return _buildSection(
+      context: context,
       number: 5,
-      title: 'What is your travel style?',
+      title: context.tr(
+        'planner.travelStyleQuestion',
+      ),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
-          _buildChoiceChip('Relaxed', travelStyle),
-          _buildChoiceChip('Balanced', travelStyle),
-          _buildChoiceChip('Packed', travelStyle),
+          _buildChoiceChip(
+            context,
+            'Relaxed',
+          ),
+          _buildChoiceChip(
+            context,
+            'Balanced',
+          ),
+          _buildChoiceChip(
+            context,
+            'Packed',
+          ),
         ],
       ),
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Generate button
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // GENERATE BUTTON
+  // ============================================================
 
-  Widget _buildGenerateButton() {
+  Widget _buildGenerateButton(
+    BuildContext context,
+  ) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: double.infinity,
           height: 56,
           child: FilledButton.icon(
-            onPressed: isGenerating ? null : generateTrip,
-            style: FilledButton.styleFrom(
-              backgroundColor: _midnightDark,
-              foregroundColor: Colors.white,
+            onPressed:
+                isGenerating
+                    ? null
+                    : generateTrip,
+            style:
+                FilledButton.styleFrom(
+              backgroundColor:
+                  _midnightDark,
+              foregroundColor:
+                  Colors.white,
               disabledBackgroundColor:
-              _midnightDark.withValues(alpha: 0.55),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                  _midnightDark
+                      .withValues(
+                alpha: 0.55,
+              ),
+              shape:
+                  RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(
+                  12,
+                ),
               ),
               elevation: 0,
             ),
             icon: isGenerating
                 ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-                : const Icon(Icons.auto_awesome, size: 19),
+                    width: 18,
+                    height: 18,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color:
+                          Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.auto_awesome,
+                    size: 19,
+                  ),
             label: Text(
               isGenerating
-                  ? 'Building your itinerary...'
-                  : 'Create My Trip with AI',
-              style: const TextStyle(
-                fontFamily: 'Manrope',
+                  ? context.tr(
+                      'planner.buildingItinerary',
+                    )
+                  : context.tr(
+                      'planner.createWithAI',
+                    ),
+              style:
+                  const TextStyle(
+                fontFamily:
+                    'Manrope',
                 fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontWeight:
+                    FontWeight.w700,
               ),
             ),
           ),
         ),
+
         const SizedBox(height: 10),
+
         Center(
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize:
+                MainAxisSize.min,
             children: [
-              const Icon(Icons.verified_outlined, size: 14, color: _textMuted),
+              const Icon(
+                Icons.verified_outlined,
+                size: 14,
+                color: _textMuted,
+              ),
+
               const SizedBox(width: 6),
+
               Flexible(
                 child: Text(
-                  'Tripora AI will build your route and daily plan based on what you selected above.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Manrope',
+                  context.tr(
+                    'planner.aiDisclaimer',
+                  ),
+                  textAlign:
+                      TextAlign.center,
+                  style:
+                      const TextStyle(
+                    fontFamily:
+                        'Manrope',
                     fontSize: 11,
-                    color: _textMuted,
+                    color:
+                        _textMuted,
                   ),
                 ),
               ),
@@ -1364,11 +2057,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Shared building blocks
-  // ---------------------------------------------------------------------
+  // ============================================================
+  // SECTION
+  // ============================================================
 
   Widget _buildSection({
+    required BuildContext context,
     required int number,
     required String title,
     required Widget child,
@@ -1377,66 +2071,100 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
+      padding:
+          const EdgeInsets.all(18),
+      decoration:
+          BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _border),
+        borderRadius:
+            BorderRadius.circular(20),
+        border:
+            Border.all(color: _border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x081E1B4B),
+            color:
+                Color(0x081E1B4B),
             blurRadius: 12,
-            offset: Offset(0, 4),
+            offset:
+                Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
                 width: 26,
                 height: 26,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
+                alignment:
+                    Alignment.center,
+                decoration:
+                    const BoxDecoration(
                   color: _midnight,
-                  shape: BoxShape.circle,
+                  shape:
+                      BoxShape.circle,
                 ),
                 child: Text(
                   '$number',
-                  style: const TextStyle(
-                    fontFamily: 'Manrope',
+                  style:
+                      const TextStyle(
+                    fontFamily:
+                        'Manrope',
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    fontWeight:
+                        FontWeight.w800,
+                    color:
+                        Colors.white,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+
+              const SizedBox(
+                width: 12,
+              ),
+
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    fontFamily: 'Noto Serif',
+                  style:
+                      const TextStyle(
+                    fontFamily:
+                        'Noto Serif',
                     fontSize: 19,
-                    fontWeight: FontWeight.w600,
-                    color: _midnight,
+                    fontWeight:
+                        FontWeight.w600,
+                    color:
+                        _midnight,
                   ),
                 ),
               ),
+
               if (trailingWidget != null)
                 trailingWidget
-              else if (trailingIcon != null)
-                Icon(trailingIcon, size: 20, color: _textMuted),
+              else if (trailingIcon !=
+                  null)
+                Icon(
+                  trailingIcon,
+                  size: 20,
+                  color: _textMuted,
+                ),
             ],
           ),
+
           const SizedBox(height: 14),
+
           child,
         ],
       ),
     );
   }
+
+  // ============================================================
+  // INPUT DECORATION
+  // ============================================================
 
   InputDecoration _inputDecoration({
     required String hintText,
@@ -1445,70 +2173,133 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(
-        fontFamily: 'Manrope',
+      hintStyle:
+          const TextStyle(
+        fontFamily:
+            'Manrope',
         fontSize: 14,
-        color: _textMuted,
+        color:
+            _textMuted,
       ),
-      prefixIcon: Icon(icon, color: _textMuted, size: 21),
-      suffixIcon: suffixIcon,
+      prefixIcon: Icon(
+        icon,
+        color: _textMuted,
+        size: 21,
+      ),
+      suffixIcon:
+          suffixIcon,
       filled: true,
-      fillColor: const Color(0xFFF8FAFC),
-      contentPadding: const EdgeInsets.symmetric(
+      fillColor:
+          const Color(0xFFF8FAFC),
+      contentPadding:
+          const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 15,
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _border),
+      border:
+          OutlineInputBorder(
+        borderRadius:
+            BorderRadius.circular(
+          10,
+        ),
+        borderSide:
+            const BorderSide(
+          color: _border,
+        ),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _border),
+      enabledBorder:
+          OutlineInputBorder(
+        borderRadius:
+            BorderRadius.circular(
+          10,
+        ),
+        borderSide:
+            const BorderSide(
+          color: _border,
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _midnight, width: 1.3),
+      focusedBorder:
+          OutlineInputBorder(
+        borderRadius:
+            BorderRadius.circular(
+          10,
+        ),
+        borderSide:
+            const BorderSide(
+          color: _midnight,
+          width: 1.3,
+        ),
       ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _border),
+      disabledBorder:
+          OutlineInputBorder(
+        borderRadius:
+            BorderRadius.circular(
+          10,
+        ),
+        borderSide:
+            const BorderSide(
+          color: _border,
+        ),
       ),
     );
   }
 
+  // ============================================================
+  // DATE FIELD
+  // ============================================================
+
   Widget _buildDateField({
+    required BuildContext context,
     required String label,
     required DateTime? date,
     required VoidCallback onTap,
   }) {
-    final selected = date != null;
+    final selected =
+        date != null;
 
     return InkWell(
-      onTap: isGenerating ? null : onTap,
-      borderRadius: BorderRadius.circular(8),
+      onTap: isGenerating
+          ? null
+          : onTap,
+      borderRadius:
+          BorderRadius.circular(8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
-              fontFamily: 'Manrope',
+            style:
+                const TextStyle(
+              fontFamily:
+                  'Manrope',
               fontSize: 9,
-              fontWeight: FontWeight.w700,
+              fontWeight:
+                  FontWeight.w700,
               letterSpacing: 1,
-              color: _textMuted,
+              color:
+                  _textMuted,
             ),
           ),
+
           const SizedBox(height: 4),
+
           Text(
-            _displayDate(date),
-            overflow: TextOverflow.ellipsis,
+            _displayDate(
+              context,
+              date,
+            ),
+            overflow:
+                TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily:
+                  'Manrope',
               fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: selected ? _textPrimary : _textMuted,
+              fontWeight:
+                  FontWeight.w700,
+              color: selected
+                  ? _textPrimary
+                  : _textMuted,
             ),
           ),
         ],
@@ -1516,134 +2307,257 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  Widget _buildChoiceChip(String label, String selectedValue) {
-    final selected = selectedValue == label;
+  // ============================================================
+  // TRAVEL STYLE CHIP
+  // ============================================================
+
+  Widget _buildChoiceChip(
+    BuildContext context,
+    String label,
+  ) {
+    final selected =
+        travelStyle == label;
 
     return ChoiceChip(
       label: Text(
-        label,
+        _localizedTravelStyle(
+          context,
+          label,
+        ),
         style: TextStyle(
-          fontFamily: 'Manrope',
+          fontFamily:
+              'Manrope',
           fontSize: 12,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-          color: selected ? Colors.white : _midnight,
+          fontWeight: selected
+              ? FontWeight.w700
+              : FontWeight.w600,
+          color: selected
+              ? Colors.white
+              : _midnight,
         ),
       ),
       selected: selected,
       showCheckmark: false,
-      backgroundColor: const Color(0xFFF1F5F9),
-      selectedColor: _midnight,
-      side: BorderSide(color: selected ? _midnight : _borderStrong),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      onSelected: isGenerating
-          ? null
-          : (_) {
-        setState(() {
-          travelStyle = label;
-        });
-      },
+      backgroundColor:
+          const Color(0xFFF1F5F9),
+      selectedColor:
+          _midnight,
+      side: BorderSide(
+        color: selected
+            ? _midnight
+            : _borderStrong,
+      ),
+      shape:
+          RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.circular(
+          999,
+        ),
+      ),
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 7,
+      ),
+      onSelected:
+          isGenerating
+              ? null
+              : (_) {
+                  setState(() {
+                    travelStyle =
+                        label;
+                  });
+                },
     );
   }
 }
 
-class _GenerationDialog extends StatelessWidget {
+// ================================================================
+// GENERATION DIALOG
+// ================================================================
+
+class _GenerationDialog
+    extends StatelessWidget {
   const _GenerationDialog();
 
-  static const Color _midnight = Color(0xFF1E1B4B);
-  static const Color _blue = Color(0xFF3B82F6);
-  static const Color _white = Colors.white;
-  static const Color _textMuted = Color(0xFF64748B);
+  static const Color _midnight =
+      Color(0xFF1E1B4B);
+  static const Color _blue =
+      Color(0xFF3B82F6);
+  static const Color _white =
+      Colors.white;
+  static const Color _textMuted =
+      Color(0xFF64748B);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(maxWidth: 390),
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
+      constraints:
+          const BoxConstraints(
+        maxWidth: 390,
+      ),
+      margin:
+          const EdgeInsets.symmetric(
+        horizontal: 24,
+      ),
+      padding:
+          const EdgeInsets.all(26),
+      decoration:
+          BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius:
+            BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x331E1B4B),
+            color:
+                Color(0x331E1B4B),
             blurRadius: 30,
-            offset: Offset(0, 12),
+            offset:
+                Offset(0, 12),
           ),
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize:
+            MainAxisSize.min,
         children: [
           Container(
             width: 58,
             height: 58,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(16),
+            alignment:
+                Alignment.center,
+            decoration:
+                BoxDecoration(
+              color:
+                  const Color(
+                0xFFEFF6FF,
+              ),
+              borderRadius:
+                  BorderRadius.circular(
+                16,
+              ),
             ),
-            child: const SizedBox(
+            child:
+                const SizedBox(
               width: 25,
               height: 25,
-              child: CircularProgressIndicator(
+              child:
+                  CircularProgressIndicator(
                 strokeWidth: 2.5,
                 color: _blue,
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          const Text(
-            'Creating your itinerary',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Noto Serif',
+
+          const SizedBox(
+            height: 18,
+          ),
+
+          Text(
+            context.tr(
+              'planner.creatingItinerary',
+            ),
+            textAlign:
+                TextAlign.center,
+            style:
+                const TextStyle(
+              fontFamily:
+                  'Noto Serif',
               fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: _midnight,
+              fontWeight:
+                  FontWeight.w600,
+              color:
+                  _midnight,
             ),
           ),
-          const SizedBox(height: 7),
-          const Text(
-            'Tripora is shaping your route, activities, and daily plan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Manrope',
+
+          const SizedBox(
+            height: 7,
+          ),
+
+          Text(
+            context.tr(
+              'planner.shapingPlan',
+            ),
+            textAlign:
+                TextAlign.center,
+            style:
+                const TextStyle(
+              fontFamily:
+                  'Manrope',
               fontSize: 12,
               height: 1.45,
-              color: _textMuted,
+              color:
+                  _textMuted,
             ),
           ),
-          const SizedBox(height: 22),
+
+          const SizedBox(
+            height: 22,
+          ),
+
           const ShimmerLoader(
             width: double.infinity,
             height: 12,
-            borderRadius: BorderRadius.all(Radius.circular(6)),
-            margin: EdgeInsets.only(bottom: 9),
+            borderRadius:
+                BorderRadius.all(
+              Radius.circular(6),
+            ),
+            margin:
+                EdgeInsets.only(
+              bottom: 9,
+            ),
           ),
+
           const ShimmerLoader(
             width: double.infinity,
             height: 12,
-            borderRadius: BorderRadius.all(Radius.circular(6)),
-            margin: EdgeInsets.only(bottom: 18),
+            borderRadius:
+                BorderRadius.all(
+              Radius.circular(6),
+            ),
+            margin:
+                EdgeInsets.only(
+              bottom: 18,
+            ),
           ),
+
           const ShimmerLoader(
             width: double.infinity,
             height: 72,
-            borderRadius: BorderRadius.all(Radius.circular(10)),
-            margin: EdgeInsets.only(bottom: 9),
+            borderRadius:
+                BorderRadius.all(
+              Radius.circular(10),
+            ),
+            margin:
+                EdgeInsets.only(
+              bottom: 9,
+            ),
           ),
+
           const ShimmerLoader(
             width: double.infinity,
             height: 72,
-            borderRadius: BorderRadius.all(Radius.circular(10)),
-            margin: EdgeInsets.only(bottom: 9),
+            borderRadius:
+                BorderRadius.all(
+              Radius.circular(10),
+            ),
+            margin:
+                EdgeInsets.only(
+              bottom: 9,
+            ),
           ),
+
           const ShimmerLoader(
             width: double.infinity,
             height: 72,
-            borderRadius: BorderRadius.all(Radius.circular(10)),
+            borderRadius:
+                BorderRadius.all(
+              Radius.circular(10),
+            ),
           ),
         ],
       ),

@@ -13,28 +13,31 @@ import '../screens/travel/flight_search_screen.dart';
 import '../screens/trips/trips_screen.dart';
 
 /// Width (CSS pixels) at which the web top header switches from the
-/// compact (icon + drawer) layout to the full labeled layout. This only
-/// affects which WEB header is shown — it does not affect whether the
-/// header is shown at all. That decision is [kIsWeb]: the web build
-/// always gets a top header, the native app build always gets the
-/// bottom nav, regardless of screen width.
+/// compact (icon + drawer) layout to the full labeled layout.
+///
+/// This only affects which WEB header is shown.
+/// It does not affect whether the header is shown at all.
+///
+/// - Web build -> top header
+/// - Native app -> bottom navigation
 const double _webHeaderCompactBreakpoint = 960;
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
-  static final ValueNotifier<int> currentIndex = ValueNotifier<int>(0);
+  static final ValueNotifier<int> currentIndex =
+      ValueNotifier<int>(0);
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+      GlobalKey<ScaffoldState>();
 
-  // Built per-render (not const) so a language/currency/theme change —
-  // which rebuilds MainShell through the ListenableBuilder below — also
-  // rebuilds the tab contents instead of serving stale instances.
+  // Pages are rebuilt when preferences change so translated UI
+  // and currency-dependent UI remain synchronized.
   List<Widget> _buildPages({bool webChrome = false}) {
     return [
       HomeScreen(showAppBar: !webChrome),
@@ -47,13 +50,15 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    // Platform decides top-vs-bottom nav, not screen width:
-    // - Web build (phone, tablet, or laptop browser) -> top header, always.
-    // - Native app build (iOS/Android) -> bottom nav, always.
+    // Platform decides top-vs-bottom navigation.
+    //
+    // Web:
+    //   phone/tablet/laptop browser -> top header
+    //
+    // Native:
+    //   Android/iOS -> bottom navigation
     const bool showWebHeader = kIsWeb;
 
-    // Re-render the shell (nav labels, every tab) whenever preferences
-    // change so translated labels and per-currency UI stay in sync.
     return ListenableBuilder(
       listenable: AppPreferences.instance,
       builder: (context, _) {
@@ -62,54 +67,58 @@ class _MainShellState extends State<MainShell> {
           builder: (context, currentIndex, _) {
             return LayoutBuilder(
               builder: (context, constraints) {
-                // Only used to pick which WEB header variant fits —
-                // never used to decide top-vs-bottom nav.
                 final isCompactWeb =
-                    constraints.maxWidth < _webHeaderCompactBreakpoint;
+                    constraints.maxWidth <
+                    _webHeaderCompactBreakpoint;
 
                 void selectTab(int index) {
                   MainShell.currentIndex.value = index;
-                  // Close the drawer (if open) after a selection on the
-                  // compact web header.
-                  if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+
+                  // Close the web drawer after selecting an item.
+                  if (_scaffoldKey.currentState?.isDrawerOpen ??
+                      false) {
                     Navigator.of(context).pop();
                   }
                 }
 
                 return Scaffold(
                   key: _scaffoldKey,
-                  // The IndexedStack stays at the same tree depth in every
-                  // layout so tab state survives browser resizing across
-                  // the compact/full web breakpoint. The header variant
-                  // swaps in/out instantly (no retain-for-transition) so
-                  // the full header is never laid out at widths where it
-                  // would overflow.
+
+                  // Only the compact web layout uses a drawer.
                   drawer: (showWebHeader && isCompactWeb)
                       ? _TriporaWebDrawer(
                           currentIndex: currentIndex,
                           onSelected: selectTab,
                         )
                       : null,
+
                   body: Column(
                     children: [
                       if (showWebHeader)
                         isCompactWeb
                             ? _TriporaCompactWebHeader(
-                                onMenuTap: () =>
-                                    _scaffoldKey.currentState?.openDrawer(),
+                                onMenuTap: () {
+                                  _scaffoldKey.currentState
+                                      ?.openDrawer();
+                                },
                               )
                             : _TriporaWebHeader(
                                 currentIndex: currentIndex,
                                 onSelected: selectTab,
                               ),
+
                       Expanded(
                         child: IndexedStack(
                           index: currentIndex,
-                          children: _buildPages(webChrome: showWebHeader),
+                          children: _buildPages(
+                            webChrome: showWebHeader,
+                          ),
                         ),
                       ),
                     ],
                   ),
+
+                  // Native app navigation only.
                   bottomNavigationBar: showWebHeader
                       ? null
                       : _TriporaBottomNav(
@@ -127,7 +136,7 @@ class _MainShellState extends State<MainShell> {
 }
 
 // ---------------------------------------------------------------------------
-// Shared nav items
+// Shared navigation items
 // ---------------------------------------------------------------------------
 
 class _NavItem {
@@ -173,7 +182,7 @@ List<_NavItem> _navItems(BuildContext context) {
 }
 
 // ---------------------------------------------------------------------------
-// Website top navigation — full (wide browser windows)
+// Website top navigation - full
 // ---------------------------------------------------------------------------
 
 class _TriporaWebHeader extends StatelessWidget {
@@ -197,14 +206,20 @@ class _TriporaWebHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(
-          bottom: BorderSide(color: colors.border, width: 0.8),
+          bottom: BorderSide(
+            color: colors.border,
+            width: 0.8,
+          ),
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final horizontalPadding = constraints.maxWidth < 1200 ? 24.0 : 40.0;
+            final horizontalPadding =
+                constraints.maxWidth < 1200
+                    ? 24.0
+                    : 40.0;
 
             return Center(
               child: ConstrainedBox(
@@ -220,25 +235,36 @@ class _TriporaWebHeader extends StatelessWidget {
                     child: Row(
                       children: [
                         const _TriporaBrand(),
-                        SizedBox(width: horizontalPadding),
+
+                        SizedBox(
+                          width: horizontalPadding,
+                        ),
+
                         Expanded(
                           child: Row(
                             children: [
-                              for (var i = 0; i < items.length; i++) ...[
+                              for (var i = 0;
+                                  i < items.length;
+                                  i++) ...[
                                 Expanded(
                                   child: _TriporaWebNavItem(
                                     item: items[i],
-                                    selected: i == currentIndex,
-                                    onTap: () => onSelected(i),
+                                    selected:
+                                        i == currentIndex,
+                                    onTap: () =>
+                                        onSelected(i),
                                   ),
                                 ),
+
                                 if (i != items.length - 1)
                                   const SizedBox(width: 4),
                               ],
                             ],
                           ),
                         ),
+
                         const SizedBox(width: 8),
+
                         const _TriporaPlanTripCta(),
                       ],
                     ),
@@ -252,6 +278,10 @@ class _TriporaWebHeader extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Tripora brand
+// ---------------------------------------------------------------------------
 
 class _TriporaBrand extends StatelessWidget {
   const _TriporaBrand();
@@ -277,6 +307,10 @@ class _TriporaBrand extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Website full navigation item
+// ---------------------------------------------------------------------------
+
 class _TriporaWebNavItem extends StatelessWidget {
   const _TriporaWebNavItem({
     required this.item,
@@ -293,7 +327,8 @@ class _TriporaWebNavItem extends StatelessWidget {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    final color = selected ? scheme.primary : colors.textSecondary;
+    final color =
+        selected ? scheme.primary : colors.textSecondary;
 
     return Semantics(
       button: true,
@@ -303,7 +338,10 @@ class _TriporaWebNavItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -313,19 +351,25 @@ class _TriporaWebNavItem extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.manrope(
                   fontSize: 15,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight: selected
+                      ? FontWeight.w700
+                      : FontWeight.w600,
                   color: color,
                 ),
               ),
+
               const SizedBox(height: 5),
+
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration:
+                    const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
                 width: selected ? 20 : 0,
                 height: 3,
                 decoration: BoxDecoration(
                   color: scheme.primary,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius:
+                      BorderRadius.circular(2),
                 ),
               ),
             ],
@@ -336,6 +380,10 @@ class _TriporaWebNavItem extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Plan Trip CTA
+// ---------------------------------------------------------------------------
+
 class _TriporaPlanTripCta extends StatelessWidget {
   const _TriporaPlanTripCta();
 
@@ -343,31 +391,46 @@ class _TriporaPlanTripCta extends StatelessWidget {
   Widget build(BuildContext context) {
     return FilledButton.icon(
       onPressed: () {
-        Navigator.pushNamed(context, AppRoutes.planner);
+        Navigator.pushNamed(
+          context,
+          AppRoutes.planner,
+        );
       },
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 18),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 18,
+        ),
         textStyle: GoogleFonts.manrope(
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
       ),
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: Text(context.tr('nav.planTrip')),
+      icon: const Icon(
+        Icons.add_rounded,
+        size: 18,
+      ),
+      label: Text(
+        context.tr('nav.planTrip'),
+      ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Website top navigation — compact (narrow browser windows, e.g. phone-width
-// Chrome). Same "nav on top" rule as the full header, just laid out so it
-// doesn't overflow at small widths: brand + a menu button that opens a
-// drawer with the full nav list.
+// Website compact navigation
+//
+// Used on narrow browser windows.
+//
+// IMPORTANT:
+// This is still WEB navigation.
+// It does NOT become the native bottom navigation.
 // ---------------------------------------------------------------------------
 
 class _TriporaCompactWebHeader extends StatelessWidget {
-  const _TriporaCompactWebHeader({required this.onMenuTap});
+  const _TriporaCompactWebHeader({
+    required this.onMenuTap,
+  });
 
   final VoidCallback onMenuTap;
 
@@ -380,7 +443,10 @@ class _TriporaCompactWebHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(
-          bottom: BorderSide(color: colors.border, width: 0.8),
+          bottom: BorderSide(
+            color: colors.border,
+            width: 0.8,
+          ),
         ),
       ),
       child: SafeArea(
@@ -388,24 +454,39 @@ class _TriporaCompactWebHeader extends StatelessWidget {
         child: SizedBox(
           height: 56,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
             child: Row(
               children: [
                 IconButton(
                   onPressed: onMenuTap,
-                  icon: const Icon(Icons.menu_rounded),
-                  tooltip: MaterialLocalizations.of(context)
-                      .openAppDrawerTooltip,
+                  icon: const Icon(
+                    Icons.menu_rounded,
+                  ),
+                  tooltip:
+                      MaterialLocalizations.of(context)
+                          .openAppDrawerTooltip,
                 ),
+
                 const SizedBox(width: 4),
+
                 const _TriporaBrand(),
+
                 const Spacer(),
+
                 IconButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.planner);
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.planner,
+                    );
                   },
-                  icon: const Icon(Icons.add_rounded),
-                  tooltip: context.tr('nav.planTrip'),
+                  icon: const Icon(
+                    Icons.add_rounded,
+                  ),
+                  tooltip:
+                      context.tr('nav.planTrip'),
                 ),
               ],
             ),
@@ -415,6 +496,10 @@ class _TriporaCompactWebHeader extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Website compact drawer
+// ---------------------------------------------------------------------------
 
 class _TriporaWebDrawer extends StatelessWidget {
   const _TriporaWebDrawer({
@@ -429,32 +514,47 @@ class _TriporaWebDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = _navItems(context);
     final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
 
     return Drawer(
       child: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment:
+              CrossAxisAlignment.stretch,
           children: [
             const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                8,
+              ),
               child: _TriporaBrand(),
             ),
-            Divider(color: colors.border, height: 1),
+
+            Divider(
+              color: colors.border,
+              height: 1,
+            ),
+
             for (var i = 0; i < items.length; i++)
               ListTile(
                 leading: Icon(
-                  i == currentIndex ? items[i].selectedIcon : items[i].icon,
+                  i == currentIndex
+                      ? items[i].selectedIcon
+                      : items[i].icon,
                   color: i == currentIndex
-                      ? Theme.of(context).colorScheme.primary
+                      ? scheme.primary
                       : colors.textSecondary,
                 ),
                 title: Text(
                   items[i].label,
                   style: GoogleFonts.manrope(
-                    fontWeight:
-                        i == currentIndex ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight: i == currentIndex
+                        ? FontWeight.w700
+                        : FontWeight.w600,
                     color: i == currentIndex
-                        ? Theme.of(context).colorScheme.primary
+                        ? scheme.primary
                         : colors.textPrimary,
                   ),
                 ),
@@ -469,7 +569,7 @@ class _TriporaWebDrawer extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Native app bottom navigation (Liquid Glass-inspired pill)
+// Native app bottom navigation
 // ---------------------------------------------------------------------------
 
 class _TriporaBottomNav extends StatelessWidget {
@@ -487,7 +587,8 @@ class _TriporaBottomNav extends StatelessWidget {
     final items = _navItems(context);
 
     return SizedBox(
-      height: 64 + MediaQuery.of(context).padding.bottom,
+      height:
+          64 + MediaQuery.of(context).padding.bottom,
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
@@ -496,46 +597,71 @@ class _TriporaBottomNav extends StatelessWidget {
               color: Colors.transparent,
             ),
           ),
+
           Positioned(
             left: 0,
             right: 0,
-            bottom: MediaQuery.of(context).padding.bottom,
+            bottom:
+                MediaQuery.of(context).padding.bottom,
             child: Center(
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.symmetric(
+                margin:
+                    const EdgeInsets.symmetric(
+                  horizontal: 16,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(
                   horizontal: 8,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: colors.surface.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(999),
+                  color:
+                      colors.surface.withValues(
+                    alpha: 0.92,
+                  ),
+                  borderRadius:
+                      BorderRadius.circular(999),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.12),
+                      color:
+                          AppColors.primary.withValues(
+                        alpha: 0.12,
+                      ),
                       blurRadius: 24,
                       spreadRadius: 0,
-                      offset: const Offset(0, -4),
+                      offset:
+                          const Offset(0, -4),
                     ),
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color:
+                          Colors.black.withValues(
+                        alpha: 0.08,
+                      ),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset:
+                          const Offset(0, 4),
                     ),
                   ],
                   border: Border.all(
-                    color: colors.border.withValues(alpha: 0.5),
+                    color:
+                        colors.border.withValues(
+                      alpha: 0.5,
+                    ),
                     width: 0.8,
                   ),
                 ),
                 child: Row(
                   children: [
-                    for (var i = 0; i < items.length; i++)
+                    for (var i = 0;
+                        i < items.length;
+                        i++)
                       Expanded(
                         child: _TriporaNavItem(
                           item: items[i],
-                          selected: i == currentIndex,
-                          onTap: () => onSelected(i),
+                          selected:
+                              i == currentIndex,
+                          onTap: () =>
+                              onSelected(i),
                         ),
                       ),
                   ],
@@ -548,6 +674,10 @@ class _TriporaBottomNav extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Native navigation item
+// ---------------------------------------------------------------------------
 
 class _TriporaNavItem extends StatelessWidget {
   const _TriporaNavItem({
@@ -573,23 +703,35 @@ class _TriporaNavItem extends StatelessWidget {
       label: item.label,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius:
+            BorderRadius.circular(22),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration:
+              const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: const EdgeInsets.symmetric(
+          margin:
+              const EdgeInsets.symmetric(
+            horizontal: 2,
+          ),
+          padding:
+              const EdgeInsets.symmetric(
             vertical: 9,
             horizontal: 4,
           ),
           decoration: BoxDecoration(
             color: selected
-                ? activeColor.withValues(alpha: 0.12)
+                ? activeColor.withValues(
+                    alpha: 0.12,
+                  )
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius:
+                BorderRadius.circular(22),
             border: selected
                 ? Border.all(
-                    color: activeColor.withValues(alpha: 0.10),
+                    color:
+                        activeColor.withValues(
+                      alpha: 0.10,
+                    ),
                     width: 0.8,
                   )
                 : null,
@@ -598,8 +740,10 @@ class _TriporaNavItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                transitionBuilder: (child, animation) {
+                duration:
+                    const Duration(milliseconds: 180),
+                transitionBuilder:
+                    (child, animation) {
                   return ScaleTransition(
                     scale: Tween<double>(
                       begin: 0.88,
@@ -607,7 +751,8 @@ class _TriporaNavItem extends StatelessWidget {
                     ).animate(
                       CurvedAnimation(
                         parent: animation,
-                        curve: Curves.easeOutBack,
+                        curve:
+                            Curves.easeOutBack,
                       ),
                     ),
                     child: FadeTransition(
@@ -617,25 +762,39 @@ class _TriporaNavItem extends StatelessWidget {
                   );
                 },
                 child: Icon(
-                  selected ? item.selectedIcon : item.icon,
+                  selected
+                      ? item.selectedIcon
+                      : item.icon,
                   key: ValueKey(selected),
                   size: 23,
-                  color: selected ? activeColor : inactiveColor,
+                  color: selected
+                      ? activeColor
+                      : inactiveColor,
                 ),
               ),
+
               const SizedBox(height: 4),
+
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 180),
+                duration:
+                    const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
-                style: Theme.of(context).textTheme.labelSmall!.copyWith(
-                      color: selected ? activeColor : inactiveColor,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w600,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall!
+                    .copyWith(
+                      color: selected
+                          ? activeColor
+                          : inactiveColor,
+                      fontWeight: selected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                     ),
                 child: Text(
                   item.label,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  overflow:
+                      TextOverflow.ellipsis,
                 ),
               ),
             ],

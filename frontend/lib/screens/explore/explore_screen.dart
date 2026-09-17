@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../data/destinations.dart';
 import '../../models/destination_model.dart';
 import '../../routes/app_routes.dart';
@@ -16,7 +17,6 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   // ============================================================
   // TRIPORA DESIGN TOKENS
-  // Matches HomeScreen
   // ============================================================
 
   static const midnight = Color(0xFF1E1B4B);
@@ -31,9 +31,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   static const slate500 = Color(0xFF64748B);
   static const slate600 = Color(0xFF475569);
 
-  static const blue = Color(0xFF3B82F6);
-
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController =
+      TextEditingController();
 
   String _query = '';
   String _selectedTag = 'All';
@@ -56,16 +55,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
       final matchesQuery =
           query.isEmpty ||
-              destination.city.toLowerCase().contains(query) ||
-              destination.country.toLowerCase().contains(query) ||
-              destination.description.toLowerCase().contains(query) ||
-              destination.tags.any(
-                    (tag) => tag.toLowerCase().contains(query),
-              );
+          destination.city.toLowerCase().contains(query) ||
+          destination.country.toLowerCase().contains(query) ||
+          destination.description.toLowerCase().contains(query) ||
+          destination.tags.any(
+            (tag) => tag.toLowerCase().contains(query),
+          );
 
       final matchesTag =
           _selectedTag == 'All' ||
-              destination.tags.contains(_selectedTag);
+          destination.tags.contains(_selectedTag);
 
       return matchesQuery && matchesTag;
     }).toList();
@@ -93,12 +92,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // DESTINATION DETAILS
   // ============================================================
 
-  void _showDestinationDetails(DestinationModel destination) {
+  void _showDestinationDetails(
+    DestinationModel destination,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Container(
             decoration: const BoxDecoration(
@@ -115,7 +116,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Bottom sheet handle
@@ -125,7 +127,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       height: 5,
                       decoration: BoxDecoration(
                         color: slate300,
-                        borderRadius: BorderRadius.circular(100),
+                        borderRadius:
+                            BorderRadius.circular(100),
                       ),
                     ),
                   ),
@@ -134,7 +137,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                   // Destination image
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius:
+                        BorderRadius.circular(16),
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
                       child: Stack(
@@ -145,14 +149,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             fit: BoxFit.cover,
                             cacheWidth: 900,
                             errorBuilder: (
-                                context,
-                                error,
-                                stackTrace,
-                                ) {
+                              context,
+                              error,
+                              stackTrace,
+                            ) {
                               return Container(
                                 color: slate100,
                                 child: const Icon(
-                                  Icons.image_not_supported_outlined,
+                                  Icons
+                                      .image_not_supported_outlined,
                                   color: slate500,
                                   size: 36,
                                 ),
@@ -160,17 +165,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             },
                           ),
 
-                          // Image scrim
                           DecoratedBox(
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
+                              gradient:
+                                  LinearGradient(
+                                begin:
+                                    Alignment.topCenter,
+                                end:
+                                    Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.55),
+                                  Colors.black.withValues(
+                                    alpha: 0.55,
+                                  ),
                                 ],
-                                stops: const [0.5, 1.0],
+                                stops: const [
+                                  0.5,
+                                  1.0,
+                                ],
                               ),
                             ),
                           ),
@@ -228,16 +240,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                   const SizedBox(height: 18),
 
-                  // Details
                   _DetailRow(
                     icon: Icons.favorite_outline,
-                    label: 'Best for',
+                    label: sheetContext.tr(
+                      'explore.bestFor',
+                    ),
                     value: destination.bestFor,
                   ),
 
                   _DetailRow(
-                    icon: Icons.calendar_month_outlined,
-                    label: 'Suggested stay',
+                    icon:
+                        Icons.calendar_month_outlined,
+                    label: sheetContext.tr(
+                      'explore.suggestedStay',
+                    ),
                     value: destination.tripLength,
                   ),
 
@@ -247,9 +263,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: destination.tags.map((tag) {
+                    children:
+                        destination.tags.map((tag) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(
+                        padding:
+                            const EdgeInsets.symmetric(
                           horizontal: 11,
                           vertical: 7,
                         ),
@@ -258,13 +276,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           border: Border.all(
                             color: slate200,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius:
+                              BorderRadius.circular(8),
                         ),
                         child: Text(
                           tag,
                           style: GoogleFonts.manrope(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight:
+                                FontWeight.w700,
                             color: midnight,
                           ),
                         ),
@@ -280,23 +300,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     height: 48,
                     child: FilledButton.icon(
                       onPressed: () {
-                        Navigator.pop(context);
-                        _planDestination(destination);
+                        Navigator.pop(sheetContext);
+                        _planDestination(
+                          destination,
+                        );
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: midnight,
                         foregroundColor: white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                        shape:
+                            RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(8),
                         ),
                       ),
                       icon: const Icon(
-                        Icons.add_location_alt_outlined,
+                        Icons
+                            .add_location_alt_outlined,
                         size: 18,
                       ),
                       label: Text(
-                        'Plan this trip',
+                        sheetContext.tr(
+                          'explore.planThisTrip',
+                        ),
                         style: GoogleFonts.manrope(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -340,18 +367,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width =
+        MediaQuery.of(context).size.width;
 
     final isCompact = width < 760;
-    final isTablet = width >= 760 && width < 1200;
+    final isTablet =
+        width >= 760 && width < 1200;
 
     final filtered = _filteredDestinations;
 
     final horizontalPadding = isCompact
         ? 16.0
         : isTablet
-        ? 24.0
-        : 40.0;
+            ? 24.0
+            : 40.0;
 
     return Scaffold(
       backgroundColor: porcelain,
@@ -367,7 +396,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         scrolledUnderElevation: 0,
         titleSpacing: isCompact ? 16 : 24,
         title: Text(
-          'Explore',
+          context.tr('explore.title'),
           style: GoogleFonts.manrope(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -385,7 +414,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         backgroundColor: white,
         onRefresh: _refresh,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics:
+              const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding,
             vertical: 24,
@@ -397,14 +427,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   maxWidth: 1280,
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     // ==================================================
                     // EDITORIAL HEADER
                     // ==================================================
 
                     Text(
-                      'DISCOVER',
+                      context.tr('explore.discover'),
                       style: GoogleFonts.manrope(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -416,9 +447,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     const SizedBox(height: 8),
 
                     Text(
-                      'Discover where to go next',
+                      context.tr(
+                        'explore.discoverNext',
+                      ),
                       style: GoogleFonts.notoSerif(
-                        fontSize: isCompact ? 28 : 32,
+                        fontSize:
+                            isCompact ? 28 : 32,
                         fontWeight: FontWeight.w600,
                         height: 1.15,
                         color: midnightDark,
@@ -428,12 +462,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     const SizedBox(height: 8),
 
                     ConstrainedBox(
-                      constraints: const BoxConstraints(
+                      constraints:
+                          const BoxConstraints(
                         maxWidth: 700,
                       ),
                       child: Text(
-                        'From Cotonou to Seychelles — search by place or mood, '
-                            'then send the destination straight into Planner.',
+                        context.tr(
+                          'explore.description',
+                        ),
                         style: GoogleFonts.manrope(
                           fontSize: 14,
                           height: 1.55,
@@ -454,7 +490,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         border: Border.all(
                           color: slate200,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius:
+                            BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x0A1E1B4B),
@@ -463,22 +500,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(14),
+                      padding:
+                          const EdgeInsets.all(14),
                       child: TextField(
-                        controller: _searchController,
+                        controller:
+                            _searchController,
                         onChanged: (value) {
                           setState(() {
-                            _query = value.trim();
+                            _query =
+                                value.trim();
                           });
                         },
                         style: GoogleFonts.manrope(
                           fontSize: 14,
                           color: midnightDark,
                         ),
-                        decoration: InputDecoration(
-                          hintText:
-                          'Search destinations, food, nature, culture...',
-                          hintStyle: GoogleFonts.manrope(
+                        decoration:
+                            InputDecoration(
+                          hintText: context.tr(
+                            'explore.searchHint',
+                          ),
+                          hintStyle:
+                              GoogleFonts.manrope(
                             fontSize: 13,
                             color: slate500,
                           ),
@@ -487,44 +530,68 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             color: midnight,
                             size: 21,
                           ),
-                          suffixIcon: _query.isEmpty
-                              ? null
-                              : IconButton(
-                            tooltip: 'Clear search',
-                            onPressed: () {
-                              _searchController.clear();
+                          suffixIcon:
+                              _query.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip:
+                                          context.tr(
+                                        'common.clear',
+                                      ),
+                                      onPressed: () {
+                                        _searchController
+                                            .clear();
 
-                              setState(() {
-                                _query = '';
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.close,
-                              color: slate500,
-                              size: 19,
-                            ),
-                          ),
+                                        setState(() {
+                                          _query = '';
+                                        });
+                                      },
+                                      icon:
+                                          const Icon(
+                                        Icons.close,
+                                        color:
+                                            slate500,
+                                        size: 19,
+                                      ),
+                                    ),
                           filled: true,
                           fillColor: porcelain,
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding:
+                              const EdgeInsets
+                                  .symmetric(
                             horizontal: 14,
                             vertical: 14,
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
+                          border:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              10,
+                            ),
+                            borderSide:
+                                const BorderSide(
                               color: slate200,
                             ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
+                          enabledBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              10,
+                            ),
+                            borderSide:
+                                const BorderSide(
                               color: slate200,
                             ),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
+                          focusedBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              10,
+                            ),
+                            borderSide:
+                                const BorderSide(
                               color: midnight,
                               width: 1.5,
                             ),
@@ -540,7 +607,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     // ==================================================
 
                     Text(
-                      'INTERESTS',
+                      context.tr(
+                        'explore.interests',
+                      ),
                       style: GoogleFonts.manrope(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -552,44 +621,68 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     const SizedBox(height: 9),
 
                     SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                      scrollDirection:
+                          Axis.horizontal,
                       child: Row(
-                        children: _tags.map((tag) {
-                          final selected = _selectedTag == tag;
+                        children:
+                            _tags.map((tag) {
+                          final selected =
+                              _selectedTag == tag;
 
                           return Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                            padding:
+                                const EdgeInsets.only(
+                              right: 8,
+                            ),
                             child: GestureDetector(
                               onTap: () {
                                 setState(() {
-                                  _selectedTag = tag;
+                                  _selectedTag =
+                                      tag;
                                 });
                               },
-                              child: AnimatedContainer(
-                                duration: const Duration(
+                              child:
+                                  AnimatedContainer(
+                                duration:
+                                    const Duration(
                                   milliseconds: 180,
                                 ),
-                                padding: const EdgeInsets.symmetric(
+                                padding:
+                                    const EdgeInsets
+                                        .symmetric(
                                   horizontal: 14,
                                   vertical: 9,
                                 ),
-                                decoration: BoxDecoration(
+                                decoration:
+                                    BoxDecoration(
                                   color: selected
                                       ? midnight
                                       : white,
-                                  border: Border.all(
+                                  border:
+                                      Border.all(
                                     color: selected
                                         ? midnight
                                         : slate300,
                                   ),
                                   borderRadius:
-                                  BorderRadius.circular(8),
+                                      BorderRadius
+                                          .circular(
+                                    8,
+                                  ),
                                 ),
                                 child: Text(
-                                  tag,
-                                  style: GoogleFonts.manrope(
+                                  tag == 'All'
+                                      ? context.tr(
+                                          'common.all',
+                                        )
+                                      : tag,
+                                  style:
+                                      GoogleFonts
+                                          .manrope(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight:
+                                        FontWeight
+                                            .w700,
                                     color: selected
                                         ? white
                                         : slate600,
@@ -609,23 +702,37 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     // ==================================================
 
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.end,
                       children: [
                         Expanded(
                           child: Text(
-                            'Destinations',
-                            style: GoogleFonts.notoSerif(
+                            context.tr(
+                              'explore.destinations',
+                            ),
+                            style:
+                                GoogleFonts.notoSerif(
                               fontSize: 24,
-                              fontWeight: FontWeight.w600,
+                              fontWeight:
+                                  FontWeight.w600,
                               color: midnightDark,
                             ),
                           ),
                         ),
                         Text(
-                          '${filtered.length} ${filtered.length == 1 ? 'place' : 'places'}',
+                          context.tr(
+                            filtered.length == 1
+                                ? 'explore.placeCount'
+                                : 'explore.placesCount',
+                            params: {
+                              'n': filtered.length
+                                  .toString(),
+                            },
+                          ),
                           style: GoogleFonts.manrope(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight:
+                                FontWeight.w600,
                             color: slate500,
                           ),
                         ),
@@ -642,48 +749,77 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       _buildEmptyState(context)
                     else
                       LayoutBuilder(
-                        builder: (context, constraints) {
+                        builder:
+                            (context, constraints) {
                           final availableWidth =
                               constraints.maxWidth;
 
-                          final columns = isCompact
-                              ? 1
-                              : availableWidth >= 1000
-                              ? 3
-                              : 2;
+                          final columns =
+                              isCompact
+                                  ? 1
+                                  : availableWidth >=
+                                          1000
+                                      ? 3
+                                      : 2;
 
-                          final spacing = 16.0;
+                          const spacing = 16.0;
 
-                          final cardWidth = columns == 1
-                              ? availableWidth
-                              : (availableWidth -
-                              spacing * (columns - 1)) /
-                              columns;
+                          final cardWidth =
+                              columns == 1
+                                  ? availableWidth
+                                  : (availableWidth -
+                                          spacing *
+                                              (columns -
+                                                  1)) /
+                                      columns;
 
                           return Wrap(
                             spacing: spacing,
                             runSpacing: spacing,
-                            children: filtered.map((destination) {
-                              return SizedBox(
-                                width: cardWidth,
-                                child: DestinationCard(
-                                  imageUrl: destination.imageUrl,
-                                  city: destination.city,
-                                  country: destination.country,
-                                  description:
-                                  destination.description,
-                                  footer: destination.tripLength,
-                                  tags: destination.tags,
-                                  width: double.infinity,
-                                  onTap: () =>
-                                      _showDestinationDetails(
-                                        destination,
+                            children: filtered
+                                .map(
+                                  (
+                                    destination,
+                                  ) {
+                                    return SizedBox(
+                                      width:
+                                          cardWidth,
+                                      child:
+                                          DestinationCard(
+                                        imageUrl:
+                                            destination
+                                                .imageUrl,
+                                        city:
+                                            destination
+                                                .city,
+                                        country:
+                                            destination
+                                                .country,
+                                        description:
+                                            destination
+                                                .description,
+                                        footer:
+                                            destination
+                                                .tripLength,
+                                        tags:
+                                            destination
+                                                .tags,
+                                        width:
+                                            double
+                                                .infinity,
+                                        onTap: () =>
+                                            _showDestinationDetails(
+                                          destination,
+                                        ),
+                                        onPlan: () =>
+                                            _planDestination(
+                                          destination,
+                                        ),
                                       ),
-                                  onPlan: () =>
-                                      _planDestination(destination),
-                                ),
-                              );
-                            }).toList(),
+                                    );
+                                  },
+                                )
+                                .toList(),
                           );
                         },
                       ),
@@ -701,34 +837,51 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // EMPTY STATE
   // ============================================================
 
-  Widget _buildEmptyState(BuildContext context) {
-    final hasActiveSearch = _query.isNotEmpty;
-    final hasActiveTag = _selectedTag != 'All';
+  Widget _buildEmptyState(
+    BuildContext context,
+  ) {
+    final hasActiveSearch =
+        _query.isNotEmpty;
+    final hasActiveTag =
+        _selectedTag != 'All';
 
-    String headline;
-    String description;
+    late String headline;
+    late String description;
 
     if (hasActiveSearch && hasActiveTag) {
-      headline = 'No matches found';
-      description =
-      'Try adjusting your search or filter to discover destinations.';
+      headline = context.tr(
+        'explore.noMatches',
+      );
+      description = context.tr(
+        'explore.noMatchesDescription',
+      );
     } else if (hasActiveSearch) {
-      headline = 'No destinations match your search';
-      description =
-      'Try different keywords or browse by interest below.';
+      headline = context.tr(
+        'explore.noSearchMatches',
+      );
+      description = context.tr(
+        'explore.noSearchMatchesDescription',
+      );
     } else if (hasActiveTag) {
-      headline = 'No destinations in this category';
-      description =
-      'Try a different interest or browse all destinations.';
+      headline = context.tr(
+        'explore.noCategory',
+      );
+      description = context.tr(
+        'explore.noCategoryDescription',
+      );
     } else {
-      headline = 'No destinations found';
-      description =
-      'Try a different search or interest filter.';
+      headline = context.tr(
+        'explore.noDestinations',
+      );
+      description = context.tr(
+        'explore.noDestinationsDescription',
+      );
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
+      padding:
+          const EdgeInsets.symmetric(
         horizontal: 24,
         vertical: 42,
       ),
@@ -737,7 +890,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         border: Border.all(
           color: slate200,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
       ),
       child: Column(
         children: [
@@ -746,7 +900,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             height: 58,
             decoration: BoxDecoration(
               color: slate100,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius:
+                  BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.travel_explore_outlined,
@@ -770,7 +925,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
           const SizedBox(height: 7),
 
           ConstrainedBox(
-            constraints: const BoxConstraints(
+            constraints:
+                const BoxConstraints(
               maxWidth: 460,
             ),
             child: Text(
@@ -784,7 +940,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
 
-          if (hasActiveSearch || hasActiveTag) ...[
+          if (hasActiveSearch ||
+              hasActiveTag) ...[
             const SizedBox(height: 18),
 
             OutlinedButton.icon(
@@ -796,19 +953,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   _selectedTag = 'All';
                 });
               },
-              style: OutlinedButton.styleFrom(
+              style:
+                  OutlinedButton.styleFrom(
                 foregroundColor: midnight,
                 side: const BorderSide(
                   color: slate300,
                 ),
                 backgroundColor: porcelain,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(
+                padding:
+                    const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 11,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(8),
                 ),
               ),
               icon: const Icon(
@@ -816,10 +977,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 size: 17,
               ),
               label: Text(
-                'Clear filters',
-                style: GoogleFonts.manrope(
+                context.tr(
+                  'explore.clearFilters',
+                ),
+                style:
+                    GoogleFonts.manrope(
                   fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontWeight:
+                      FontWeight.w700,
                 ),
               ),
             ),
@@ -846,23 +1011,33 @@ class _DetailRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding:
+          const EdgeInsets.only(
+        bottom: 10,
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
+            decoration:
+                BoxDecoration(
+              color:
+                  const Color(0xFFF1F5F9),
+              borderRadius:
+                  BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               size: 17,
-              color: const Color(0xFF1E1B4B),
+              color:
+                  const Color(0xFF1E1B4B),
             ),
           ),
 
@@ -870,20 +1045,25 @@ class _DetailRow extends StatelessWidget {
 
           Text(
             '$label ',
-            style: GoogleFonts.manrope(
+            style:
+                GoogleFonts.manrope(
               fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF1E1B4B),
+              fontWeight:
+                  FontWeight.w800,
+              color:
+                  const Color(0xFF1E1B4B),
             ),
           ),
 
           Expanded(
             child: Text(
               value,
-              style: GoogleFonts.manrope(
+              style:
+                  GoogleFonts.manrope(
                 fontSize: 12,
                 height: 1.4,
-                color: const Color(0xFF64748B),
+                color:
+                    const Color(0xFF64748B),
               ),
             ),
           ),

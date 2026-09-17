@@ -77,11 +77,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
 
-      // Only seed language/currency from the backend when the local
-      // preferences have NOT yet been loaded from storage.  This
-      // prevents backend values from clobbering locally-chosen prefs
-      // when the sync to the server previously failed (e.g. Render
-      // cold start).
       if (!AppPreferences.instance.loadedFromStorage) {
         final language =
             (user['preferredLanguage'] ?? 'en').toString().trim();
@@ -143,6 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AppPreferences.instance.setLanguage(
         (user['preferredLanguage'] ?? 'en').toString().trim(),
       );
+
       await AppPreferences.instance.setCurrency(
         (user['preferredCurrency'] ?? 'USD').toString().trim(),
       );
@@ -155,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {
         _isSaving = false;
-        _successMessage = 'Your account was updated successfully.';
+        _successMessage = context.tr('profile.updatedSuccess');
       });
 
       HapticFeedback.mediumImpact();
@@ -170,10 +166,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Background fire-and-forget sync of the current language/currency to the
-  /// server. A failed sync surfaces the backend's real error message briefly
-  /// so the user can fix it (e.g. unsupported currency) but never blocks the
-  /// local instant-apply.
   Future<void> _syncPreferences() async {
     try {
       await _authService.updateCurrentUser(
@@ -197,10 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    // End the native Google session (best-effort) so the account picker shows
-    // again on the next sign-in, even though Tripora's own token is cleared.
     await SocialAuthService.instance.signOutGoogle();
-
     await _authService.logout();
 
     if (!mounted) return;
@@ -220,18 +209,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            'Delete your account?',
-            style: TextStyle(
+          title: Text(
+            context.tr('profile.deleteAccountQuestion'),
+            style: const TextStyle(
               fontFamily: 'Noto Serif',
               fontWeight: FontWeight.w600,
               color: _textPrimary,
             ),
           ),
-          content: const Text(
-            'This permanently deletes your account, trips, and data. '
-            'This action cannot be undone.',
-            style: TextStyle(
+          content: Text(
+            context.tr('profile.deleteAccountWarning'),
+            style: const TextStyle(
               fontFamily: 'Manrope',
               height: 1.5,
               color: _textSecondary,
@@ -240,7 +228,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(
+                context.tr('common.cancel'),
+              ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -249,7 +239,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Theme.of(context).colorScheme.onError,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Delete'),
+              child: Text(
+                context.tr('common.delete'),
+              ),
             ),
           ],
         );
@@ -286,317 +278,456 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      appBar: AppBar(
-        backgroundColor: _canvas,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 20,
-        title: Text(
-          context.tr('profile.myAccount'),
-          style: const TextStyle(
-            fontFamily: 'Noto Serif',
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: _midnight,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _logout,
-            tooltip: 'Log out',
-            icon: const Icon(
-              Icons.logout_outlined,
-              color: _midnight,
+    return ListenableBuilder(
+      listenable: AppPreferences.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: _canvas,
+          appBar: AppBar(
+            backgroundColor: _canvas,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            titleSpacing: 20,
+            title: Text(
+              context.tr('profile.myAccount'),
+              style: const TextStyle(
+                fontFamily: 'Noto Serif',
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: _midnight,
+              ),
             ),
+            actions: [
+              IconButton(
+                onPressed: _logout,
+                tooltip: context.tr('profile.logout'),
+                icon: const Icon(
+                  Icons.logout_outlined,
+                  color: _midnight,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: _isLoading
-          ? const ProfileScreenShimmer()
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth > 900;
-                final horizontalPadding = isDesktop
-                    ? 40.0
-                    : constraints.maxWidth > 600
-                        ? 24.0
-                        : 16.0;
+          body: _isLoading
+              ? const ProfileScreenShimmer()
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth > 900;
 
-                return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    12,
-                    horizontalPadding,
-                    48,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: 920,
+                    final horizontalPadding = isDesktop
+                        ? 40.0
+                        : constraints.maxWidth > 600
+                            ? 24.0
+                            : 16.0;
+
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        12,
+                        horizontalPadding,
+                        48,
                       ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            _buildProfileHeader(),
-                            const SizedBox(height: 24),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 920,
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                _buildProfileHeader(),
 
-                            if (_errorMessage != null) ...[
-                              _buildMessageBanner(
-                                message: _errorMessage!,
-                                isError: true,
-                              ),
-                              const SizedBox(height: 20),
-                            ],
+                                const SizedBox(height: 24),
 
-                            if (_successMessage != null) ...[
-                              _buildMessageBanner(
-                                message: _successMessage!,
-                                isError: false,
-                              ),
-                              const SizedBox(height: 20),
-                            ],
+                                if (_errorMessage != null) ...[
+                                  _buildMessageBanner(
+                                    message: _errorMessage!,
+                                    isError: true,
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
 
-                            _buildSectionLabel(
-                              eyebrow: context.tr('profile.accountEyebrow'),
-                              title: context.tr('profile.personalDetails'),
-                            ),
-                            const SizedBox(height: 14),
+                                if (_successMessage != null) ...[
+                                  _buildMessageBanner(
+                                    message: _successMessage!,
+                                    isError: false,
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
 
-                            _buildField(
-                              controller: _nameController,
-                              label: 'Full name',
-                              hint: 'Enter your full name',
-                              icon: Icons.person_outline,
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if ((value ?? '').trim().isEmpty) {
-                                  return 'Please enter your name.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 14),
-
-                            _buildField(
-                              controller: _emailController,
-                              label: 'Email address',
-                              hint: 'you@example.com',
-                              icon: Icons.email_outlined,
-                              keyboardType:
-                                  TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                final email = (value ?? '').trim();
-
-                                if (email.isEmpty) {
-                                  return 'Please enter your email.';
-                                }
-
-                                if (!email.contains('@')) {
-                                  return 'Please enter a valid email address.';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            _buildSectionLabel(
-                              eyebrow:
-                                  context.tr('profile.travelSettingsEyebrow'),
-                              title: context.tr('profile.preferences'),
-                            ),
-                            const SizedBox(height: 14),
-
-                            _buildAppearanceToggle(),
-
-                            const SizedBox(height: 14),
-
-                            _buildDropdown<String>(
-                              value: AppPreferences.instance.language,
-                              label: context.tr('profile.preferredLanguage'),
-                              icon: Icons.language_outlined,
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'en',
-                                  child: Text('English'),
+                                _buildSectionLabel(
+                                  eyebrow: context.tr(
+                                    'profile.accountEyebrow',
+                                  ),
+                                  title: context.tr(
+                                    'profile.personalDetails',
+                                  ),
                                 ),
-                                DropdownMenuItem(
-                                  value: 'es',
-                                  child: Text('Spanish'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'fr',
-                                  child: Text('French'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'de',
-                                  child: Text('German'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'it',
-                                  child: Text('Italian'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'pt',
-                                  child: Text('Portuguese'),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  AppPreferences.instance.setLanguage(value);
-                                  _syncPreferences();
-                                }
-                              },
-                            ),
 
-                            const SizedBox(height: 14),
+                                const SizedBox(height: 14),
 
-                            _buildDropdown<String>(
-                              value: AppPreferences.instance.currency,
-                              label: context.tr('profile.preferredCurrency'),
-                              icon: Icons.payments_outlined,
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'USD',
-                                  child: Text('USD — US Dollar'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'EUR',
-                                  child: Text('EUR — Euro'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'GBP',
-                                  child: Text('GBP — British Pound'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'CAD',
-                                  child: Text('CAD — Canadian Dollar'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'AUD',
-                                  child: Text('AUD — Australian Dollar'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'AED',
-                                  child: Text('AED — UAE Dirham'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'JPY',
-                                  child: Text('JPY — Japanese Yen'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'CHF',
-                                  child: Text('CHF — Swiss Franc'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'INR',
-                                  child: Text('INR — Indian Rupee'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'CFA',
-                                  child: Text('CFA — West African Franc'),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  AppPreferences.instance.setCurrency(value);
-                                  _syncPreferences();
-                                }
-                              },
-                            ),
+                                _buildField(
+                                  controller: _nameController,
+                                  label: context.tr('profile.fullName'),
+                                  hint: context.tr(
+                                    'profile.fullNameHint',
+                                  ),
+                                  icon: Icons.person_outline,
+                                  textInputAction:
+                                      TextInputAction.next,
+                                  validator: (value) {
+                                    if ((value ?? '').trim().isEmpty) {
+                                      return context.tr(
+                                        'profile.nameRequired',
+                                      );
+                                    }
 
-                            const SizedBox(height: 32),
+                                    return null;
+                                  },
+                                ),
 
-                            _buildSectionLabel(
-                              eyebrow: 'ACCOUNT SECURITY',
-                              title: 'Password',
-                            ),
-                            const SizedBox(height: 14),
+                                const SizedBox(height: 14),
 
-                            _buildPasswordToggle(),
+                                _buildField(
+                                  controller: _emailController,
+                                  label: context.tr(
+                                    'profile.emailAddress',
+                                  ),
+                                  hint: context.tr(
+                                    'profile.emailHint',
+                                  ),
+                                  icon: Icons.email_outlined,
+                                  keyboardType:
+                                      TextInputType.emailAddress,
+                                  textInputAction:
+                                      TextInputAction.next,
+                                  validator: (value) {
+                                    final email =
+                                        (value ?? '').trim();
 
-                            if (_showPasswordFields) ...[
-                              const SizedBox(height: 16),
-                              _buildField(
-                                controller:
-                                    _currentPasswordController,
-                                label: 'Current password',
-                                hint: 'Enter your current password',
-                                icon: Icons.lock_outline,
-                                obscureText: true,
-                              ),
-                              const SizedBox(height: 14),
-                              _buildField(
-                                controller: _newPasswordController,
-                                label: 'New password',
-                                hint: 'At least 6 characters',
-                                icon: Icons.lock_reset_outlined,
-                                obscureText: true,
-                                validator: (value) {
-                                  if (_showPasswordFields &&
-                                      (value ?? '').trim().isNotEmpty &&
-                                      (value ?? '').trim().length < 6) {
-                                    return 'Password must be at least 6 characters.';
-                                  }
+                                    if (email.isEmpty) {
+                                      return context.tr(
+                                        'profile.emailRequired',
+                                      );
+                                    }
 
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 14),
-                              _buildField(
-                                controller:
-                                    _confirmPasswordController,
-                                label: 'Confirm new password',
-                                hint: 'Re-enter your new password',
-                                icon: Icons.verified_user_outlined,
-                                obscureText: true,
-                                validator: (value) {
-                                  if (_showPasswordFields &&
-                                      _newPasswordController.text
-                                          .trim()
-                                          .isNotEmpty &&
-                                      (value ?? '').trim() !=
+                                    if (!email.contains('@')) {
+                                      return context.tr(
+                                        'profile.emailInvalid',
+                                      );
+                                    }
+
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 32),
+
+                                _buildSectionLabel(
+                                  eyebrow: context.tr(
+                                    'profile.travelSettingsEyebrow',
+                                  ),
+                                  title: context.tr(
+                                    'profile.preferences',
+                                  ),
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                _buildAppearanceToggle(),
+
+                                const SizedBox(height: 14),
+
+                                _buildDropdown<String>(
+                                  value: AppPreferences.instance.language,
+                                  label: context.tr(
+                                    'profile.preferredLanguage',
+                                  ),
+                                  icon: Icons.language_outlined,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: 'en',
+                                      child: Text(
+                                        context.tr(
+                                          'languages.english',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'es',
+                                      child: Text(
+                                        context.tr(
+                                          'languages.spanish',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'fr',
+                                      child: Text(
+                                        context.tr(
+                                          'languages.french',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'de',
+                                      child: Text(
+                                        context.tr(
+                                          'languages.german',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'it',
+                                      child: Text(
+                                        context.tr(
+                                          'languages.italian',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'pt',
+                                      child: Text(
+                                        context.tr(
+                                          'languages.portuguese',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      AppPreferences.instance
+                                          .setLanguage(value);
+
+                                      _syncPreferences();
+                                    }
+                                  },
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                _buildDropdown<String>(
+                                  value: AppPreferences.instance.currency,
+                                  label: context.tr(
+                                    'profile.preferredCurrency',
+                                  ),
+                                  icon: Icons.payments_outlined,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: 'USD',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.usd',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'EUR',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.eur',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'GBP',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.gbp',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'CAD',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.cad',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'AUD',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.aud',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'AED',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.aed',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'JPY',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.jpy',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'CHF',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.chf',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'INR',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.inr',
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'CFA',
+                                      child: Text(
+                                        context.tr(
+                                          'currencies.cfa',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      AppPreferences.instance
+                                          .setCurrency(value);
+
+                                      _syncPreferences();
+                                    }
+                                  },
+                                ),
+
+                                const SizedBox(height: 32),
+
+                                _buildSectionLabel(
+                                  eyebrow: context.tr(
+                                    'profile.accountSecurity',
+                                  ),
+                                  title: context.tr(
+                                    'profile.password',
+                                  ),
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                _buildPasswordToggle(),
+
+                                if (_showPasswordFields) ...[
+                                  const SizedBox(height: 16),
+
+                                  _buildField(
+                                    controller:
+                                        _currentPasswordController,
+                                    label: context.tr(
+                                      'profile.currentPassword',
+                                    ),
+                                    hint: context.tr(
+                                      'profile.currentPasswordHint',
+                                    ),
+                                    icon: Icons.lock_outline,
+                                    obscureText: true,
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  _buildField(
+                                    controller:
+                                        _newPasswordController,
+                                    label: context.tr(
+                                      'profile.newPassword',
+                                    ),
+                                    hint: context.tr(
+                                      'profile.newPasswordHint',
+                                    ),
+                                    icon: Icons.lock_reset_outlined,
+                                    obscureText: true,
+                                    validator: (value) {
+                                      if (_showPasswordFields &&
+                                          (value ?? '')
+                                              .trim()
+                                              .isNotEmpty &&
+                                          (value ?? '')
+                                              .trim()
+                                              .length <
+                                              6) {
+                                        return context.tr(
+                                          'profile.passwordTooShort',
+                                        );
+                                      }
+
+                                      return null;
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  _buildField(
+                                    controller:
+                                        _confirmPasswordController,
+                                    label: context.tr(
+                                      'profile.confirmPassword',
+                                    ),
+                                    hint: context.tr(
+                                      'profile.confirmPasswordHint',
+                                    ),
+                                    icon:
+                                        Icons.verified_user_outlined,
+                                    obscureText: true,
+                                    validator: (value) {
+                                      if (_showPasswordFields &&
                                           _newPasswordController.text
-                                              .trim()) {
-                                    return 'Passwords do not match.';
-                                  }
+                                              .trim()
+                                              .isNotEmpty &&
+                                          (value ?? '').trim() !=
+                                              _newPasswordController
+                                                  .text
+                                                  .trim()) {
+                                        return context.tr(
+                                          'profile.passwordMismatch',
+                                        );
+                                      }
 
-                                  return null;
-                                },
-                              ),
-                            ],
+                                      return null;
+                                    },
+                                  ),
+                                ],
 
-                            const SizedBox(height: 28),
+                                const SizedBox(height: 28),
 
-                            _buildSaveButton(),
+                                _buildSaveButton(),
 
-                            const SizedBox(height: 36),
+                                const SizedBox(height: 36),
 
-                            _buildDangerZone(),
+                                _buildDangerZone(),
 
-                            const SizedBox(height: 16),
-                          ],
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 
   Widget _buildProfileHeader() {
     final displayName = _nameController.text.trim().isEmpty
-        ? 'Your profile'
+        ? context.tr('profile.yourProfile')
         : _nameController.text.trim();
 
     final email = _emailController.text.trim();
@@ -626,7 +757,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 68,
                 height: 68,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: _midnight,
                   shape: BoxShape.circle,
                 ),
@@ -636,15 +767,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: Colors.white,
                 ),
               ),
+
               const SizedBox(width: 18),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment:
                       CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'TRAVELER PROFILE',
-                      style: TextStyle(
+                    Text(
+                      context.tr('profile.travelerProfile'),
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -652,7 +785,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: _blue,
                       ),
                     ),
+
                     const SizedBox(height: 6),
+
                     Text(
                       displayName,
                       maxLines: 2,
@@ -665,6 +800,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: _midnight,
                       ),
                     ),
+
                     if (email.isNotEmpty) ...[
                       const SizedBox(height: 5),
                       Text(
@@ -691,7 +827,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Row(
             children: [
               Expanded(child: identity),
+
               const SizedBox(width: 24),
+
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -701,18 +839,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.public_outlined,
                       size: 16,
                       color: _midnight,
                     ),
-                    SizedBox(width: 7),
+                    const SizedBox(width: 7),
                     Text(
-                      'Tripora traveler',
-                      style: TextStyle(
+                      context.tr('profile.triporaTraveler'),
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -880,10 +1018,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
-    // Key the form field by its selected value so the internal
-    // FormFieldState is recreated whenever the underlying preference
-    // changes externally. Without this, `initialValue` only applies on
-    // first build and the dropdown keeps showing a stale selection.
     return DropdownButtonFormField<T>(
       key: ValueKey('$label-$value'),
       initialValue: value,
@@ -916,7 +1050,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderSide: const BorderSide(color: _border),
         ),
         focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(8),
+          ),
           borderSide: BorderSide(
             color: _midnight,
             width: 1.3,
@@ -927,8 +1063,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Appearance control (Light / System / Dark) — persisted through
-  /// [AppPreferences] and applied app-wide via MaterialApp.themeMode.
   Widget _buildAppearanceToggle() {
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -959,24 +1093,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: _midnight,
                 ),
               ),
+
               const SizedBox(width: 12),
-              const Expanded(
+
+              Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Appearance',
-                      style: TextStyle(
+                      context.tr('profile.appearance'),
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: _textPrimary,
                       ),
                     ),
-                    SizedBox(height: 3),
+                    const SizedBox(height: 3),
                     Text(
-                      'Choose light, dark, or system theme.',
-                      style: TextStyle(
+                      context.tr('profile.appearanceDescription'),
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         color: _textMuted,
@@ -987,27 +1124,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+
           const SizedBox(height: 14),
+
           SegmentedButton<ThemeMode>(
-            key: ValueKey('appearance-${AppPreferences.instance.themeMode}'),
-            segments: const [
+            key: ValueKey(
+              'appearance-${AppPreferences.instance.themeMode}',
+            ),
+            segments: [
               ButtonSegment(
                 value: ThemeMode.light,
-                icon: Icon(Icons.light_mode_outlined),
-                label: Text('Light'),
+                icon: const Icon(Icons.light_mode_outlined),
+                label: Text(
+                  context.tr('profile.light'),
+                ),
               ),
               ButtonSegment(
                 value: ThemeMode.system,
-                icon: Icon(Icons.brightness_auto_outlined),
-                label: Text('System'),
+                icon: const Icon(
+                  Icons.brightness_auto_outlined,
+                ),
+                label: Text(
+                  context.tr('profile.system'),
+                ),
               ),
               ButtonSegment(
                 value: ThemeMode.dark,
-                icon: Icon(Icons.dark_mode_outlined),
-                label: Text('Dark'),
+                icon: const Icon(
+                  Icons.dark_mode_outlined,
+                ),
+                label: Text(
+                  context.tr('profile.dark'),
+                ),
               ),
             ],
-            selected: {AppPreferences.instance.themeMode},
+            selected: {
+              AppPreferences.instance.themeMode,
+            },
             showSelectedIcon: false,
             style: ButtonStyle(
               visualDensity: VisualDensity.compact,
@@ -1020,7 +1173,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             onSelectionChanged: (selection) {
-              AppPreferences.instance.setThemeMode(selection.first);
+              AppPreferences.instance.setThemeMode(
+                selection.first,
+              );
             },
           ),
         ],
@@ -1055,24 +1210,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: _midnight,
             ),
           ),
+
           const SizedBox(width: 12),
-          const Expanded(
+
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Change password',
-                  style: TextStyle(
+                  context.tr('profile.changePassword'),
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: _textPrimary,
                   ),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
-                  'Update your password securely.',
-                  style: TextStyle(
+                  context.tr('profile.changePasswordDescription'),
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
                     color: _textMuted,
@@ -1081,6 +1239,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+
           Switch.adaptive(
             value: _showPasswordFields,
             activeTrackColor: _midnight,
@@ -1110,7 +1269,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: FilledButton.styleFrom(
           backgroundColor: _midnight,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: _midnight.withValues(alpha: 0.55),
+          disabledBackgroundColor:
+              _midnight.withValues(alpha: 0.55),
           disabledForegroundColor: Colors.white70,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -1168,9 +1328,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: errorColor,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'DANGER ZONE',
-                style: TextStyle(
+              Text(
+                context.tr('profile.dangerZone'),
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -1180,27 +1340,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+
           const SizedBox(height: 8),
-          const Text(
-            'Delete account',
-            style: TextStyle(
+
+          Text(
+            context.tr('profile.deleteAccount'),
+            style: const TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: _textPrimary,
             ),
           ),
+
           const SizedBox(height: 4),
-          const Text(
-            'Permanently remove your account, saved trips, and associated data.',
-            style: TextStyle(
+
+          Text(
+            context.tr('profile.deleteAccountDescription'),
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12,
               height: 1.45,
               color: _textMuted,
             ),
           ),
+
           const SizedBox(height: 14),
+
           TextButton.icon(
             onPressed:
                 _isDeleting ? null : _confirmDeleteAccount,
@@ -1229,8 +1395,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
             label: Text(
               _isDeleting
-                  ? 'Deleting...'
-                  : 'Delete my account',
+                  ? context.tr('profile.deleting')
+                  : context.tr('profile.deleteMyAccount'),
               style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontWeight: FontWeight.w700,

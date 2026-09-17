@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/utils/logger.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
@@ -29,7 +30,6 @@ class _TripsScreenState extends State<TripsScreen> {
 
   // ---------------------------------------------------------------------------
   // Tripora / Nocturne Voyage design tokens
-  // Matches HomeScreen exactly.
   // ---------------------------------------------------------------------------
 
   static const Color midnight = Color(0xFF1E1B4B);
@@ -116,7 +116,7 @@ class _TripsScreenState extends State<TripsScreen> {
 
     if (tripId == null) {
       _showMessage(
-        'Unable to delete this trip.',
+        context.tr('trips.deleteUnable'),
         isError: true,
       );
       return;
@@ -136,7 +136,7 @@ class _TripsScreenState extends State<TripsScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: Text(
-            'Delete Trip?',
+            dialogContext.tr('trips.deleteTitle'),
             style: GoogleFonts.notoSerif(
               fontSize: 22,
               fontWeight: FontWeight.w600,
@@ -144,25 +144,35 @@ class _TripsScreenState extends State<TripsScreen> {
             ),
           ),
           content: Text(
-            'Are you sure you want to delete your trip to '
-                '${trip.destination}?\n\n'
-                'This action cannot be undone.',
+            dialogContext.tr(
+              'trips.deleteConfirmation',
+              params: {
+                'destination': trip.destination,
+              },
+            ),
             style: const TextStyle(
               fontSize: 14,
               height: 1.5,
               color: textSecondary,
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            16,
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
               style: TextButton.styleFrom(
                 foregroundColor: midnight,
               ),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
+              child: Text(
+                dialogContext.tr('trips.cancel'),
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -176,10 +186,12 @@ class _TripsScreenState extends State<TripsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(
-                'Delete',
-                style: TextStyle(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: Text(
+                dialogContext.tr('trips.delete'),
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -207,7 +219,9 @@ class _TripsScreenState extends State<TripsScreen> {
         _deletingTripId = null;
       });
 
-      _showMessage('Trip deleted successfully.');
+      _showMessage(
+        context.tr('trips.deleted'),
+      );
     } catch (error) {
       appLog('DELETE TRIP ERROR: $error');
 
@@ -225,9 +239,9 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   void _showMessage(
-      String message, {
-        bool isError = false,
-      }) {
+    String message, {
+    bool isError = false,
+  }) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
@@ -277,56 +291,152 @@ class _TripsScreenState extends State<TripsScreen> {
   // ---------------------------------------------------------------------------
 
   String _formatDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+    final language = AppPreferences.instance.language;
+
+    const monthNames = {
+      'en': [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ],
+      'es': [
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic',
+      ],
+      'fr': [
+        'Jan',
+        'Fév',
+        'Mar',
+        'Avr',
+        'Mai',
+        'Juin',
+        'Juil',
+        'Août',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Déc',
+      ],
+      'de': [
+        'Jan',
+        'Feb',
+        'Mär',
+        'Apr',
+        'Mai',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Dez',
+      ],
+      'it': [
+        'Gen',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mag',
+        'Giu',
+        'Lug',
+        'Ago',
+        'Set',
+        'Ott',
+        'Nov',
+        'Dic',
+      ],
+      'pt': [
+        'Jan',
+        'Fev',
+        'Mar',
+        'Abr',
+        'Mai',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Set',
+        'Out',
+        'Nov',
+        'Dez',
+      ],
+    };
+
+    final months =
+        monthNames[language] ?? monthNames['en']!;
 
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  ({String label, IconData icon, Color color}) _tripStatus(
-      TripModel trip,
-      ) {
+  // ---------------------------------------------------------------------------
+  // Trip status
+  // ---------------------------------------------------------------------------
+
+  ({
+    String label,
+    IconData icon,
+    Color color,
+  }) _tripStatus(TripModel trip) {
     final now = DateTime.now();
 
     if (now.isBefore(trip.startDate)) {
-      final daysUntil = trip.startDate.difference(now).inDays;
+      final daysUntil =
+          trip.startDate.difference(now).inDays;
 
-      final label = daysUntil <= 0
-          ? 'Starting today'
-          : 'Upcoming in $daysUntil '
-          '${daysUntil == 1 ? 'day' : 'days'}';
+      final String label;
+
+      if (daysUntil <= 0) {
+        label = context.tr('trips.startingToday');
+      } else if (daysUntil == 1) {
+        label = context.tr(
+          'trips.upcomingOne',
+        );
+      } else {
+        label = context.tr(
+          'trips.upcomingMany',
+          params: {
+            'count': daysUntil.toString(),
+          },
+        );
+      }
 
       return (
-      label: label,
-      icon: Icons.event_outlined,
-      color: blue,
+        label: label,
+        icon: Icons.event_outlined,
+        color: blue,
       );
     }
 
     if (now.isAfter(trip.endDate)) {
       return (
-      label: 'Trip completed',
-      icon: Icons.check_circle_outline,
-      color: slate400,
+        label: context.tr('trips.completed'),
+        icon: Icons.check_circle_outline,
+        color: slate400,
       );
     }
 
     return (
-    label: 'Trip in progress',
-    icon: Icons.flight_takeoff_rounded,
-    color: emerald,
+      label: context.tr('trips.inProgress'),
+      icon: Icons.flight_takeoff_rounded,
+      color: emerald,
     );
   }
 
@@ -376,19 +486,23 @@ class _TripsScreenState extends State<TripsScreen> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: AppPreferences.instance,
-      builder: (context, _) => _buildScaffold(context),
+      builder: (context, _) {
+        return _buildScaffold(context);
+      },
     );
   }
 
   Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: porcelain,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
+      appBar: _buildAppBar(context),
+      body: _buildBody(context),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+  ) {
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -396,7 +510,7 @@ class _TripsScreenState extends State<TripsScreen> {
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
-        'My Trips',
+        context.tr('trips.title'),
         style: GoogleFonts.manrope(
           color: midnight,
           fontSize: 20,
@@ -407,17 +521,17 @@ class _TripsScreenState extends State<TripsScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     if (_isLoading) {
       return const TripsScreenShimmer();
     }
 
     if (_errorMessage != null) {
-      return _buildErrorState();
+      return _buildErrorState(context);
     }
 
     if (_trips.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     return RefreshIndicator(
@@ -429,18 +543,20 @@ class _TripsScreenState extends State<TripsScreen> {
           final width = constraints.maxWidth;
 
           final isMobile = width < 768;
-          final isTablet = width >= 768 && width < 1024;
+          final isTablet =
+              width >= 768 && width < 1024;
 
           final horizontalPadding = isMobile
               ? 16.0
               : isTablet
-              ? 24.0
-              : 40.0;
+                  ? 24.0
+                  : 40.0;
 
           const maxContentWidth = 1280.0;
 
           return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics:
+                const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(
               horizontal: horizontalPadding,
               vertical: isMobile ? 24 : 36,
@@ -452,9 +568,13 @@ class _TripsScreenState extends State<TripsScreen> {
                     maxWidth: maxContentWidth,
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
-                      _buildIntro(isMobile),
+                      _buildIntro(
+                        context,
+                        isMobile,
+                      ),
                       SizedBox(
                         height: isMobile ? 28 : 36,
                       ),
@@ -477,7 +597,19 @@ class _TripsScreenState extends State<TripsScreen> {
   // Intro
   // ---------------------------------------------------------------------------
 
-  Widget _buildIntro(bool isMobile) {
+  Widget _buildIntro(
+    BuildContext context,
+    bool isMobile,
+  ) {
+    final journeyText = _trips.length == 1
+        ? context.tr('trips.journeyOne')
+        : context.tr(
+            'trips.journeyMany',
+            params: {
+              'count': _trips.length.toString(),
+            },
+          );
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(
@@ -498,7 +630,8 @@ class _TripsScreenState extends State<TripsScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(
@@ -507,25 +640,28 @@ class _TripsScreenState extends State<TripsScreen> {
             ),
             decoration: BoxDecoration(
               color: slate100,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius:
+                  BorderRadius.circular(999),
               border: Border.all(
                 color: slate200,
               ),
             ),
-            child: const FittedBox(
+            child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.luggage_outlined,
                     size: 14,
                     color: blue,
                   ),
-                  SizedBox(width: 7),
+                  const SizedBox(width: 7),
                   Text(
-                    'YOUR JOURNEYS',
-                    style: TextStyle(
+                    context.tr(
+                      'trips.journeysBadge',
+                    ),
+                    style: const TextStyle(
                       color: midnight,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -540,7 +676,7 @@ class _TripsScreenState extends State<TripsScreen> {
           const SizedBox(height: 20),
 
           Text(
-            'Your travel archive.',
+            context.tr('trips.archiveTitle'),
             style: GoogleFonts.notoSerif(
               color: midnightDark,
               fontSize: isMobile ? 32 : 40,
@@ -553,8 +689,7 @@ class _TripsScreenState extends State<TripsScreen> {
           const SizedBox(height: 12),
 
           Text(
-            '${_trips.length} saved '
-                '${_trips.length == 1 ? 'journey' : 'journeys'} ready to explore.',
+            journeyText,
             style: const TextStyle(
               color: textSecondary,
               fontSize: 15,
@@ -572,16 +707,16 @@ class _TripsScreenState extends State<TripsScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildTripsGrid(
-      bool isMobile,
-      bool isTablet,
-      ) {
+    bool isMobile,
+    bool isTablet,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = isMobile
             ? constraints.maxWidth
             : isTablet
-            ? (constraints.maxWidth - 16) / 2
-            : (constraints.maxWidth - 32) / 3;
+                ? (constraints.maxWidth - 16) / 2
+                : (constraints.maxWidth - 32) / 3;
 
         return Wrap(
           spacing: 16,
@@ -601,27 +736,43 @@ class _TripsScreenState extends State<TripsScreen> {
   // Error state
   // ---------------------------------------------------------------------------
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(
+    BuildContext context,
+  ) {
     final authError = _isAuthError;
+
+    final errorText =
+        _errorMessage?.toLowerCase() ?? '';
+
+    final description = authError
+        ? context.tr('trips.sessionExpired')
+        : errorText.contains('connection')
+            ? context.tr('trips.connectionError')
+            : context.tr('trips.genericError');
 
     return RefreshIndicator(
       color: midnight,
       backgroundColor: white,
       onRefresh: _loadTrips,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics:
+            const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.72,
+            height:
+                MediaQuery.of(context).size.height *
+                    0.72,
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
+                  constraints:
+                      const BoxConstraints(
                     maxWidth: 500,
                   ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
                     children: [
                       _statusIcon(
                         authError
@@ -636,12 +787,18 @@ class _TripsScreenState extends State<TripsScreen> {
 
                       Text(
                         authError
-                            ? 'Sign in required'
-                            : 'Unable to load your trips',
+                            ? context.tr(
+                                'trips.signInRequired',
+                              )
+                            : context.tr(
+                                'trips.loadError',
+                              ),
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.notoSerif(
+                        style:
+                            GoogleFonts.notoSerif(
                           fontSize: 28,
-                          fontWeight: FontWeight.w600,
+                          fontWeight:
+                              FontWeight.w600,
                           color: midnightDark,
                         ),
                       ),
@@ -649,15 +806,7 @@ class _TripsScreenState extends State<TripsScreen> {
                       const SizedBox(height: 12),
 
                       Text(
-                        authError
-                            ? 'Your session has expired. Please sign in to continue.'
-                            : (_errorMessage?.toLowerCase().contains(
-                          'connection',
-                        ) ??
-                            false)
-                            ? 'Could not connect to the server. Check your internet connection.'
-                            : _errorMessage ??
-                            'Something went wrong while loading your trips.',
+                        description,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 14,
@@ -670,22 +819,26 @@ class _TripsScreenState extends State<TripsScreen> {
 
                       _primaryButton(
                         label: authError
-                            ? 'Sign In'
-                            : 'Try Again',
+                            ? context.tr(
+                                'trips.signIn',
+                              )
+                            : context.tr(
+                                'trips.tryAgain',
+                              ),
                         icon: authError
                             ? Icons.login_outlined
                             : Icons.refresh_outlined,
                         onPressed: authError
                             ? () {
-                          Navigator.pushNamed(
-                            context,
-                            '/login',
-                          ).then((_) {
-                            if (mounted) {
-                              _loadTrips();
-                            }
-                          });
-                        }
+                                Navigator.pushNamed(
+                                  context,
+                                  '/login',
+                                ).then((_) {
+                                  if (mounted) {
+                                    _loadTrips();
+                                  }
+                                });
+                              }
                             : _loadTrips,
                       ),
                     ],
@@ -703,28 +856,36 @@ class _TripsScreenState extends State<TripsScreen> {
   // Empty state
   // ---------------------------------------------------------------------------
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(
+    BuildContext context,
+  ) {
     return RefreshIndicator(
       color: midnight,
       backgroundColor: white,
       onRefresh: _loadTrips,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics:
+            const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.72,
+            height:
+                MediaQuery.of(context).size.height *
+                    0.72,
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
+                  constraints:
+                      const BoxConstraints(
                     maxWidth: 560,
                   ),
                   child: Container(
-                    padding: const EdgeInsets.all(32),
+                    padding:
+                        const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius:
+                          BorderRadius.circular(24),
                       border: Border.all(
                         color: slate200,
                       ),
@@ -737,17 +898,22 @@ class _TripsScreenState extends State<TripsScreen> {
                       ],
                     ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
                       children: [
                         Container(
                           width: 76,
                           height: 76,
                           decoration: BoxDecoration(
                             color: midnight,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(
+                              20,
+                            ),
                           ),
                           child: const Icon(
-                            Icons.flight_takeoff_outlined,
+                            Icons
+                                .flight_takeoff_outlined,
                             size: 34,
                             color: white,
                           ),
@@ -756,23 +922,30 @@ class _TripsScreenState extends State<TripsScreen> {
                         const SizedBox(height: 26),
 
                         Text(
-                          'Your next journey starts here.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.notoSerif(
+                          context.tr(
+                            'trips.emptyTitle',
+                          ),
+                          textAlign:
+                              TextAlign.center,
+                          style:
+                              GoogleFonts.notoSerif(
                             fontSize: 28,
                             height: 1.15,
-                            fontWeight: FontWeight.w600,
+                            fontWeight:
+                                FontWeight.w600,
                             color: midnightDark,
                           ),
                         ),
 
                         const SizedBox(height: 12),
 
-                        const Text(
-                          'You haven’t created any trips yet. '
-                              'Build an itinerary around your pace, interests, and budget.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
+                        Text(
+                          context.tr(
+                            'trips.emptyDescription',
+                          ),
+                          textAlign:
+                              TextAlign.center,
+                          style: const TextStyle(
                             fontSize: 14,
                             height: 1.6,
                             color: slate500,
@@ -782,9 +955,13 @@ class _TripsScreenState extends State<TripsScreen> {
                         const SizedBox(height: 28),
 
                         _primaryButton(
-                          label: 'Plan a Trip',
-                          icon: Icons.add_rounded,
-                          onPressed: _openPlanner,
+                          label: context.tr(
+                            'trips.planTrip',
+                          ),
+                          icon:
+                              Icons.add_rounded,
+                          onPressed:
+                              _openPlanner,
                         ),
                       ],
                     ),
@@ -802,21 +979,28 @@ class _TripsScreenState extends State<TripsScreen> {
   // Trip card
   // ---------------------------------------------------------------------------
 
-  Widget _buildTripCard(TripModel trip) {
-    final isDeleting = _deletingTripId == trip.id;
+  Widget _buildTripCard(
+    TripModel trip,
+  ) {
+    final isDeleting =
+        _deletingTripId == trip.id;
 
     return Material(
       color: white,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius:
+          BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
         onTap: isDeleting
             ? null
             : () => _openTrip(trip),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding:
+              const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius:
+                BorderRadius.circular(16),
             border: Border.all(
               color: slate200,
             ),
@@ -829,17 +1013,23 @@ class _TripsScreenState extends State<TripsScreen> {
             ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Container(
                     width: 44,
                     height: 44,
-                    decoration: BoxDecoration(
+                    decoration:
+                        BoxDecoration(
                       color: midnight,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius:
+                          BorderRadius.circular(
+                        12,
+                      ),
                     ),
                     child: const Icon(
                       Icons.location_on_outlined,
@@ -853,30 +1043,42 @@ class _TripsScreenState extends State<TripsScreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                          CrossAxisAlignment
+                              .start,
                       children: [
-                        const Text(
-                          'DESTINATION',
-                          style: TextStyle(
+                        Text(
+                          context.tr(
+                            'trips.destination',
+                          ),
+                          style:
+                              const TextStyle(
                             fontSize: 9,
-                            fontWeight: FontWeight.w800,
+                            fontWeight:
+                                FontWeight.w800,
                             letterSpacing: 1.1,
                             color: slate500,
                           ),
                         ),
 
-                        const SizedBox(height: 5),
+                        const SizedBox(
+                          height: 5,
+                        ),
 
                         Text(
                           trip.destination,
                           maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.notoSerif(
+                          overflow:
+                              TextOverflow.ellipsis,
+                          style:
+                              GoogleFonts.notoSerif(
                             fontSize: 22,
                             height: 1.2,
-                            fontWeight: FontWeight.w600,
-                            color: midnightDark,
-                            letterSpacing: -0.3,
+                            fontWeight:
+                                FontWeight.w600,
+                            color:
+                                midnightDark,
+                            letterSpacing:
+                                -0.3,
                           ),
                         ),
                       ],
@@ -889,14 +1091,17 @@ class _TripsScreenState extends State<TripsScreen> {
                     const SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(
+                      child:
+                          CircularProgressIndicator(
                         strokeWidth: 2,
                         color: midnight,
                       ),
                     )
                   else
                     PopupMenuButton<String>(
-                      tooltip: 'Trip options',
+                      tooltip: context.tr(
+                        'trips.options',
+                      ),
                       icon: const Icon(
                         Icons.more_horiz_rounded,
                         color: slate500,
@@ -911,16 +1116,23 @@ class _TripsScreenState extends State<TripsScreen> {
                             break;
                         }
                       },
-                      itemBuilder: (context) => const [
+                      itemBuilder: (context) => [
                         PopupMenuItem(
                           value: 'view',
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.visibility_outlined,
+                              const Icon(
+                                Icons
+                                    .visibility_outlined,
                               ),
-                              SizedBox(width: 12),
-                              Text('View Trip'),
+                              const SizedBox(
+                                width: 12,
+                              ),
+                              Text(
+                                context.tr(
+                                  'trips.view',
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -928,11 +1140,18 @@ class _TripsScreenState extends State<TripsScreen> {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.delete_outline,
+                              const Icon(
+                                Icons
+                                    .delete_outline,
                               ),
-                              SizedBox(width: 12),
-                              Text('Delete Trip'),
+                              const SizedBox(
+                                width: 12,
+                              ),
+                              Text(
+                                context.tr(
+                                  'trips.delete',
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -964,23 +1183,24 @@ class _TripsScreenState extends State<TripsScreen> {
                 children: [
                   _metric(
                     Icons.calendar_today_outlined,
-                    'DATES',
+                    context.tr('trips.dates'),
                     '${_formatDate(trip.startDate)} – '
                         '${_formatDate(trip.endDate)}',
                   ),
                   _metric(
                     Icons.people_outline,
-                    'TRAVELERS',
+                    context.tr('trips.travelers'),
                     '${trip.travelers}',
                   ),
                   _metric(
-                    Icons.account_balance_wallet_outlined,
-                    'BUDGET',
+                    Icons
+                        .account_balance_wallet_outlined,
+                    context.tr('trips.budget'),
                     trip.budget,
                   ),
                   _metric(
                     Icons.explore_outlined,
-                    'STYLE',
+                    context.tr('trips.style'),
                     trip.travelStyle,
                   ),
                 ],
@@ -998,21 +1218,27 @@ class _TripsScreenState extends State<TripsScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
+                    padding:
+                        const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: midnight,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius:
+                          BorderRadius.circular(
+                        999,
+                      ),
                     ),
                     child: Text(
                       '${trip.numberOfDays} '
-                          '${trip.numberOfDays == 1 ? 'DAY' : 'DAYS'}',
-                      style: const TextStyle(
+                      '${trip.numberOfDays == 1 ? context.tr('trips.day') : context.tr('trips.days')}',
+                      style:
+                          const TextStyle(
                         color: white,
                         fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                        fontWeight:
+                            FontWeight.w800,
                         letterSpacing: 0.8,
                       ),
                     ),
@@ -1020,12 +1246,16 @@ class _TripsScreenState extends State<TripsScreen> {
 
                   const SizedBox(width: 12),
 
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'SAVED ITINERARY',
-                      style: TextStyle(
+                      context.tr(
+                        'trips.savedItinerary',
+                      ),
+                      style:
+                          const TextStyle(
                         fontSize: 9,
-                        fontWeight: FontWeight.w800,
+                        fontWeight:
+                            FontWeight.w800,
                         letterSpacing: 1,
                         color: slate500,
                       ),
@@ -1051,16 +1281,18 @@ class _TripsScreenState extends State<TripsScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _metric(
-      IconData icon,
-      String label,
-      String value,
-      ) {
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(
+      constraints:
+          const BoxConstraints(
         minWidth: 130,
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize:
+            MainAxisSize.min,
         children: [
           Icon(
             icon,
@@ -1072,13 +1304,15 @@ class _TripsScreenState extends State<TripsScreen> {
 
           Column(
             crossAxisAlignment:
-            CrossAxisAlignment.start,
+                CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style:
+                    const TextStyle(
                   fontSize: 9,
-                  fontWeight: FontWeight.w800,
+                  fontWeight:
+                      FontWeight.w800,
                   letterSpacing: 1,
                   color: slate500,
                 ),
@@ -1089,10 +1323,13 @@ class _TripsScreenState extends State<TripsScreen> {
               Text(
                 value,
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                overflow:
+                    TextOverflow.ellipsis,
+                style:
+                    const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontWeight:
+                      FontWeight.w600,
                   color: midnightDark,
                 ),
               ),
@@ -1108,17 +1345,21 @@ class _TripsScreenState extends State<TripsScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _statusIcon(
-      IconData icon,
-      Color color,
-      ) {
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       width: 76,
       height: 76,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withValues(
+          alpha: 0.08,
+        ),
         shape: BoxShape.circle,
         border: Border.all(
-          color: color.withValues(alpha: 0.15),
+          color: color.withValues(
+            alpha: 0.15,
+          ),
         ),
       ),
       child: Icon(
@@ -1151,15 +1392,20 @@ class _TripsScreenState extends State<TripsScreen> {
           backgroundColor: midnight,
           foregroundColor: white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(
+          padding:
+              const EdgeInsets.symmetric(
             horizontal: 22,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+          shape:
+              RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(8),
           ),
-          textStyle: const TextStyle(
+          textStyle:
+              const TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w700,
+            fontWeight:
+                FontWeight.w700,
             letterSpacing: 0.1,
           ),
         ),

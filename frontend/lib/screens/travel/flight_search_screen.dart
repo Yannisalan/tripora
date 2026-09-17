@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
@@ -35,7 +36,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
   // ---------------------------------------------------------------------------
   // Tripora / Nocturne Voyage design tokens
-  // Matches HomeScreen and TripsScreen.
   // ---------------------------------------------------------------------------
 
   static const Color midnight = Color(0xFF1E1B4B);
@@ -92,9 +92,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
       final flights = (results['flights'] is List)
           ? (results['flights'] as List)
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList()
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
           : <Map<String, dynamic>>[];
 
       setState(() {
@@ -145,8 +145,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           final horizontalPadding = isMobile
               ? 16.0
               : isTablet
-              ? 24.0
-              : 40.0;
+                  ? 24.0
+                  : 40.0;
 
           return SingleChildScrollView(
             padding: EdgeInsets.symmetric(
@@ -181,7 +181,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                       else if (_busy)
                         _buildLoading()
                       else if (_searched)
-                          _buildResults(),
+                        _buildResults(),
                     ],
                   ),
                 ),
@@ -205,7 +205,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
-        'Flights',
+        context.tr('flights.title'),
         style: GoogleFonts.manrope(
           color: midnight,
           fontSize: 20,
@@ -255,20 +255,20 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 color: slate200,
               ),
             ),
-            child: const FittedBox(
+            child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.flight_takeoff_rounded,
                     size: 14,
                     color: blue,
                   ),
-                  SizedBox(width: 7),
+                  const SizedBox(width: 7),
                   Text(
-                    'FLIGHT SEARCH',
-                    style: TextStyle(
+                    context.tr('flights.flightSearch').toUpperCase(),
+                    style: const TextStyle(
                       color: midnight,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -283,7 +283,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           const SizedBox(height: 20),
 
           Text(
-            'Find your next flight.',
+            context.tr('flights.findNextFlight'),
             style: GoogleFonts.notoSerif(
               color: midnightDark,
               fontSize: isMobile ? 32 : 40,
@@ -295,10 +295,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
           const SizedBox(height: 12),
 
-          const Text(
-            'Search live flight options around your destination, dates, '
-                'passengers, and preferred cabin.',
-            style: TextStyle(
+          Text(
+            context.tr('flights.description'),
+            style: const TextStyle(
               color: textSecondary,
               fontSize: 15,
               height: 1.5,
@@ -337,15 +336,17 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionLabel('ROUTE'),
+          _sectionLabel(
+            context.tr('flights.route'),
+          ),
 
           const SizedBox(height: 14),
 
           if (isMobile) ...[
             _buildTextField(
               controller: _origin,
-              label: 'From city or airport',
-              hint: 'New York or JFK',
+              label: context.tr('flights.from'),
+              hint: context.tr('flights.fromHint'),
               icon: Icons.flight_takeoff_rounded,
               validator: _locationValidator,
             ),
@@ -354,8 +355,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
             _buildTextField(
               controller: _destination,
-              label: 'To city or airport',
-              hint: 'London or LHR',
+              label: context.tr('flights.to'),
+              hint: context.tr('flights.toHint'),
               icon: Icons.location_on_outlined,
               validator: _locationValidator,
             ),
@@ -365,8 +366,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: _buildTextField(
                     controller: _origin,
-                    label: 'From city or airport',
-                    hint: 'New York or JFK',
+                    label: context.tr('flights.from'),
+                    hint: context.tr('flights.fromHint'),
                     icon: Icons.flight_takeoff_rounded,
                     validator: _locationValidator,
                   ),
@@ -377,8 +378,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: _buildTextField(
                     controller: _destination,
-                    label: 'To city or airport',
-                    hint: 'London or LHR',
+                    label: context.tr('flights.to'),
+                    hint: context.tr('flights.toHint'),
                     icon: Icons.location_on_outlined,
                     validator: _locationValidator,
                   ),
@@ -388,7 +389,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
           const SizedBox(height: 24),
 
-          _sectionLabel('DATES'),
+          _sectionLabel(
+            context.tr('flights.dates'),
+          ),
 
           const SizedBox(height: 14),
 
@@ -399,20 +402,20 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           if (isMobile) ...[
             _buildDateField(
               controller: _depart,
-              label: 'Depart date or month',
+              label: context.tr('flights.departDate'),
               icon: Icons.calendar_today_outlined,
               onTap: _pickDepart,
               validator: (v) =>
-              (v == null || v.trim().isEmpty)
-                  ? 'Required'
-                  : null,
+                  (v == null || v.trim().isEmpty)
+                      ? context.tr('flights.required')
+                      : null,
             ),
 
             const SizedBox(height: 14),
 
             _buildDateField(
               controller: _returnCtrl,
-              label: 'Return (optional)',
+              label: context.tr('flights.returnDate'),
               icon: Icons.calendar_today_outlined,
               onTap: () => _pickDate(_returnCtrl),
             ),
@@ -422,13 +425,13 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: _buildDateField(
                     controller: _depart,
-                    label: 'Depart date or month',
+                    label: context.tr('flights.departDate'),
                     icon: Icons.calendar_today_outlined,
                     onTap: _pickDepart,
                     validator: (v) =>
-                    (v == null || v.trim().isEmpty)
-                        ? 'Required'
-                        : null,
+                        (v == null || v.trim().isEmpty)
+                            ? context.tr('flights.required')
+                            : null,
                   ),
                 ),
 
@@ -437,7 +440,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                 Expanded(
                   child: _buildDateField(
                     controller: _returnCtrl,
-                    label: 'Return (optional)',
+                    label: context.tr('flights.returnDate'),
                     icon: Icons.calendar_today_outlined,
                     onTap: () => _pickDate(_returnCtrl),
                   ),
@@ -447,7 +450,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
           const SizedBox(height: 24),
 
-          _sectionLabel('TRAVEL DETAILS'),
+          _sectionLabel(
+            context.tr('flights.travelDetails'),
+          ),
 
           const SizedBox(height: 14),
 
@@ -476,21 +481,21 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               onPressed: _busy ? null : _search,
               icon: _busy
                   ? const SizedBox(
-                width: 17,
-                height: 17,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: white,
-                ),
-              )
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: white,
+                      ),
+                    )
                   : const Icon(
-                Icons.search_rounded,
-                size: 18,
-              ),
+                      Icons.search_rounded,
+                      size: 18,
+                    ),
               label: Text(
                 _busy
-                    ? 'Searching...'
-                    : 'Search flights',
+                    ? context.tr('flights.searching')
+                    : context.tr('flights.search'),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: midnight,
@@ -614,15 +619,19 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           width: 1.4,
         ),
       ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
+      errorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(
+          Radius.circular(8),
+        ),
+        borderSide: BorderSide(
           color: Color(0xFFBA1A1A),
         ),
       ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
+      focusedErrorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(
+          Radius.circular(8),
+        ),
+        borderSide: BorderSide(
           color: Color(0xFFBA1A1A),
           width: 1.4,
         ),
@@ -632,19 +641,23 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
   Widget _buildDateModeSelector() {
     return SegmentedButton<String>(
-      segments: const [
+      segments: [
         ButtonSegment(
           value: 'date',
-          label: Text('Exact date'),
-          icon: Icon(
+          label: Text(
+            context.tr('flights.exactDate'),
+          ),
+          icon: const Icon(
             Icons.calendar_today_outlined,
             size: 16,
           ),
         ),
         ButtonSegment(
           value: 'month',
-          label: Text('Whole month'),
-          icon: Icon(
+          label: Text(
+            context.tr('flights.wholeMonth'),
+          ),
+          icon: const Icon(
             Icons.date_range_outlined,
             size: 16,
           ),
@@ -659,18 +672,20 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       },
       style: ButtonStyle(
         foregroundColor: WidgetStateProperty.resolveWith(
-              (states) {
+          (states) {
             if (states.contains(WidgetState.selected)) {
               return white;
             }
+
             return midnight;
           },
         ),
         backgroundColor: WidgetStateProperty.resolveWith(
-              (states) {
+          (states) {
             if (states.contains(WidgetState.selected)) {
               return midnight;
             }
+
             return white;
           },
         ),
@@ -688,7 +703,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       initialValue: _passengers,
       isExpanded: true,
       decoration: _inputDecoration(
-        label: 'Passengers',
+        label: context.tr('flights.passengers'),
         hint: null,
         icon: Icons.groups_outlined,
       ),
@@ -696,7 +711,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         for (var i = 1; i <= 9; i++)
           DropdownMenuItem(
             value: i,
-            child: Text('$i'),
+            child: Text(
+              '$i',
+            ),
           ),
       ],
       onChanged: (v) {
@@ -712,26 +729,34 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       initialValue: _cabin,
       isExpanded: true,
       decoration: _inputDecoration(
-        label: 'Cabin',
+        label: context.tr('flights.cabin'),
         hint: null,
         icon: Icons.airline_seat_recline_extra,
       ),
-      items: const [
+      items: [
         DropdownMenuItem(
           value: 'economy',
-          child: Text('Economy'),
+          child: Text(
+            context.tr('flights.economy'),
+          ),
         ),
         DropdownMenuItem(
           value: 'premium_economy',
-          child: Text('Premium economy'),
+          child: Text(
+            context.tr('flights.premiumEconomy'),
+          ),
         ),
         DropdownMenuItem(
           value: 'business',
-          child: Text('Business'),
+          child: Text(
+            context.tr('flights.business'),
+          ),
         ),
         DropdownMenuItem(
           value: 'first',
-          child: Text('First'),
+          child: Text(
+            context.tr('flights.first'),
+          ),
         ),
       ],
       onChanged: (v) {
@@ -759,16 +784,16 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           color: slate200,
         ),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          CircularProgressIndicator(
+          const CircularProgressIndicator(
             color: midnight,
             strokeWidth: 2.5,
           ),
-          SizedBox(height: 14),
+          const SizedBox(height: 14),
           Text(
-            'Searching for flights...',
-            style: TextStyle(
+            context.tr('flights.searchingForFlights'),
+            style: const TextStyle(
               color: slate500,
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -780,6 +805,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Widget _buildResults() {
+    final resultWord = _flights.length == 1
+        ? context.tr('flights.result')
+        : context.tr('flights.results');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -788,11 +817,14 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           children: [
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'AVAILABLE FLIGHTS',
-                    style: TextStyle(
+                  Text(
+                    context
+                        .tr('flights.availableFlights')
+                        .toUpperCase(),
+                    style: const TextStyle(
                       color: slate500,
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
@@ -801,8 +833,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${_flights.length} '
-                        '${_flights.length == 1 ? 'result' : 'results'}',
+                    '${_flights.length} $resultWord',
                     style: GoogleFonts.notoSerif(
                       color: midnightDark,
                       fontSize: 27,
@@ -822,7 +853,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         if (_flights.isEmpty)
           const _EmptyState()
         else
-          ..._flights.map(_FlightCard.new),
+          ..._flights.map(
+            (flight) => _FlightCard(flight),
+          ),
 
         if (_disclaimer != null) ...[
           const SizedBox(height: 16),
@@ -855,7 +888,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
   String? _locationValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Enter a city or airport';
+      return context.tr('flights.locationRequired');
     }
 
     return null;
@@ -866,8 +899,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _pickDate(
-      TextEditingController controller,
-      ) async {
+    TextEditingController controller,
+  ) async {
     final now = DateTime.now();
 
     final picked = await showDatePicker(
@@ -882,10 +915,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: midnight,
-              surface: white,
-            ),
+            colorScheme:
+                Theme.of(context).colorScheme.copyWith(
+                      primary: midnight,
+                      surface: white,
+                    ),
           ),
           child: child!,
         );
@@ -894,7 +928,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
     if (picked != null) {
       controller.text =
-      '${picked.year.toString().padLeft(4, '0')}-'
+          '${picked.year.toString().padLeft(4, '0')}-'
           '${picked.month.toString().padLeft(2, '0')}-'
           '${picked.day.toString().padLeft(2, '0')}';
     }
@@ -909,8 +943,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Future<void> _pickMonth(
-      TextEditingController controller,
-      ) async {
+    TextEditingController controller,
+  ) async {
     final now = DateTime.now();
 
     final picked = await showDatePicker(
@@ -923,14 +957,17 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       lastDate: now.add(
         const Duration(days: 365),
       ),
-      helpText: 'Select any date in your travel month',
+      helpText: context.tr(
+        'flights.selectTravelMonth',
+      ),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: midnight,
-              surface: white,
-            ),
+            colorScheme:
+                Theme.of(context).colorScheme.copyWith(
+                      primary: midnight,
+                      surface: white,
+                    ),
           ),
           child: child!,
         );
@@ -939,7 +976,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
     if (picked != null) {
       controller.text =
-      '${picked.year.toString().padLeft(4, '0')}-'
+          '${picked.year.toString().padLeft(4, '0')}-'
           '${picked.month.toString().padLeft(2, '0')}';
     }
   }
@@ -956,36 +993,35 @@ class _FlightCard extends StatelessWidget {
 
   static const Color midnight = Color(0xFF1E1B4B);
   static const Color midnightDark = Color(0xFF070235);
-  static const Color porcelain = Color(0xFFF7F9FB);
   static const Color white = Color(0xFFFFFFFF);
   static const Color slate100 = Color(0xFFF1F5F9);
   static const Color slate200 = Color(0xFFE2E8F0);
   static const Color slate500 = Color(0xFF64748B);
-  static const Color textSecondary = Color(0xFF47464F);
   static const Color blue = Color(0xFF3B82F6);
   static const Color emerald = Color(0xFF10B981);
 
   @override
   Widget build(BuildContext context) {
     final price = flight['price'];
-    final money = (price is Map)
+
+    final money = price is Map
         ? price
         : <String, dynamic>{};
 
-    final amount = (money['amount'] is num)
+    final amount = money['amount'] is num
         ? (money['amount'] as num).toDouble()
         : 0.0;
 
     final currency =
-    (money['currency'] ?? 'USD').toString();
+        (money['currency'] ?? 'USD').toString();
 
     final airline =
-    (flight['airline'] ?? '').toString();
+        (flight['airline'] ?? '').toString();
 
-    final segments = (flight['segments'] is List)
+    final segments = flight['segments'] is List
         ? (flight['segments'] as List)
-        .whereType<Map>()
-        .toList()
+            .whereType<Map>()
+            .toList()
         : <Map>[];
 
     String originCode = '';
@@ -996,10 +1032,10 @@ class _FlightCard extends StatelessWidget {
 
     if (segments.isNotEmpty) {
       final first =
-      Map<String, dynamic>.from(segments.first);
+          Map<String, dynamic>.from(segments.first);
 
       final depAirport =
-      first['departureAirport'];
+          first['departureAirport'];
 
       if (depAirport is Map) {
         originCode =
@@ -1010,10 +1046,10 @@ class _FlightCard extends StatelessWidget {
           (first['departureTime'] ?? '').toString();
 
       final last =
-      Map<String, dynamic>.from(segments.last);
+          Map<String, dynamic>.from(segments.last);
 
       final arrAirport =
-      last['arrivalAirport'];
+          last['arrivalAirport'];
 
       if (arrAirport is Map) {
         destCode =
@@ -1023,7 +1059,7 @@ class _FlightCard extends StatelessWidget {
       arrive =
           (last['arrivalTime'] ?? '').toString();
 
-      stops = (first['stops'] is num)
+      stops = first['stops'] is num
           ? (first['stops'] as num).toInt()
           : 0;
     }
@@ -1050,7 +1086,7 @@ class _FlightCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment:
-          CrossAxisAlignment.start,
+              CrossAxisAlignment.start,
           children: [
             Row(
               children: [
@@ -1060,7 +1096,7 @@ class _FlightCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: midnight,
                     borderRadius:
-                    BorderRadius.circular(10),
+                        BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.flight_takeoff_rounded,
@@ -1074,31 +1110,33 @@ class _FlightCard extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                        CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'AIRLINE',
-                        style: TextStyle(
+                      Text(
+                        context
+                            .tr('flights.airline')
+                            .toUpperCase(),
+                        style: const TextStyle(
                           color: slate500,
                           fontSize: 9,
-                          fontWeight:
-                          FontWeight.w800,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: 1,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         airline.isEmpty
-                            ? 'Flight'
+                            ? context.tr(
+                                'flights.flight',
+                              )
                             : airline,
                         maxLines: 1,
                         overflow:
-                        TextOverflow.ellipsis,
+                            TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: midnightDark,
                           fontSize: 15,
-                          fontWeight:
-                          FontWeight.w800,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
@@ -1108,8 +1146,7 @@ class _FlightCard extends StatelessWidget {
                 const SizedBox(width: 12),
 
                 Text(
-                  AppPreferences.instance
-                      .formatMoney(
+                  AppPreferences.instance.formatMoney(
                     amount,
                     from: currency,
                   ),
@@ -1141,39 +1178,47 @@ class _FlightCard extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding:
-                    const EdgeInsets.symmetric(
+                        const EdgeInsets.symmetric(
                       horizontal: 16,
                     ),
                     child: Column(
                       children: [
                         Container(
                           padding:
-                          const EdgeInsets.symmetric(
+                              const EdgeInsets.symmetric(
                             horizontal: 9,
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: stops == 0
                                 ? const Color(
-                              0xFFEAF8F3,
-                            )
+                                    0xFFEAF8F3,
+                                  )
                                 : slate100,
                             borderRadius:
-                            BorderRadius.circular(
+                                BorderRadius.circular(
                               999,
                             ),
                           ),
                           child: Text(
                             stops == 0
-                                ? 'DIRECT'
-                                : '$stops STOP(S)',
+                                ? context
+                                    .tr('flights.direct')
+                                    .toUpperCase()
+                                : context.tr(
+                                    'flights.stops',
+                                    params: {
+                                      'count':
+                                          stops.toString(),
+                                    },
+                                  ).toUpperCase(),
                             style: TextStyle(
                               color: stops == 0
                                   ? emerald
                                   : slate500,
                               fontSize: 9,
                               fontWeight:
-                              FontWeight.w800,
+                                  FontWeight.w800,
                               letterSpacing: 0.6,
                             ),
                           ),
@@ -1181,21 +1226,21 @@ class _FlightCard extends StatelessWidget {
 
                         const SizedBox(height: 8),
 
-                        Row(
+                        const Row(
                           children: [
-                            const Expanded(
+                            Expanded(
                               child: Divider(
                                 color: slate200,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            const Icon(
+                            SizedBox(width: 6),
+                            Icon(
                               Icons.flight_rounded,
                               size: 15,
                               color: blue,
                             ),
-                            const SizedBox(width: 6),
-                            const Expanded(
+                            SizedBox(width: 6),
+                            Expanded(
                               child: Divider(
                                 color: slate200,
                               ),
@@ -1237,19 +1282,19 @@ class _TimeColumn extends StatelessWidget {
   });
 
   static const Color midnightDark =
-  Color(0xFF070235);
+      Color(0xFF070235);
 
   static const Color slate500 =
-  Color(0xFF64748B);
+      Color(0xFF64748B);
 
   @override
   Widget build(BuildContext context) {
     final label = time.isEmpty
         ? '\u2014'
         : time.replaceFirst(
-      'T',
-      ' ',
-    );
+            'T',
+            ' ',
+          );
 
     return Column(
       crossAxisAlignment: alignEnd
@@ -1288,19 +1333,19 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   static const Color midnight =
-  Color(0xFF1E1B4B);
+      Color(0xFF1E1B4B);
 
   static const Color midnightDark =
-  Color(0xFF070235);
+      Color(0xFF070235);
 
   static const Color white =
-  Color(0xFFFFFFFF);
+      Color(0xFFFFFFFF);
 
   static const Color slate200 =
-  Color(0xFFE2E8F0);
+      Color(0xFFE2E8F0);
 
   static const Color slate500 =
-  Color(0xFF64748B);
+      Color(0xFF64748B);
 
   @override
   Widget build(BuildContext context) {
@@ -1322,7 +1367,7 @@ class _EmptyState extends StatelessWidget {
             decoration: BoxDecoration(
               color: midnight,
               borderRadius:
-              BorderRadius.circular(16),
+                  BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.search_off_rounded,
@@ -1334,7 +1379,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 18),
 
           Text(
-            'No flights found.',
+            context.tr('flights.noFlights'),
             style: GoogleFonts.notoSerif(
               fontSize: 23,
               fontWeight: FontWeight.w600,
@@ -1344,10 +1389,10 @@ class _EmptyState extends StatelessWidget {
 
           const SizedBox(height: 7),
 
-          const Text(
-            'Try adjusting your route, dates, or travel preferences.',
+          Text(
+            context.tr('flights.noFlightsDescription'),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: slate500,
               fontSize: 13,
               height: 1.5,
@@ -1373,7 +1418,7 @@ class _Banner extends StatelessWidget {
   });
 
   static const Color white =
-  Color(0xFFFFFFFF);
+      Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -1395,7 +1440,7 @@ class _Banner extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.08),
               borderRadius:
-              BorderRadius.circular(10),
+                  BorderRadius.circular(10),
             ),
             child: Icon(
               Icons.info_outline_rounded,

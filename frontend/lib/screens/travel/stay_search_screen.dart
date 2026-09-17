@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
@@ -39,10 +40,12 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
 
   Future<void> _search() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() {
       _busy = true;
       _error = null;
     });
+
     try {
       final results = await _service.searchStays(
         location: _location.text.trim(),
@@ -51,13 +54,16 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
         guests: _guests,
         rooms: _rooms,
       );
+
       if (!mounted) return;
+
       final stays = (results['stays'] is List)
           ? (results['stays'] as List)
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList()
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
           : <Map<String, dynamic>>[];
+
       setState(() {
         _stays = stays;
         _searched = true;
@@ -65,12 +71,15 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
         _busy = false;
       });
     } catch (e) {
-      _fail(e.toString().replaceFirst('Exception: ', '').trim());
+      _fail(
+        e.toString().replaceFirst('Exception: ', '').trim(),
+      );
     }
   }
 
   void _fail(String message) {
     if (!mounted) return;
+
     setState(() {
       _busy = false;
       _error = message;
@@ -86,63 +95,87 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Hotel Search')),
-      body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildForm(),
-                const SizedBox(height: 16),
-                if (_error != null)
-                  _Banner(text: _error!, color: context.appStatus.error)
-                else if (_busy)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_searched) ...[
-                  Text(
-                    '${_stays.length} result(s)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: context.triporaColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_stays.isEmpty)
-                    const _EmptyState()
-                  else
-                    ..._stays.map(_StayCard.new),
-                  if (_disclaimer != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _disclaimer!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.4,
-                        color: context.triporaColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ],
-            ),
+      appBar: AppBar(
+        title: Text(
+          context.tr('stay.title'),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: colors.textPrimary,
           ),
         ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildForm(),
+              const SizedBox(height: 16),
+              if (_error != null)
+                _Banner(
+                  text: _error!,
+                  color: context.appStatus.error,
+                )
+              else if (_busy)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_searched) ...[
+                Text(
+                  _stays.length == 1
+                      ? context.tr('stay.resultOne')
+                      : context.tr(
+                          'stay.resultMany',
+                          params: {
+                            'count': _stays.length.toString(),
+                          },
+                        ),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_stays.isEmpty)
+                  const _EmptyState()
+                else
+                  ..._stays.map(_StayCard.new),
+                if (_disclaimer != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _disclaimer!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: colors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildForm() {
+    final colors = context.triporaColors;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: context.triporaColors.border),
+        side: BorderSide(color: colors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -151,13 +184,18 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
           children: [
             TextFormField(
               controller: _location,
-              decoration: const InputDecoration(
-                labelText: 'Location',
-                hintText: 'Paris, France',
-                prefixIcon: Icon(Icons.location_city_outlined),
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                labelText: context.tr('stay.location'),
+                hintText: context.tr('stay.locationHint'),
+                prefixIcon: const Icon(
+                  Icons.location_city_outlined,
+                ),
               ),
               validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter a location' : null,
+                  (v == null || v.trim().isEmpty)
+                      ? context.tr('stay.locationRequired')
+                      : null,
             ),
             const SizedBox(height: 14),
             Row(
@@ -167,12 +205,16 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                     controller: _checkIn,
                     readOnly: true,
                     onTap: () => _pickDate(_checkIn),
-                    decoration: const InputDecoration(
-                      labelText: 'Check-in',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.tr('stay.checkIn'),
+                      prefixIcon: const Icon(
+                        Icons.calendar_today_outlined,
+                      ),
                     ),
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        (v == null || v.trim().isEmpty)
+                            ? context.tr('stay.required')
+                            : null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -181,12 +223,16 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                     controller: _checkOut,
                     readOnly: true,
                     onTap: () => _pickDate(_checkOut),
-                    decoration: const InputDecoration(
-                      labelText: 'Check-out',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.tr('stay.checkOut'),
+                      prefixIcon: const Icon(
+                        Icons.calendar_today_outlined,
+                      ),
                     ),
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        (v == null || v.trim().isEmpty)
+                            ? context.tr('stay.required')
+                            : null,
                   ),
                 ),
               ],
@@ -197,16 +243,23 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _guests,
-                    decoration: const InputDecoration(
-                      labelText: 'Guests',
-                      prefixIcon: Icon(Icons.groups_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.tr('stay.guests'),
+                      prefixIcon: const Icon(
+                        Icons.groups_outlined,
+                      ),
                     ),
                     items: [
                       for (var i = 1; i <= 10; i++)
-                        DropdownMenuItem(value: i, child: Text('$i')),
+                        DropdownMenuItem(
+                          value: i,
+                          child: Text('$i'),
+                        ),
                     ],
                     onChanged: (v) {
-                      if (v != null) setState(() => _guests = v);
+                      if (v != null) {
+                        setState(() => _guests = v);
+                      }
                     },
                   ),
                 ),
@@ -214,16 +267,23 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _rooms,
-                    decoration: const InputDecoration(
-                      labelText: 'Rooms',
-                      prefixIcon: Icon(Icons.bed_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.tr('stay.rooms'),
+                      prefixIcon: const Icon(
+                        Icons.bed_outlined,
+                      ),
                     ),
                     items: [
                       for (var i = 1; i <= 5; i++)
-                        DropdownMenuItem(value: i, child: Text('$i')),
+                        DropdownMenuItem(
+                          value: i,
+                          child: Text('$i'),
+                        ),
                     ],
                     onChanged: (v) {
-                      if (v != null) setState(() => _rooms = v);
+                      if (v != null) {
+                        setState(() => _rooms = v);
+                      }
                     },
                   ),
                 ),
@@ -244,7 +304,11 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
                         ),
                       )
                     : const Icon(Icons.search),
-                label: const Text('Search hotels'),
+                label: Text(
+                  _busy
+                      ? context.tr('stay.searching')
+                      : context.tr('stay.search'),
+                ),
               ),
             ),
           ],
@@ -253,14 +317,26 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
     );
   }
 
-  Future<void> _pickDate(TextEditingController controller) async {
+  Future<void> _pickDate(
+    TextEditingController controller,
+  ) async {
     final now = DateTime.now();
+
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(now.year, now.month, now.day),
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: now.add(const Duration(days: 365)),
+      initialDate: today,
+      firstDate: today,
+      lastDate: today.add(
+        const Duration(days: 365),
+      ),
     );
+
     if (picked != null) {
       controller.text =
           '${picked.year.toString().padLeft(4, '0')}-'
@@ -277,23 +353,36 @@ class _StayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     final price = stay['price'];
-    final money = (price is Map) ? price : <String, dynamic>{};
+    final money = (price is Map)
+        ? price
+        : <String, dynamic>{};
+
     final amount = (money['amount'] is num)
         ? (money['amount'] as num).toDouble()
         : 0.0;
-    final currency = (money['currency'] ?? 'USD').toString();
+
+    final currency =
+        (money['currency'] ?? 'USD').toString();
+
     final name = (stay['name'] ?? '').toString();
     final city = (stay['city'] ?? '').toString();
-    final country = (stay['country'] ?? '').toString();
-    final place = [city, country].where((s) => s.isNotEmpty).join(', ');
+    final country =
+        (stay['country'] ?? '').toString();
+
+    final place = [
+      city,
+      country,
+    ].where((s) => s.isNotEmpty).join(', ');
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: context.triporaColors.border),
+        side: BorderSide(color: colors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -305,13 +394,18 @@ class _StayCard extends StatelessWidget {
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
+                color: Theme.of(context)
+                    .colorScheme
+                    .secondary
+                    .withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ExcludeSemantics(
                 child: Icon(
                   Icons.hotel_outlined,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .secondary,
                   size: 28,
                 ),
               ),
@@ -319,14 +413,17 @@ class _StayCard extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name.isEmpty ? 'Hotel' : name,
+                    name.isEmpty
+                        ? context.tr('stay.hotel')
+                        : name,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: context.triporaColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -335,7 +432,7 @@ class _StayCard extends StatelessWidget {
                       place,
                       style: TextStyle(
                         fontSize: 13,
-                        color: context.triporaColors.textMuted,
+                        color: colors.textMuted,
                       ),
                     ),
                   const SizedBox(height: 8),
@@ -347,7 +444,9 @@ class _StayCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary,
                     ),
                   ),
                 ],
@@ -365,18 +464,26 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
           ExcludeSemantics(
-            child: Icon(Icons.search_off, size: 40, color: context.triporaColors.textMuted),
+            child: Icon(
+              Icons.search_off,
+              size: 40,
+              color: colors.textMuted,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
-            'No hotels found. Try adjusting your search.',
+            context.tr('stay.noStays'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: context.triporaColors.textMuted),
+            style: TextStyle(
+              color: colors.textMuted,
+            ),
           ),
         ],
       ),
@@ -388,7 +495,10 @@ class _Banner extends StatelessWidget {
   final String text;
   final Color color;
 
-  const _Banner({required this.text, required this.color});
+  const _Banner({
+    required this.text,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -398,9 +508,14 @@ class _Banner extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: color.withValues(alpha: 0.4),
+        ),
       ),
-      child: Text(text, style: TextStyle(color: color)),
+      child: Text(
+        text,
+        style: TextStyle(color: color),
+      ),
     );
   }
 }
