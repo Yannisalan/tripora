@@ -263,20 +263,6 @@ class _TriporaBrand extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            Icons.travel_explore_rounded,
-            size: 19,
-            color: colors.surface,
-          ),
-        ),
-        const SizedBox(width: 10),
         Text(
           'Tripora',
           style: GoogleFonts.manrope(
