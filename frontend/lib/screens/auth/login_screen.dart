@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/utils/logger.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
@@ -119,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(
-          'Sign In',
+          context.tr('login.signIn'),
           style: TextStyle(
             fontWeight: FontWeight.w800,
             color: context.triporaColors.textPrimary,
@@ -210,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ==================================================
 
                   Text(
-                    'Welcome back to Tripora',
+                    context.tr('login.welcomeBack'),
                     textAlign: TextAlign.center,
 
                     style: TextStyle(
@@ -224,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
 
                   Text(
-                    'Sign in to continue planning your trip.',
+                    context.tr('login.subtitle'),
                     textAlign: TextAlign.center,
 
                     style: TextStyle(
@@ -274,21 +275,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabled: !_isLoading,
 
                     decoration:
-                    const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'Enter your email',
+                    InputDecoration(
+                      labelText:
+                      context.tr('login.email'),
+                      hintText:
+                      context.tr('login.emailHint'),
                       prefixIcon:
-                      Icon(Icons.email_outlined),
+                      const Icon(
+                        Icons.email_outlined,
+                      ),
                     ),
 
                     validator: (value) {
                       if (value == null ||
                           value.trim().isEmpty) {
-                        return 'Please enter your email.';
+                        return context.tr(
+                          'login.emailRequired',
+                        );
                       }
 
                       if (!value.contains('@')) {
-                        return 'Please enter a valid email.';
+                        return context.tr(
+                          'login.emailInvalid',
+                        );
                       }
 
                       return null;
@@ -320,9 +329,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     decoration:
                     InputDecoration(
-                      labelText: 'Password',
+                      labelText:
+                      context.tr('login.password'),
                       hintText:
-                      'Enter your password',
+                      context.tr('login.passwordHint'),
 
                       prefixIcon:
                       const Icon(
@@ -333,8 +343,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       IconButton(
                         tooltip:
                         _obscurePassword
-                            ? 'Show password'
-                            : 'Hide password',
+                            ? context.tr(
+                                'login.showPassword',
+                              )
+                            : context.tr(
+                                'login.hidePassword',
+                              ),
 
                         onPressed:
                         _isLoading
@@ -359,7 +373,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     validator: (value) {
                       if (value == null ||
                           value.isEmpty) {
-                        return 'Please enter your password.';
+                        return context.tr(
+                          'login.passwordRequired',
+                        );
                       }
 
                       return null;
@@ -382,7 +398,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           AppRoutes.forgotPassword,
                         );
                       },
-                      child: const Text('Forgot password?'),
+                      child: Text(
+                        context.tr(
+                          'login.forgotPassword',
+                        ),
+                      ),
                     ),
                   ),
 
@@ -413,8 +433,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       )
 
-                          : const Text(
-                        'Sign In',
+                          : Text(
+                        context.tr('login.signIn'),
 
                         style: TextStyle(
                           fontSize: 16,
@@ -433,8 +453,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     MainAxisAlignment.center,
 
                     children: [
-                      const Text(
-                        "Don't have an account? ",
+                      Text(
+                        context.tr('login.noAccount'),
                       ),
 
                       TextButton(
@@ -450,7 +470,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
 
                         child:
-                        const Text('Sign up'),
+                        Text(
+                          context.tr('login.signUp'),
+                        ),
                       ),
                     ],
                   ),

@@ -1384,11 +1384,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
             _travelerCard(
               context: context,
               icon: Icons.person_outline,
-              title: 'Solo',
+              title: context.tr('planner.solo'),
               subtitle: context.tr(
                 'planner.independentPace',
               ),
-              rangeLabel: '1',
+              rangeLabel: context.tr(
+                'planner.travelers.rangeOne',
+              ),
               isSelected:
                   travelers == 1,
               onTap: () => setState(
@@ -1399,11 +1401,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
             _travelerCard(
               context: context,
               icon: Icons.favorite_border,
-              title: 'Couple',
+              title: context.tr('planner.couple'),
               subtitle: context.tr(
                 'planner.curatedForTwo',
               ),
-              rangeLabel: '2',
+              rangeLabel: context.tr(
+                'planner.travelers.rangeTwo',
+              ),
               isSelected:
                   travelers == 2,
               onTap: () => setState(
@@ -1413,13 +1417,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
             _travelerCard(
               context: context,
-              icon: Icons
-                  .escalator_warning_outlined,
-              title: 'Family',
+              icon: Icons.escalator_warning_outlined,
+              title: context.tr('planner.family'),
               subtitle: context.tr(
                 'planner.kidFriendlyRhythm',
               ),
-              rangeLabel: '3–5',
+              rangeLabel: context.tr(
+                'planner.travelers.rangeFamily',
+              ),
               isSelected:
                   travelers >= 3 &&
                   travelers <= 5,
@@ -1431,11 +1436,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
             _travelerCard(
               context: context,
               icon: Icons.groups_outlined,
-              title: 'Friends',
+              title: context.tr('planner.friends'),
               subtitle: context.tr(
                 'planner.sharedMemories',
               ),
-              rangeLabel: '6+',
+              rangeLabel: context.tr(
+                'planner.travelers.rangeFriends',
+              ),
               isSelected:
                   travelers >= 6,
               onTap: () => setState(

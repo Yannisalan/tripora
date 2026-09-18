@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/l10n/app_localizations.dart';
 import '../core/theme/app_theme.dart';
 import 'gradient_button.dart';
 
@@ -232,8 +233,10 @@ class DestinationCard extends StatelessWidget {
                               Icons.add_location_alt_outlined,
                               size: 18,
                             ),
-                            label: const Text(
-                              'Plan This Trip',
+                            label: Text(
+                              context.tr(
+                                'explore.planThisTrip',
+                              ),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.white,

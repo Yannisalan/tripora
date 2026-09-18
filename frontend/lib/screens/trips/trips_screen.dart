@@ -291,99 +291,26 @@ class _TripsScreenState extends State<TripsScreen> {
   // ---------------------------------------------------------------------------
 
   String _formatDate(DateTime date) {
-    final language = AppPreferences.instance.language;
+    const months = [
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
+    ];
 
-    const monthNames = {
-      'en': [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ],
-      'es': [
-        'Ene',
-        'Feb',
-        'Mar',
-        'Abr',
-        'May',
-        'Jun',
-        'Jul',
-        'Ago',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dic',
-      ],
-      'fr': [
-        'Jan',
-        'Fév',
-        'Mar',
-        'Avr',
-        'Mai',
-        'Juin',
-        'Juil',
-        'Août',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Déc',
-      ],
-      'de': [
-        'Jan',
-        'Feb',
-        'Mär',
-        'Apr',
-        'Mai',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Okt',
-        'Nov',
-        'Dez',
-      ],
-      'it': [
-        'Gen',
-        'Feb',
-        'Mar',
-        'Apr',
-        'Mag',
-        'Giu',
-        'Lug',
-        'Ago',
-        'Set',
-        'Ott',
-        'Nov',
-        'Dic',
-      ],
-      'pt': [
-        'Jan',
-        'Fev',
-        'Mar',
-        'Abr',
-        'Mai',
-        'Jun',
-        'Jul',
-        'Ago',
-        'Set',
-        'Out',
-        'Nov',
-        'Dez',
-      ],
-    };
+    final month = context.tr(
+      'date.monthShort.${months[date.month - 1]}',
+    );
 
-    final months =
-        monthNames[language] ?? monthNames['en']!;
-
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return '$month ${date.day}, ${date.year}';
   }
 
   // ---------------------------------------------------------------------------

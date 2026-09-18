@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/logger.dart';
 import '../../routes/app_routes.dart';
@@ -47,11 +48,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String _titleForStep() {
     switch (_step) {
       case _ResetStep.requestCode:
-        return 'Reset Your Password';
+        return context.tr('forgotPassword.resetTitle');
       case _ResetStep.verifyCode:
-        return 'Check Your Email';
+        return context.tr('forgotPassword.checkEmail');
       case _ResetStep.newPassword:
-        return 'Create a New Password';
+        return context.tr('forgotPassword.newPasswordTitle');
     }
   }
 

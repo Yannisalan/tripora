@@ -80,10 +80,10 @@ class ItineraryScreen extends StatelessWidget {
   // DESTINATION
   // ============================================================
 
-  String get destination {
+  String destination(BuildContext context) {
     return _stringValue(
       trip['destination'],
-      'Your Destination',
+      context.tr('it.defaultDestination'),
     );
   }
 
@@ -441,6 +441,7 @@ class ItineraryScreen extends StatelessWidget {
                             context.tr('it.travelDay'),
                           ),
                           activities: _parseActivities(
+                            context,
                             day['activities'],
                           ),
                         ),
@@ -513,7 +514,7 @@ class ItineraryScreen extends StatelessWidget {
           const SizedBox(height: 22),
 
           Text(
-            destination,
+            destination(context),
             style: const TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 38,
@@ -1348,7 +1349,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   void _openFlightPrices(BuildContext context) {
-    final d = destination;
+    final d = destination(context);
 
     Navigator.pushNamed(
       context,
@@ -1372,7 +1373,7 @@ class ItineraryScreen extends StatelessWidget {
         title: context.tr(
           'it.tripTo',
           params: {
-            'destination': destination,
+            'destination': destination(context),
           },
         ),
         description: budget.isNotEmpty
@@ -1383,7 +1384,7 @@ class ItineraryScreen extends StatelessWidget {
                 },
               )
             : null,
-        location: destination,
+        location: destination(context),
         startDate: startDate,
         endDate: endDate,
         allDay: true,
@@ -1432,6 +1433,7 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   List<_Activity> _parseActivities(
+    BuildContext context,
     dynamic activities,
   ) {
     final result = <_Activity>[];
@@ -1455,7 +1457,7 @@ class ItineraryScreen extends StatelessWidget {
           ),
           title: _stringValue(
             activity['title'],
-            'Activity',
+            context.tr('it.activityFallback'),
           ),
           description: _stringValue(
             activity['description'],

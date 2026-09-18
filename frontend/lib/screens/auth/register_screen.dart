@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
@@ -49,17 +50,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!_acceptedTerms || !_acceptedPrivacy) {
       setState(() {
-        _statusMessage =
-            'Please accept the Terms & Conditions and Privacy Policy to continue.';
+        _statusMessage = context.tr('register.acceptTermsMessage');
       });
 
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Please accept the Terms & Conditions and Privacy Policy.',
-            ),
+          SnackBar(
+            content: Text(context.tr('register.acceptTermsSnack')),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -86,7 +84,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              response['message']?.toString() ?? 'Account created.',
+              response['message']?.toString() ??
+                  context.tr('register.accountCreated'),
             ),
             behavior: SnackBarBehavior.floating,
             backgroundColor:
@@ -141,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(
-          'Create Account',
+          context.tr('register.title'),
           style: TextStyle(
             fontWeight: FontWeight.w800,
             color: context.triporaColors.textPrimary,
@@ -218,7 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // ==================================================
 
                   Text(
-                    'Create your Tripora account',
+                    context.tr('register.heading'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,
@@ -230,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
 
                   Text(
-                    'Join Tripora and start planning your next adventure.',
+                    context.tr('register.subtitle'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
@@ -277,14 +276,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _nameController,
                     enabled: !_isLoading,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      hintText: 'Enter your name',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: InputDecoration(
+                      labelText: context.tr('register.name'),
+                      hintText: context.tr('register.nameHint'),
+                      prefixIcon: const Icon(Icons.person_outline),
                     ),
                     validator: (value) {
                       if ((value ?? '').trim().isEmpty) {
-                        return 'Please enter your name.';
+                        return context.tr('register.nameRequired');
                       }
 
                       return null;
@@ -302,20 +301,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabled: !_isLoading,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.tr('login.email'),
+                      hintText: context.tr('login.emailHint'),
+                      prefixIcon: const Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
                       final email = (value ?? '').trim();
 
                       if (email.isEmpty) {
-                        return 'Please enter your email.';
+                        return context.tr('login.emailRequired');
                       }
 
                       if (!email.contains('@')) {
-                        return 'Please enter a valid email.';
+                        return context.tr('login.emailInvalid');
                       }
 
                       return null;
@@ -334,14 +333,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Enter your password',
+                      labelText: context.tr('login.password'),
+                      hintText: context.tr('login.passwordHint'),
                       prefixIcon: const Icon(Icons.lock_outline),
 
                       suffixIcon: IconButton(
                         tooltip: _obscurePassword
-                            ? 'Show password'
-                            : 'Hide password',
+                            ? context.tr('login.showPassword')
+                            : context.tr('login.hidePassword'),
                         onPressed: _isLoading
                             ? null
                             : () {
@@ -358,7 +357,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     validator: (value) {
                       if ((value ?? '').length < 6) {
-                        return 'Password must be at least 6 characters.';
+                        return context.tr('register.passwordTooShort');
                       }
 
                       return null;
@@ -377,8 +376,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // ==================================================
 
                   _ConsentRow(
-                    leading: 'I agree to the',
-                    label: 'Terms & Conditions',
+                    leading: context.tr('register.agreeTo'),
+                    label: context.tr('register.terms'),
                     route: AppRoutes.terms,
                     value: _acceptedTerms,
                     onChanged: _isLoading
@@ -395,8 +394,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // ==================================================
 
                   _ConsentRow(
-                    leading: 'I have read the',
-                    label: 'Privacy Policy',
+                    leading: context.tr('register.readThe'),
+                    label: context.tr('register.privacyPolicy'),
                     route: AppRoutes.privacy,
                     value: _acceptedPrivacy,
                     onChanged: _isLoading
@@ -429,8 +428,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'Create Account',
+                          : Text(
+                              context.tr('register.title'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -482,7 +481,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Already have an account? '),
+                      Text(
+                        context.tr('register.haveAccount'),
+                      ),
 
                       TextButton(
                         onPressed: _isLoading
@@ -493,7 +494,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   (route) => false,
                                 );
                               },
-                        child: const Text('Sign in'),
+                        child: Text(context.tr('login.signIn')),
                       ),
                     ],
                   ),
@@ -524,7 +525,7 @@ class _FieldsDivider extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            'or with email',
+            context.tr('register.orWithEmail'),
             style: TextStyle(
               color: context.triporaColors.textMuted,
               fontWeight: FontWeight.w500,

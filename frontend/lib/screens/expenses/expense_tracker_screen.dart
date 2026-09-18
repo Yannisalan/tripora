@@ -10,6 +10,21 @@ import '../../services/expense_service.dart';
 import '../../services/trip_service.dart';
 import '../../widgets/gradient_button.dart';
 
+const _categories = {
+  'transport': 'transport',
+  'accommodation': 'accommodation',
+  'food': 'food',
+  'activities': 'activities',
+  'shopping': 'shopping',
+  'health': 'health',
+};
+
+const _paymentMethods = {
+  'cash': 'cash',
+  'card': 'card',
+  'mobile': 'mobile',
+};
+
 /// Full expense tracker for a single trip.
 class ExpenseTrackerScreen extends StatefulWidget {
   final TripModel trip;
@@ -801,7 +816,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                       color: colors.textSecondary,
                     ),
                     label: Text(
-                      '${expenseCategoryLabel(entry.key)}  '
+                      '${_categoryLabel(entry.key)}  '
                       '${_formatAmount(entry.value)}',
                     ),
                     side: BorderSide(
@@ -965,7 +980,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                       Text(
                         expense.description.isNotEmpty
                             ? expense.description
-                            : expenseCategoryLabel(
+                            : _categoryLabel(
                                 expense.category,
                               ),
                         maxLines: 1,
@@ -979,7 +994,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${expenseCategoryLabel(expense.category)} · '
+                        '${_categoryLabel(expense.category)} · '
                         '${_formatDate(expense.date)}',
                         style: TextStyle(
                           fontSize: 12,
@@ -1003,7 +1018,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                       ),
                     ),
                     Text(
-                      paymentMethodLabel(
+                      _paymentMethodLabel(
                         expense.paymentMethod,
                       ),
                       style: TextStyle(
@@ -1034,23 +1049,37 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
     ];
 
+    final month = context.tr(
+      'date.monthShort.${months[date.month - 1]}',
+    );
+
     return '${date.day} '
-        '${months[date.month - 1]} '
+        '$month '
         '${date.year}';
+  }
+
+  String _categoryLabel(String category) {
+    final slug = _categories[category.toLowerCase()] ?? 'other';
+    return context.tr('expense.category.$slug');
+  }
+
+  String _paymentMethodLabel(String method) {
+    final slug = _paymentMethods[method.toLowerCase()] ?? 'other';
+    return context.tr('expense.paymentMethod.$slug');
   }
 }
 
@@ -1282,7 +1311,7 @@ class _ExpenseFormSheetState
                             DropdownMenuItem<String>(
                           value: category,
                           child: Text(
-                            expenseCategoryLabel(
+                            _categoryLabel(
                               category,
                             ),
                           ),
@@ -1353,7 +1382,7 @@ class _ExpenseFormSheetState
                             DropdownMenuItem<String>(
                           value: method,
                           child: Text(
-                            paymentMethodLabel(method),
+                            _paymentMethodLabel(method),
                           ),
                         ),
                       )
@@ -1387,6 +1416,16 @@ class _ExpenseFormSheetState
         ),
       ),
     );
+  }
+
+  String _categoryLabel(String category) {
+    final slug = _categories[category.toLowerCase()] ?? 'other';
+    return context.tr('expense.category.$slug');
+  }
+
+  String _paymentMethodLabel(String method) {
+    final slug = _paymentMethods[method.toLowerCase()] ?? 'other';
+    return context.tr('expense.paymentMethod.$slug');
   }
 }
 
