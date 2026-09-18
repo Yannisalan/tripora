@@ -254,15 +254,12 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
       );
     }
 
-    final available =
-        _data!['available'] as bool? ?? false;
+    final available = _data!['available'] as bool? ?? false;
 
     if (!available) {
-      final reason =
-          _data!['reason'] as String? ?? 'unknown';
+      final reason = _data!['reason'] as String? ?? 'unknown';
 
-      final message =
-          _data!['message'] as String? ?? '';
+      final message = _data!['message'] as String? ?? '';
 
       return _buildUnavailable(
         context,
@@ -317,9 +314,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             color: _slate400,
             size: 56,
           ),
-
           const SizedBox(height: 16),
-
           Text(
             context.tr('weather.error'),
             style: const TextStyle(
@@ -329,9 +324,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
               color: _text,
             ),
           ),
-
           const SizedBox(height: 8),
-
           Text(
             message,
             textAlign: TextAlign.center,
@@ -341,9 +334,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
               color: _slate500,
             ),
           ),
-
           const SizedBox(height: 20),
-
           _retryButton(
             context,
             lang,
@@ -406,9 +397,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             color: iconColor,
             size: 56,
           ),
-
           const SizedBox(height: 16),
-
           Text(
             message.isNotEmpty
                 ? message
@@ -422,9 +411,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
               height: 1.4,
             ),
           ),
-
           const SizedBox(height: 20),
-
           _retryButton(
             context,
             lang,
@@ -474,8 +461,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
         32,
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // -------------------------------------------------------------------
           // LOCATION
@@ -489,8 +475,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
               ),
               decoration: BoxDecoration(
                 color: _blue.withValues(alpha: 0.10),
-                borderRadius:
-                    BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: _blue.withValues(alpha: 0.25),
                 ),
@@ -508,9 +493,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                     [
                       locName,
                       locCountry,
-                    ]
-                        .where((s) => s.isNotEmpty)
-                        .join(', '),
+                    ].where((s) => s.isNotEmpty).join(', '),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -553,7 +536,8 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
           else
             ...forecast.map(
               (day) => _buildDayCard(
-                day,
+                context,
+                day as Map<String, dynamic>,
                 currency,
                 lang,
               ),
@@ -585,6 +569,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildDayCard(
+    BuildContext context,
     Map<String, dynamic> day,
     String currency,
     String lang,
@@ -595,8 +580,14 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     final iconCode =
         day['icon'] as String? ?? 'unknown';
 
-    final label =
+    final fallbackLabel =
         day['label'] as String? ?? '';
+
+    final label = _weatherLabel(
+      context,
+      iconCode,
+      fallbackLabel,
+    );
 
     final tempMax =
         day['tempMax'];
@@ -695,8 +686,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             height: 40,
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.10),
-              borderRadius:
-                  BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
@@ -789,9 +779,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             color: _slate400,
             size: 44,
           ),
-
           const SizedBox(height: 12),
-
           Text(
             context.tr('weather.noForecast'),
             style: const TextStyle(
@@ -836,6 +824,51 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // WEATHER LABEL LOCALIZATION
+  // ---------------------------------------------------------------------------
+
+  String _weatherLabel(
+    BuildContext context,
+    String iconCode,
+    String fallback,
+  ) {
+    switch (iconCode) {
+      case 'clear':
+        return context.tr('weather.clear');
+
+      case 'mostly_clear':
+        return context.tr('weather.mostlyClear');
+
+      case 'partly_cloudy':
+        return context.tr('weather.partlyCloudy');
+
+      case 'cloudy':
+        return context.tr('weather.cloudy');
+
+      case 'fog':
+        return context.tr('weather.fog');
+
+      case 'drizzle':
+        return context.tr('weather.drizzle');
+
+      case 'rain':
+        return context.tr('weather.rain');
+
+      case 'freezing_rain':
+        return context.tr('weather.freezingRain');
+
+      case 'snow':
+        return context.tr('weather.snow');
+
+      case 'thunderstorm':
+        return context.tr('weather.thunderstorm');
+
+      default:
+        return fallback;
+    }
   }
 
   // ---------------------------------------------------------------------------

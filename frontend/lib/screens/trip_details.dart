@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import '../../core/config/app_config.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/utils/logger.dart';
@@ -15,7 +13,10 @@ import 'weather/trip_weather_screen.dart';
 class TripDetailsScreen extends StatefulWidget {
   final TripModel trip;
 
-  const TripDetailsScreen({super.key, required this.trip});
+  const TripDetailsScreen({
+    super.key,
+    required this.trip,
+  });
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -187,6 +188,53 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  // Trip progress based on the actual trip dates.
+  //
+  // Before the trip starts -> 0%
+  // First day -> 0%
+  // During the trip -> proportional progress
+  // Last day -> 100%
+  // After the trip -> 100%
+  double _getTripProgress() {
+    final now = DateTime.now();
+
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
+    final start = DateTime(
+      _trip.startDate.year,
+      _trip.startDate.month,
+      _trip.startDate.day,
+    );
+
+    final end = DateTime(
+      _trip.endDate.year,
+      _trip.endDate.month,
+      _trip.endDate.day,
+    );
+
+    if (today.isBefore(start)) {
+      return 0.0;
+    }
+
+    if (!today.isBefore(end)) {
+      return 1.0;
+    }
+
+    final totalTravelDays = end.difference(start).inDays;
+
+    if (totalTravelDays <= 0) {
+      return 1.0;
+    }
+
+    final elapsedDays = today.difference(start).inDays;
+
+    return (elapsedDays / totalTravelDays).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -278,7 +326,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
                   return Center(
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: maxWidth),
+                      constraints: BoxConstraints(
+                        maxWidth: maxWidth,
+                      ),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
                           horizontalPadding,
@@ -387,8 +437,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       const SizedBox(height: 16),
                       Text(
                         _isRegenerating
-                            ? context.tr('details.regeneratingItinerary')
-                            : context.tr('details.savingTrip'),
+                            ? context.tr(
+                                'details.regeneratingItinerary',
+                              )
+                            : context.tr(
+                                'details.savingTrip',
+                              ),
                         style: const TextStyle(
                           fontFamily: 'Noto Serif',
                           fontSize: 20,
@@ -399,8 +453,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _isRegenerating
-                            ? context.tr('details.regeneratingDescription')
-                            : context.tr('details.savingDescription'),
+                            ? context.tr(
+                                'details.regeneratingDescription',
+                              )
+                            : context.tr(
+                                'details.savingDescription',
+                              ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 13,
@@ -449,11 +507,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               color: _slate600,
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            16,
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(context.tr('common.cancel')),
+              child: Text(
+                context.tr('common.cancel'),
+              ),
             ),
             FilledButton.icon(
               style: FilledButton.styleFrom(
@@ -465,7 +530,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 Icons.auto_awesome_outlined,
                 size: 18,
               ),
-              label: Text(context.tr('details.regenerate')),
+              label: Text(
+                context.tr('details.regenerate'),
+              ),
             ),
           ],
         );
@@ -492,7 +559,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         _isRegenerating = false;
       });
 
-      _showMessage(context.tr('details.itineraryRegenerated'));
+      _showMessage(
+        context.tr('details.itineraryRegenerated'),
+      );
     } catch (error) {
       if (!mounted) return;
 
@@ -503,7 +572,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         _errorMessage = message;
       });
 
-      _showMessage(message, isError: true);
+      _showMessage(
+        message,
+        isError: true,
+      );
     }
   }
 
@@ -620,8 +692,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                   child: SingleChildScrollView(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Center(
@@ -696,8 +767,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 label: Text(
                                   _formatDate(startDate),
                                 ),
-                                style:
-                                    _outlinedButtonStyle(),
+                                style: _outlinedButtonStyle(),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -713,8 +783,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 label: Text(
                                   _formatDate(endDate),
                                 ),
-                                style:
-                                    _outlinedButtonStyle(),
+                                style: _outlinedButtonStyle(),
                               ),
                             ),
                           ],
@@ -730,8 +799,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
                         Container(
                           height: 52,
-                          padding:
-                              const EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                           ),
                           decoration: BoxDecoration(
@@ -813,7 +881,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                 .account_balance_wallet_outlined,
                           ),
                           items: budgetOptions.map((option) {
-                            return DropdownMenuItem(
+                            return DropdownMenuItem<String>(
                               value: option,
                               child: Text(
                                 _budgetLabel(option),
@@ -887,8 +955,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children:
-                              _availableInterests.map(
+                          children: _availableInterests.map(
                             (interest) {
                               final selected =
                                   selectedInterests
@@ -911,8 +978,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                   });
                                 },
                                 selectedColor: _blue,
-                                backgroundColor:
-                                    _slate100,
+                                backgroundColor: _slate100,
                                 labelStyle: TextStyle(
                                   color: selected
                                       ? Colors.white
@@ -954,8 +1020,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             style: FilledButton.styleFrom(
                               backgroundColor: _midnight,
                               foregroundColor: Colors.white,
-                              shape:
-                                  RoundedRectangleBorder(
+                              shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(8),
                               ),
@@ -997,7 +1062,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         _isSaving = false;
       });
 
-      _showMessage(context.tr('details.tripUpdated'));
+      _showMessage(
+        context.tr('details.tripUpdated'),
+      );
     } catch (error) {
       if (!mounted) return;
 
@@ -1008,7 +1075,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         _errorMessage = message;
       });
 
-      _showMessage(message, isError: true);
+      _showMessage(
+        message,
+        isError: true,
+      );
     }
   }
 
@@ -1018,16 +1088,23 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   ) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: _slate500),
+      prefixIcon: Icon(
+        icon,
+        color: _slate500,
+      ),
       filled: true,
       fillColor: _white,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _border),
+        borderSide: const BorderSide(
+          color: _border,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _border),
+        borderSide: const BorderSide(
+          color: _border,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -1043,7 +1120,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     return OutlinedButton.styleFrom(
       foregroundColor: _midnight,
       minimumSize: const Size(0, 52),
-      side: const BorderSide(color: _border),
+      side: const BorderSide(
+        color: _border,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
       ),
@@ -1094,7 +1173,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
+          constraints: const BoxConstraints(
+            maxWidth: 440,
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1126,7 +1207,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               const SizedBox(height: 10),
               Text(
                 _errorMessage ??
-                    context.tr('details.somethingWentWrong'),
+                    context.tr(
+                      'details.somethingWentWrong',
+                    ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
@@ -1146,7 +1229,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: _midnight,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(140, 48),
+                  minimumSize: const Size(
+                    140,
+                    48,
+                  ),
                 ),
               ),
             ],
@@ -1217,8 +1303,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
           return Center(
             child: ConstrainedBox(
-              constraints:
-                  BoxConstraints(maxWidth: maxWidth),
+              constraints: BoxConstraints(
+                maxWidth: maxWidth,
+              ),
               child: Column(
                 crossAxisAlignment:
                     CrossAxisAlignment.start,
@@ -1387,7 +1474,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
+          Icon(
+            icon,
+            size: 14,
+            color: color,
+          ),
           const SizedBox(width: 6),
           Text(
             label,
@@ -1402,7 +1493,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  Widget _heroMetric(String value, String label) {
+  Widget _heroMetric(
+    String value,
+    String label,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 12,
@@ -1562,26 +1656,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _buildStatsRow() {
-    final activitiesCount =
-        _trip.itinerary.fold<int>(
-      0,
-      (sum, day) {
-        if (day is! Map) return sum;
-        final acts = day['activities'];
-        return sum +
-            (acts is List ? acts.length : 0);
-      },
-    );
-
-    final expectedActivities =
-        _trip.numberOfDays * 3;
-
-    final planPercent =
-        expectedActivities == 0
-            ? 0.0
-            : (activitiesCount /
-                    expectedActivities)
-                .clamp(0.0, 1.0);
+    // Progress is based on the actual trip dates,
+    // not the number of itinerary activities.
+    final tripProgress = _getTripProgress();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1594,20 +1671,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             value: _trip.budget.isEmpty
                 ? '—'
                 : _budgetLabel(_trip.budget),
-            icon: Icons
-                .account_balance_wallet_outlined,
+            icon: Icons.account_balance_wallet_outlined,
           ),
           _statTile(
-            label:
-                context.tr('details.planComplete'),
+            label: context.tr('details.planComplete'),
             value:
-                '${(planPercent * 100).round()}%',
+                '${(tripProgress * 100).round()}%',
             icon: Icons.map_outlined,
-            progress: planPercent,
+            progress: tripProgress,
           ),
           _statTile(
-            label:
-                context.tr('details.duration'),
+            label: context.tr('details.duration'),
             value:
                 '${_trip.numberOfDays} '
                 '${_trip.numberOfDays == 1 ? context.tr('details.day') : context.tr('details.days')}',
@@ -1619,12 +1693,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           return Column(
             children: tiles
                 .map(
-                  (t) => Padding(
+                  (tile) => Padding(
                     padding:
                         const EdgeInsets.only(
                       bottom: 12,
                     ),
-                    child: t,
+                    child: tile,
                   ),
                 )
                 .toList(),
@@ -1636,13 +1710,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               CrossAxisAlignment.stretch,
           children: tiles
               .map(
-                (t) => Expanded(
+                (tile) => Expanded(
                   child: Padding(
                     padding:
                         const EdgeInsets.symmetric(
                       horizontal: 6,
                     ),
-                    child: t,
+                    child: tile,
                   ),
                 ),
               )
@@ -1725,7 +1799,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       0,
       (sum, day) {
         if (day is! Map) return sum;
+
         final acts = day['activities'];
+
         return sum +
             (acts is List ? acts.length : 0);
       },
@@ -1774,7 +1850,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               const NeverScrollableScrollPhysics(),
           childAspectRatio: 1.0,
           children: items
-              .map((item) => _deckTile(item))
+              .map(
+                (item) => _deckTile(item),
+              )
               .toList(),
         ),
       ],
@@ -1856,8 +1934,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            TripWeatherScreen(trip: _trip),
+        builder: (_) => TripWeatherScreen(
+          trip: _trip,
+        ),
       ),
     );
   }
@@ -1874,8 +1953,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            ExpenseTrackerScreen(trip: _trip),
+        builder: (_) => ExpenseTrackerScreen(
+          trip: _trip,
+        ),
       ),
     );
   }
@@ -1921,7 +2001,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
       if (activities.isNotEmpty) {
         dayEntries.add(
-          MapEntry(dayNumber, activities),
+          MapEntry(
+            dayNumber,
+            activities,
+          ),
         );
       }
     }
@@ -2008,8 +2091,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         ? Center(
                             child: Padding(
                               padding:
-                                  const EdgeInsets
-                                      .all(24),
+                                  const EdgeInsets.all(
+                                24,
+                              ),
                               child: Text(
                                 context.tr(
                                   'details.noActivities',
@@ -2026,8 +2110,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             controller:
                                 scrollController,
                             padding:
-                                const EdgeInsets
-                                    .fromLTRB(
+                                const EdgeInsets.fromLTRB(
                               20,
                               8,
                               20,
@@ -2042,14 +2125,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
                               return Padding(
                                 padding:
-                                    const EdgeInsets
-                                        .only(
+                                    const EdgeInsets.only(
                                   bottom: 20,
                                 ),
                                 child: Column(
                                   crossAxisAlignment:
-                                      CrossAxisAlignment
-                                          .start,
+                                      CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       context.tr(
@@ -2061,21 +2142,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                       ),
                                       style:
                                           const TextStyle(
-                                        fontSize:
-                                            10,
+                                        fontSize: 10,
                                         fontWeight:
-                                            FontWeight
-                                                .w700,
+                                            FontWeight.w700,
                                         letterSpacing:
                                             1.1,
                                         color: _blue,
                                       ),
                                     ),
-                                    const SizedBox(
-                                      height: 8,
-                                    ),
-                                    ...entry.value
-                                        .map(
+                                    const SizedBox(height: 8),
+                                    ...entry.value.map(
                                       (activity) {
                                         final title =
                                             _getString(
@@ -2097,13 +2173,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
                                         return Container(
                                           margin:
-                                              const EdgeInsets
-                                                  .only(
+                                              const EdgeInsets.only(
                                             bottom: 8,
                                           ),
                                           padding:
-                                              const EdgeInsets
-                                                  .all(
+                                              const EdgeInsets.all(
                                             12,
                                           ),
                                           decoration:
@@ -2127,14 +2201,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                                                 _getTimeIconData(
                                                   time,
                                                 ),
-                                                size:
-                                                    16,
+                                                size: 16,
                                                 color:
                                                     _blue,
                                               ),
                                               const SizedBox(
-                                                width:
-                                                    10,
+                                                width: 10,
                                               ),
                                               Expanded(
                                                 child:
@@ -2197,6 +2269,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
 
     final breakdown = cost['breakdown'];
+
     final currency =
         cost['currency']?.toString() ?? 'USD';
 
@@ -2637,8 +2710,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       if (date.isNotEmpty)
                         Padding(
                           padding:
-                              const EdgeInsets
-                                  .only(
+                              const EdgeInsets.only(
                             top: 5,
                           ),
                           child: Text(

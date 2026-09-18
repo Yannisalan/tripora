@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/preferences/app_preferences.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/preferences/app_preferences.dart';
 import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
@@ -129,7 +129,6 @@ class ItineraryScreen extends StatelessWidget {
   String get budget {
     return _stringValue(
       trip['budget'],
-      'Moderate',
     );
   }
 
@@ -140,7 +139,6 @@ class ItineraryScreen extends StatelessWidget {
   String get travelStyle {
     return _stringValue(
       trip['travelStyle'] ?? trip['travel_style'],
-      'Balanced',
     );
   }
 
@@ -1380,7 +1378,7 @@ class ItineraryScreen extends StatelessWidget {
             ? context.tr(
                 'it.budgetValue',
                 params: {
-                  'budget': budget,
+                  'budget': _localizedBudget(context),
                 },
               )
             : null,

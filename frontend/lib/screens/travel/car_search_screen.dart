@@ -475,8 +475,7 @@ class _CarCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 56,
@@ -487,8 +486,7 @@ class _CarCard extends StatelessWidget {
                     .colorScheme
                     .tertiary
                     .withValues(alpha: 0.12),
-                borderRadius:
-                    BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: ExcludeSemantics(
                 child: Icon(
@@ -505,8 +503,7 @@ class _CarCard extends StatelessWidget {
 
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name.isEmpty
@@ -517,9 +514,8 @@ class _CarCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: context
-                          .triporaColors
-                          .textPrimary,
+                      color:
+                          context.triporaColors.textPrimary,
                     ),
                   ),
 
@@ -529,9 +525,8 @@ class _CarCard extends StatelessWidget {
                       details,
                       style: TextStyle(
                         fontSize: 13,
-                        color: context
-                            .triporaColors
-                            .textMuted,
+                        color:
+                            context.triporaColors.textMuted,
                       ),
                     ),
                   ],

@@ -31,6 +31,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
   DateTime? endDate;
 
   int travelers = 1;
+
+  // Internal values. These are translated only when displayed.
   String budget = 'Moderate';
   String travelStyle = 'Balanced';
 
@@ -151,7 +153,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   String _localizedTravelerType(
     BuildContext context,
-    String value) {
+    String value,
+  ) {
     switch (value) {
       case 'Solo':
         return context.tr('planner.solo');
@@ -278,9 +281,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context)
-                .colorScheme
-                .copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
                   primary: _midnight,
                   surface: _white,
                 ),
@@ -332,8 +333,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   // ============================================================
 
   void _applyPacingPreset(String preset) {
-    final DateTime base =
-        startDate ?? DateTime.now();
+    final DateTime base = startDate ?? DateTime.now();
 
     final DateTime start = DateTime(
       base.year,
@@ -593,8 +593,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         return;
       }
 
-      final dynamic tripData =
-          response['trip'];
+      final dynamic tripData = response['trip'];
 
       if (tripData is! Map) {
         _showMessage(
@@ -1384,7 +1383,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             _travelerCard(
               context: context,
               icon: Icons.person_outline,
-              title: context.tr('planner.solo'),
+              type: 'Solo',
               subtitle: context.tr(
                 'planner.independentPace',
               ),
@@ -1401,7 +1400,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             _travelerCard(
               context: context,
               icon: Icons.favorite_border,
-              title: context.tr('planner.couple'),
+              type: 'Couple',
               subtitle: context.tr(
                 'planner.curatedForTwo',
               ),
@@ -1417,8 +1416,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
             _travelerCard(
               context: context,
-              icon: Icons.escalator_warning_outlined,
-              title: context.tr('planner.family'),
+              icon:
+                  Icons.escalator_warning_outlined,
+              type: 'Family',
               subtitle: context.tr(
                 'planner.kidFriendlyRhythm',
               ),
@@ -1436,7 +1436,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             _travelerCard(
               context: context,
               icon: Icons.groups_outlined,
-              title: context.tr('planner.friends'),
+              type: 'Friends',
               subtitle: context.tr(
                 'planner.sharedMemories',
               ),
@@ -1472,7 +1472,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _travelerCard({
     required BuildContext context,
     required IconData icon,
-    required String title,
+    required String type,
     required String subtitle,
     required String rangeLabel,
     required bool isSelected,
@@ -1543,7 +1543,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               Text(
                 _localizedTravelerType(
                   context,
-                  title,
+                  type,
                 ),
                 style: TextStyle(
                   fontFamily:

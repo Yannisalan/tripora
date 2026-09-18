@@ -13,14 +13,18 @@ class CheckFlightPricesScreen extends StatefulWidget {
   /// Optional prefill: `{origin, destination, departDate}` (IATA + ISO date).
   final Map<String, dynamic>? prefill;
 
-  const CheckFlightPricesScreen({super.key, this.prefill});
+  const CheckFlightPricesScreen({
+    super.key,
+    this.prefill,
+  });
 
   @override
   State<CheckFlightPricesScreen> createState() =>
       _CheckFlightPricesScreenState();
 }
 
-class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
+class _CheckFlightPricesScreenState
+    extends State<CheckFlightPricesScreen> {
   final DuffelService _service = DuffelService();
   final _formKey = GlobalKey<FormState>();
 
@@ -61,6 +65,10 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
     super.dispose();
   }
 
+  // ---------------------------------------------------------------------------
+  // Search
+  // ---------------------------------------------------------------------------
+
   Future<void> _search() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -80,9 +88,11 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
 
       final list = (results['results'] is List)
           ? (results['results'] as List)
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList()
+              .whereType<Map>()
+              .map(
+                (e) => Map<String, dynamic>.from(e),
+              )
+              .toList()
           : <Map<String, dynamic>>[];
 
       setState(() {
@@ -106,6 +116,10 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
       _error = message;
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Main build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -136,11 +150,14 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
         padding: const EdgeInsets.all(20),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
+            constraints: const BoxConstraints(
+              maxWidth: 640,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     context.tr('flightPrices.description'),
@@ -150,9 +167,13 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
                       color: colors.textSecondary,
                     ),
                   ),
+
                   const SizedBox(height: 18),
+
                   _buildForm(),
+
                   const SizedBox(height: 16),
+
                   if (_error != null)
                     _Banner(
                       text: _error!,
@@ -160,7 +181,9 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
                     )
                   else if (_busy)
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 24,
+                      ),
                       child: Center(
                         child: CircularProgressIndicator(),
                       ),
@@ -168,11 +191,14 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
                   else if (_searched) ...[
                     Text(
                       _results.length == 1
-                          ? context.tr('flightPrices.resultOne')
+                          ? context.tr(
+                              'flightPrices.resultOne',
+                            )
                           : context.tr(
                               'flightPrices.resultMany',
                               params: {
-                                'count': _results.length.toString(),
+                                'count':
+                                    _results.length.toString(),
                               },
                             ),
                       style: TextStyle(
@@ -181,11 +207,16 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
                         color: colors.textPrimary,
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     if (_results.isEmpty)
                       const _EmptyState()
                     else
-                      ..._results.map(_PriceCard.new),
+                      ..._results.map(
+                        _PriceCard.new,
+                      ),
+
                     if (_disclaimer != null) ...[
                       const SizedBox(height: 16),
                       Text(
@@ -207,6 +238,10 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Search form
+  // ---------------------------------------------------------------------------
+
   Widget _buildForm() {
     final colors = context.triporaColors;
 
@@ -214,51 +249,78 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: colors.border),
+        side: BorderSide(
+          color: colors.border,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment:
+              CrossAxisAlignment.stretch,
           children: [
             TextFormField(
               controller: _origin,
-              textCapitalization: TextCapitalization.words,
+              textCapitalization:
+                  TextCapitalization.words,
               decoration: InputDecoration(
-                labelText: context.tr('flightPrices.from'),
-                hintText: context.tr('flightPrices.fromHint'),
-                prefixIcon: const Icon(Icons.flight_takeoff),
+                labelText: context.tr(
+                  'flightPrices.from',
+                ),
+                hintText: context.tr(
+                  'flightPrices.fromHint',
+                ),
+                prefixIcon: const Icon(
+                  Icons.flight_takeoff,
+                ),
               ),
               validator: _placeValidator(),
             ),
+
             const SizedBox(height: 14),
+
             TextFormField(
               controller: _destination,
-              textCapitalization: TextCapitalization.words,
+              textCapitalization:
+                  TextCapitalization.words,
               decoration: InputDecoration(
-                labelText: context.tr('flightPrices.to'),
-                hintText: context.tr('flightPrices.toHint'),
-                prefixIcon: const Icon(Icons.location_on_outlined),
+                labelText: context.tr(
+                  'flightPrices.to',
+                ),
+                hintText: context.tr(
+                  'flightPrices.toHint',
+                ),
+                prefixIcon: const Icon(
+                  Icons.location_on_outlined,
+                ),
               ),
               validator: _placeValidator(),
             ),
+
             const SizedBox(height: 14),
+
             TextFormField(
               controller: _depart,
               readOnly: true,
               onTap: _pickDate,
               decoration: InputDecoration(
-                labelText: context.tr('flightPrices.departDate'),
+                labelText: context.tr(
+                  'flightPrices.departDate',
+                ),
                 prefixIcon: const Icon(
                   Icons.calendar_today_outlined,
                 ),
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty)
-                      ? context.tr('flightPrices.required')
+                      ? context.tr(
+                          'flightPrices.required',
+                        )
                       : null,
             ),
+
             const SizedBox(height: 18),
+
             SizedBox(
               height: 52,
               child: FilledButton.icon(
@@ -272,11 +334,17 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.search),
+                    : const Icon(
+                        Icons.search,
+                      ),
                 label: Text(
                   _busy
-                      ? context.tr('flightPrices.checking')
-                      : context.tr('flightPrices.checkPrices'),
+                      ? context.tr(
+                          'flightPrices.checking',
+                        )
+                      : context.tr(
+                          'flightPrices.checkPrices',
+                        ),
                 ),
               ),
             ),
@@ -286,30 +354,44 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Validation
+  // ---------------------------------------------------------------------------
+
   String? Function(String?) _placeValidator() {
     return (v) {
       final value = (v ?? '').trim();
 
       if (value.isEmpty) {
-        return context.tr('flightPrices.locationRequired');
+        return context.tr(
+          'flightPrices.locationRequired',
+        );
       }
 
       return null;
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Date picker
+  // ---------------------------------------------------------------------------
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
 
-    final initial = DateTime.tryParse(_depart.text) ?? now;
+    final initial =
+        DateTime.tryParse(_depart.text) ?? now;
 
-    final safeInitial = initial.isBefore(now) ? now : initial;
+    final safeInitial =
+        initial.isBefore(now) ? now : initial;
 
     final picked = await showDatePicker(
       context: context,
       initialDate: safeInitial,
       firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      lastDate: now.add(
+        const Duration(days: 365),
+      ),
     );
 
     if (picked != null) {
@@ -321,6 +403,10 @@ class _CheckFlightPricesScreenState extends State<CheckFlightPricesScreen> {
   }
 }
 
+// =============================================================================
+// Price card
+// =============================================================================
+
 class _PriceCard extends StatelessWidget {
   final Map<String, dynamic> result;
 
@@ -331,28 +417,39 @@ class _PriceCard extends StatelessWidget {
     final colors = context.triporaColors;
 
     final price = result['price'];
-    final money = (price is Map)
+
+    final money = price is Map
         ? price
         : <String, dynamic>{};
 
-    final amount = (money['amount'] is num)
+    final amount = money['amount'] is num
         ? (money['amount'] as num).toDouble()
         : 0.0;
 
-    final currency = (money['currency'] ?? 'USD').toString();
+    // Currency is API data.
+    final currency =
+        (money['currency'] ?? 'USD').toString();
 
-    final airline = (result['airline'] ?? '').toString();
+    // Airline and flight number are API data.
+    final airline =
+        (result['airline'] ?? '').toString();
+
     final flightNumber =
         (result['flightNumber'] ?? '').toString();
+
     final depart =
         (result['departureTime'] ?? '').toString();
 
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(
+        bottom: 12,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colors.border),
+        side: BorderSide(
+          color: colors.border,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -363,14 +460,19 @@ class _PriceCard extends StatelessWidget {
               color: context.appStatus.info,
               size: 20,
             ),
+
             const SizedBox(width: 12),
+
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     airline.isEmpty
-                        ? context.tr('flightPrices.flight')
+                        ? context.tr(
+                            'flightPrices.flight',
+                          )
                         : airline,
                     style: TextStyle(
                       fontSize: 15,
@@ -378,7 +480,9 @@ class _PriceCard extends StatelessWidget {
                       color: colors.textPrimary,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
                     [
                       if (flightNumber.isNotEmpty)
@@ -387,7 +491,10 @@ class _PriceCard extends StatelessWidget {
                         '${result['origin'] ?? ''} → '
                         '${result['destination'] ?? ''}',
                       if (depart.isNotEmpty)
-                        depart.replaceFirst('T', ' '),
+                        depart.replaceFirst(
+                          'T',
+                          ' ',
+                        ),
                     ].join('  •  '),
                     style: TextStyle(
                       fontSize: 12,
@@ -397,6 +504,7 @@ class _PriceCard extends StatelessWidget {
                 ],
               ),
             ),
+
             Text(
               AppPreferences.instance.formatMoney(
                 amount,
@@ -405,7 +513,9 @@ class _PriceCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary,
               ),
             ),
           ],
@@ -415,6 +525,10 @@ class _PriceCard extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// Empty state
+// =============================================================================
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -423,7 +537,9 @@ class _EmptyState extends StatelessWidget {
     final colors = context.triporaColors;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(
+        vertical: 24,
+      ),
       child: Column(
         children: [
           Icon(
@@ -431,17 +547,25 @@ class _EmptyState extends StatelessWidget {
             size: 40,
             color: colors.textMuted,
           ),
+
           const SizedBox(height: 10),
+
           Text(
             context.tr('flightPrices.noPrices'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: colors.textMuted),
+            style: TextStyle(
+              color: colors.textMuted,
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+// =============================================================================
+// Error banner
+// =============================================================================
 
 class _Banner extends StatelessWidget {
   final String text;
@@ -458,15 +582,21 @@ class _Banner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(
+          alpha: 0.1,
+        ),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: color.withValues(alpha: 0.4),
+          color: color.withValues(
+            alpha: 0.4,
+          ),
         ),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color),
+        style: TextStyle(
+          color: color,
+        ),
       ),
     );
   }

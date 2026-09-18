@@ -24,6 +24,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   final _depart = TextEditingController();
   final _returnCtrl = TextEditingController();
 
+  // These are canonical values used by the flight API.
   int _passengers = 1;
   String _cabin = 'economy';
   String _dateMode = 'date';
@@ -48,7 +49,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   static const Color slate200 = Color(0xFFE2E8F0);
   static const Color slate300 = Color(0xFFCBD5E1);
   static const Color slate500 = Color(0xFF64748B);
-  static const Color slate600 = Color(0xFF475569);
 
   static const Color textSecondary = Color(0xFF47464F);
 
@@ -711,9 +711,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         for (var i = 1; i <= 9; i++)
           DropdownMenuItem(
             value: i,
-            child: Text(
-              '$i',
-            ),
+            child: Text('$i'),
           ),
       ],
       onChanged: (v) {
@@ -817,8 +815,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           children: [
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     context
@@ -915,11 +912,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme:
-                Theme.of(context).colorScheme.copyWith(
-                      primary: midnight,
-                      surface: white,
-                    ),
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: midnight,
+                  surface: white,
+                ),
           ),
           child: child!,
         );
@@ -963,11 +959,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme:
-                Theme.of(context).colorScheme.copyWith(
-                      primary: midnight,
-                      surface: white,
-                    ),
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: midnight,
+                  surface: white,
+                ),
           ),
           child: child!,
         );
@@ -1012,11 +1007,11 @@ class _FlightCard extends StatelessWidget {
         ? (money['amount'] as num).toDouble()
         : 0.0;
 
-    final currency =
-        (money['currency'] ?? 'USD').toString();
+    // Currency code is API/data, not UI text.
+    final currency = (money['currency'] ?? 'USD').toString();
 
-    final airline =
-        (flight['airline'] ?? '').toString();
+    // Airline name is API/data and should not be translated.
+    final airline = (flight['airline'] ?? '').toString();
 
     final segments = flight['segments'] is List
         ? (flight['segments'] as List)
@@ -1034,8 +1029,7 @@ class _FlightCard extends StatelessWidget {
       final first =
           Map<String, dynamic>.from(segments.first);
 
-      final depAirport =
-          first['departureAirport'];
+      final depAirport = first['departureAirport'];
 
       if (depAirport is Map) {
         originCode =
@@ -1048,8 +1042,7 @@ class _FlightCard extends StatelessWidget {
       final last =
           Map<String, dynamic>.from(segments.last);
 
-      final arrAirport =
-          last['arrivalAirport'];
+      final arrAirport = last['arrivalAirport'];
 
       if (arrAirport is Map) {
         destCode =

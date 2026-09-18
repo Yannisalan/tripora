@@ -1,8 +1,8 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
@@ -19,9 +19,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController =
+      TextEditingController();
+
+  final TextEditingController _emailController =
+      TextEditingController();
+
+  final TextEditingController _passwordController =
+      TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -37,10 +42,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
-
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
 
@@ -50,14 +51,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!_acceptedTerms || !_acceptedPrivacy) {
       setState(() {
-        _statusMessage = context.tr('register.acceptTermsMessage');
+        _statusMessage =
+            context.tr('register.acceptTermsMessage');
       });
 
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(context.tr('register.acceptTermsSnack')),
+            content: Text(
+              context.tr('register.acceptTermsSnack'),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -89,13 +93,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             behavior: SnackBarBehavior.floating,
             backgroundColor:
-                Theme.of(context).extension<AppStatusColors>()?.success ??
+                Theme.of(context)
+                        .extension<AppStatusColors>()
+                        ?.success ??
                     AppColors.success,
           ),
         );
 
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/login',
+        AppRoutes.login,
         (route) => false,
       );
     } catch (error) {
@@ -119,7 +125,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: Text(message),
             behavior: SnackBarBehavior.floating,
             backgroundColor:
-                Theme.of(context).extension<AppStatusColors>()?.error ??
+                Theme.of(context)
+                        .extension<AppStatusColors>()
+                        ?.error ??
                     AppColors.error,
           ),
         );
@@ -128,12 +136,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.triporaColors.backgroundColor,
+    final colors = context.triporaColors;
 
-      // ============================================================
-      // APP BAR
-      // ============================================================
+    return Scaffold(
+      backgroundColor: colors.backgroundColor,
 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -143,39 +149,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context.tr('register.title'),
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: context.triporaColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
       ),
 
-      // ============================================================
-      // BODY
-      // ============================================================
-
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-
+            constraints: const BoxConstraints(
+              maxWidth: 420,
+            ),
             child: Form(
               key: _formKey,
-
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
                 children: [
-                  // ==================================================
                   // BRAND LOGO
-                  // ==================================================
-
                   Center(
                     child: Container(
                       width: 88,
                       height: 88,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius:
+                            BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
                             color: Theme.of(context)
@@ -188,15 +187,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius:
+                            BorderRadius.circular(22),
                         child: Image.asset(
                           'assets/images/logo_new.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
+                          errorBuilder:
+                              (context, error, stackTrace) {
                             return Container(
                               alignment: Alignment.center,
-                              decoration: const BoxDecoration(
-                                gradient: AppColors.brandGradient,
+                              decoration:
+                                  const BoxDecoration(
+                                gradient:
+                                    AppColors.brandGradient,
                               ),
                               child: const Icon(
                                 Icons.explore,
@@ -212,17 +215,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ==================================================
                   // TITLE
-                  // ==================================================
-
                   Text(
                     context.tr('register.heading'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: context.triporaColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
 
@@ -233,18 +233,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
-                      color: context.triporaColors.textMuted,
+                      color: colors.textMuted,
                     ),
                   ),
 
-                  // ==================================================
                   // SOCIAL SIGN-IN
-                  // ==================================================
-                  //
-                  // Google and Apple remain implemented for Android/iOS,
-                  // but are hidden on Flutter Web.
-                  // ==================================================
-
                   if (!kIsWeb) ...[
                     const SizedBox(height: 32),
 
@@ -252,7 +245,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onSuccess: () {
                         if (!mounted) return;
 
-                        Navigator.of(context).pushNamedAndRemoveUntil(
+                        Navigator.of(context)
+                            .pushNamedAndRemoveUntil(
                           AppRoutes.home,
                           (route) => false,
                         );
@@ -268,22 +262,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 32),
                   ],
 
-                  // ==================================================
                   // NAME
-                  // ==================================================
-
                   TextFormField(
                     controller: _nameController,
                     enabled: !_isLoading,
-                    textInputAction: TextInputAction.next,
+                    textInputAction:
+                        TextInputAction.next,
                     decoration: InputDecoration(
-                      labelText: context.tr('register.name'),
-                      hintText: context.tr('register.nameHint'),
-                      prefixIcon: const Icon(Icons.person_outline),
+                      labelText:
+                          context.tr('register.name'),
+                      hintText:
+                          context.tr('register.nameHint'),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                      ),
                     ),
                     validator: (value) {
                       if ((value ?? '').trim().isEmpty) {
-                        return context.tr('register.nameRequired');
+                        return context.tr(
+                          'register.nameRequired',
+                        );
                       }
 
                       return null;
@@ -292,29 +290,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ==================================================
                   // EMAIL
-                  // ==================================================
-
                   TextFormField(
                     controller: _emailController,
                     enabled: !_isLoading,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
+                    keyboardType:
+                        TextInputType.emailAddress,
+                    textInputAction:
+                        TextInputAction.next,
                     decoration: InputDecoration(
-                      labelText: context.tr('login.email'),
-                      hintText: context.tr('login.emailHint'),
-                      prefixIcon: const Icon(Icons.email_outlined),
+                      labelText:
+                          context.tr('login.email'),
+                      hintText:
+                          context.tr('login.emailHint'),
+                      prefixIcon: const Icon(
+                        Icons.email_outlined,
+                      ),
                     ),
                     validator: (value) {
-                      final email = (value ?? '').trim();
+                      final email =
+                          (value ?? '').trim();
 
                       if (email.isEmpty) {
-                        return context.tr('login.emailRequired');
+                        return context.tr(
+                          'login.emailRequired',
+                        );
                       }
 
                       if (!email.contains('@')) {
-                        return context.tr('login.emailInvalid');
+                        return context.tr(
+                          'login.emailInvalid',
+                        );
                       }
 
                       return null;
@@ -323,29 +329,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ==================================================
                   // PASSWORD
-                  // ==================================================
-
                   TextFormField(
                     controller: _passwordController,
                     enabled: !_isLoading,
                     obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
+                    textInputAction:
+                        TextInputAction.done,
                     decoration: InputDecoration(
-                      labelText: context.tr('login.password'),
-                      hintText: context.tr('login.passwordHint'),
-                      prefixIcon: const Icon(Icons.lock_outline),
-
+                      labelText:
+                          context.tr('login.password'),
+                      hintText:
+                          context.tr('login.passwordHint'),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
+                      ),
                       suffixIcon: IconButton(
                         tooltip: _obscurePassword
-                            ? context.tr('login.showPassword')
-                            : context.tr('login.hidePassword'),
+                            ? context.tr(
+                                'login.showPassword',
+                              )
+                            : context.tr(
+                                'login.hidePassword',
+                              ),
                         onPressed: _isLoading
                             ? null
                             : () {
                                 setState(() {
-                                  _obscurePassword = !_obscurePassword;
+                                  _obscurePassword =
+                                      !_obscurePassword;
                                 });
                               },
                         icon: Icon(
@@ -357,7 +369,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     validator: (value) {
                       if ((value ?? '').length < 6) {
-                        return context.tr('register.passwordTooShort');
+                        return context.tr(
+                          'register.passwordTooShort',
+                        );
                       }
 
                       return null;
@@ -371,13 +385,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ==================================================
                   // TERMS & CONDITIONS
-                  // ==================================================
-
                   _ConsentRow(
-                    leading: context.tr('register.agreeTo'),
-                    label: context.tr('register.terms'),
+                    leading:
+                        context.tr('register.agreeTo'),
+                    label:
+                        context.tr('register.terms'),
                     route: AppRoutes.terms,
                     value: _acceptedTerms,
                     onChanged: _isLoading
@@ -389,13 +402,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                   ),
 
-                  // ==================================================
                   // PRIVACY POLICY
-                  // ==================================================
-
                   _ConsentRow(
-                    leading: context.tr('register.readThe'),
-                    label: context.tr('register.privacyPolicy'),
+                    leading:
+                        context.tr('register.readThe'),
+                    label:
+                        context.tr(
+                      'register.privacyPolicy',
+                    ),
                     route: AppRoutes.privacy,
                     value: _acceptedPrivacy,
                     onChanged: _isLoading
@@ -409,39 +423,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 8),
 
-                  // ==================================================
                   // CREATE ACCOUNT BUTTON
-                  // ==================================================
-
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: GradientButton(
-                      onPressed: _isLoading ? null : _register,
+                      onPressed:
+                          _isLoading ? null : _register,
                       height: 52,
                       child: _isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
+                              child:
+                                  CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
                               ),
                             )
                           : Text(
-                              context.tr('register.title'),
-                              style: TextStyle(
+                              context.tr(
+                                'register.title',
+                              ),
+                              style: const TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                                fontWeight:
+                                    FontWeight.w600,
                               ),
                             ),
                     ),
                   ),
 
-                  // ==================================================
                   // STATUS MESSAGE
-                  // ==================================================
-
                   if (_statusMessage != null) ...[
                     const SizedBox(height: 16),
 
@@ -453,7 +466,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             .colorScheme
                             .primary
                             .withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius:
+                            BorderRadius.circular(14),
                         border: Border.all(
                           color: Theme.of(context)
                               .colorScheme
@@ -464,7 +478,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Text(
                         _statusMessage!,
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary,
                           fontWeight: FontWeight.w600,
                           height: 1.4,
                         ),
@@ -474,27 +490,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ==================================================
                   // LOGIN LINK
-                  // ==================================================
-
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
                     children: [
                       Text(
-                        context.tr('register.haveAccount'),
+                        context.tr(
+                          'register.haveAccount',
+                        ),
                       ),
-
                       TextButton(
                         onPressed: _isLoading
                             ? null
                             : () {
-                                Navigator.of(context).pushNamedAndRemoveUntil(
-                                  '/login',
+                                Navigator.of(context)
+                                    .pushNamedAndRemoveUntil(
+                                  AppRoutes.login,
                                   (route) => false,
                                 );
                               },
-                        child: Text(context.tr('login.signIn')),
+                        child: Text(
+                          context.tr('login.signIn'),
+                        ),
                       ),
                     ],
                   ),
@@ -523,7 +541,9 @@ class _FieldsDivider extends StatelessWidget {
           child: Divider(),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+          ),
           child: Text(
             context.tr('register.orWithEmail'),
             style: TextStyle(
@@ -568,13 +588,11 @@ class _ConsentRow extends StatelessWidget {
           ? null
           : () => onChanged!(!value),
       borderRadius: BorderRadius.circular(8),
-
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 4,
           vertical: 6,
         ),
-
         child: Row(
           children: [
             SizedBox(
@@ -585,7 +603,8 @@ class _ConsentRow extends StatelessWidget {
                 onChanged: onChanged == null
                     ? null
                     : (_) => onChanged!(!value),
-                visualDensity: VisualDensity.compact,
+                visualDensity:
+                    VisualDensity.compact,
               ),
             ),
 
@@ -607,7 +626,8 @@ class _ConsentRow extends StatelessWidget {
                     WidgetSpan(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.of(context).pushNamed(route);
+                          Navigator.of(context)
+                              .pushNamed(route);
                         },
                         child: Text(
                           label,
@@ -615,8 +635,10 @@ class _ConsentRow extends StatelessWidget {
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary,
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.underline,
+                            fontWeight:
+                                FontWeight.w700,
+                            decoration:
+                                TextDecoration.underline,
                           ),
                         ),
                       ),

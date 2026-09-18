@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../core/l10n/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/logger.dart';
@@ -49,8 +48,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     switch (_step) {
       case _ResetStep.requestCode:
         return context.tr('forgotPassword.resetTitle');
+
       case _ResetStep.verifyCode:
         return context.tr('forgotPassword.checkEmail');
+
       case _ResetStep.newPassword:
         return context.tr('forgotPassword.newPasswordTitle');
     }
@@ -64,7 +65,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.forgotPassword(email: _emailController.text);
+      await _authService.forgotPassword(
+        email: _emailController.text.trim(),
+      );
 
       if (!mounted) return;
 
@@ -74,14 +77,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       });
 
       _showMessage(
-        'If the account exists, a password reset code has been sent.',
+        context.tr('forgotPassword.emailSent'),
       );
     } catch (error) {
       appLog('FORGOT PASSWORD ERROR: $error');
+
       if (!mounted) return;
-      _showMessage(_cleanError(error), isError: true);
+
+      _showMessage(
+        _cleanError(error),
+        isError: true,
+      );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -95,7 +105,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       final token = await _authService.verifyResetCode(
         email: _email ?? _emailController.text.trim(),
-        code: _codeController.text,
+        code: _codeController.text.trim(),
       );
 
       if (!mounted) return;
@@ -106,10 +116,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       });
     } catch (error) {
       appLog('VERIFY RESET CODE ERROR: $error');
+
       if (!mounted) return;
-      _showMessage(_cleanError(error), isError: true);
+
+      _showMessage(
+        _cleanError(error),
+        isError: true,
+      );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -128,7 +145,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (!mounted) return;
 
-      _showMessage('Password reset successfully. You can now sign in.');
+      _showMessage(
+        context.tr('forgotPassword.resetSuccess'),
+      );
 
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.login,
@@ -136,39 +155,56 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
     } catch (error) {
       appLog('RESET PASSWORD ERROR: $error');
+
       if (!mounted) return;
-      // A stale/expired token means the code step must restart.
+
       final message = _cleanError(error);
+
+      // A stale/expired token means the code step must restart.
       if (message.toLowerCase().contains('token')) {
-        setState(() => _step = _ResetStep.requestCode);
-        _resetToken = null;
+        setState(() {
+          _step = _ResetStep.requestCode;
+          _resetToken = null;
+        });
       }
-      _showMessage(message, isError: true);
+
+      _showMessage(
+        message,
+        isError: true,
+      );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   String _cleanError(Object error) {
     var message = error.toString();
+
     if (message.startsWith('Exception: ')) {
       message = message.substring(11);
     }
+
     return message;
   }
 
-  void _showMessage(String message, {bool isError = false}) {
+  void _showMessage(
+    String message, {
+    bool isError = false,
+  }) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor:
-              isError
-                  ? Theme.of(context).extension<AppStatusColors>()?.error ??
-                        AppColors.error
-                  : null,
+          backgroundColor: isError
+              ? Theme.of(context)
+                      .extension<AppStatusColors>()
+                      ?.error ??
+                  AppColors.error
+              : null,
         ),
       );
   }
@@ -187,9 +223,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_step == _ResetStep.verifyCode) {
-              setState(() => _step = _ResetStep.requestCode);
+              setState(() {
+                _step = _ResetStep.requestCode;
+              });
             } else if (_step == _ResetStep.newPassword) {
-              setState(() => _step = _ResetStep.verifyCode);
+              setState(() {
+                _step = _ResetStep.verifyCode;
+              });
             } else {
               Navigator.pop(context);
             }
@@ -207,7 +247,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(
+              maxWidth: 400,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
@@ -226,7 +268,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       size: 30,
                     ),
                   ),
+
                   const SizedBox(height: 24),
+
                   Text(
                     _titleForStep(),
                     textAlign: TextAlign.center,
@@ -236,7 +280,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       color: colors.textPrimary,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   Text(
                     _subtitleForStep(),
                     textAlign: TextAlign.center,
@@ -245,9 +291,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       color: colors.textMuted,
                     ),
                   ),
+
                   const SizedBox(height: 28),
+
                   _buildStepFields(colors),
+
                   const SizedBox(height: 24),
+
                   SizedBox(
                     height: 52,
                     child: GradientButton(
@@ -265,7 +315,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           : Text(_submitLabel()),
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
                   TextButton(
                     onPressed: _isLoading
                         ? null
@@ -275,7 +327,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               (route) => false,
                             );
                           },
-                    child: const Text('Back to sign in'),
+                    child: Text(
+                      context.tr('forgotPassword.backToSignIn'),
+                    ),
                   ),
                 ],
               ),
@@ -289,24 +343,38 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String _subtitleForStep() {
     switch (_step) {
       case _ResetStep.requestCode:
-        return 'Enter the email linked to your Tripora account and we will '
-            'send you a one-time code.';
+        return context.tr(
+          'forgotPassword.requestSubtitle',
+        );
+
       case _ResetStep.verifyCode:
-        return 'Enter the 6-digit code from the email. It expires in '
-            '15 minutes.';
+        return context.tr(
+          'forgotPassword.verifySubtitle',
+        );
+
       case _ResetStep.newPassword:
-        return 'Choose a new password (at least 8 characters).';
+        return context.tr(
+          'forgotPassword.newPasswordSubtitle',
+        );
     }
   }
 
   String _submitLabel() {
     switch (_step) {
       case _ResetStep.requestCode:
-        return 'Send Reset Code';
+        return context.tr(
+          'forgotPassword.sendResetCode',
+        );
+
       case _ResetStep.verifyCode:
-        return 'Verify Code';
+        return context.tr(
+          'forgotPassword.verifyCode',
+        );
+
       case _ResetStep.newPassword:
-        return 'Reset Password';
+        return context.tr(
+          'forgotPassword.resetPassword',
+        );
     }
   }
 
@@ -314,8 +382,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     switch (_step) {
       case _ResetStep.requestCode:
         _requestCode();
+
       case _ResetStep.verifyCode:
         _verifyCode();
+
       case _ResetStep.newPassword:
         _resetPassword();
     }
@@ -330,18 +400,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           textInputAction: TextInputAction.done,
           enabled: !_isLoading,
           onFieldSubmitted: (_) => _submitStep(),
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            hintText: 'Enter your email',
-            prefixIcon: Icon(Icons.email_outlined),
+          decoration: InputDecoration(
+            labelText: context.tr('login.email'),
+            hintText: context.tr('login.emailHint'),
+            prefixIcon: const Icon(
+              Icons.email_outlined,
+            ),
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter your email.';
+              return context.tr('login.emailRequired');
             }
+
             if (!value.contains('@')) {
-              return 'Please enter a valid email.';
+              return context.tr('login.emailInvalid');
             }
+
             return null;
           },
         );
@@ -354,15 +428,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           enabled: !_isLoading,
           maxLength: 6,
           onFieldSubmitted: (_) => _submitStep(),
-          decoration: const InputDecoration(
-            labelText: 'Reset code',
-            hintText: '6-digit code',
-            prefixIcon: Icon(Icons.pin_outlined),
+          decoration: InputDecoration(
+            labelText: context.tr(
+              'forgotPassword.codeLabel',
+            ),
+            hintText: context.tr(
+              'forgotPassword.codeHint',
+            ),
+            prefixIcon: const Icon(
+              Icons.pin_outlined,
+            ),
           ),
           validator: (value) {
-            if (value == null || value.trim().length < 6) {
-              return 'Please enter the 6-digit code.';
+            if (value == null || value.trim().length != 6) {
+              return context.tr(
+                'forgotPassword.codeRequired',
+              );
             }
+
             return null;
           },
         );
@@ -377,17 +460,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               textInputAction: TextInputAction.next,
               enabled: !_isLoading,
               decoration: InputDecoration(
-                labelText: 'New password',
-                hintText: 'At least 8 characters',
-                prefixIcon: const Icon(Icons.lock_outline),
+                labelText: context.tr(
+                  'forgotPassword.newPassword',
+                ),
+                hintText: context.tr(
+                  'forgotPassword.newPasswordHint',
+                ),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                ),
                 suffixIcon: IconButton(
-                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                  tooltip: _obscurePassword
+                      ? context.tr('login.showPassword')
+                      : context.tr('login.hidePassword'),
                   onPressed: _isLoading
                       ? null
                       : () {
-                          setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          );
+                          setState(() {
+                            _obscurePassword =
+                                !_obscurePassword;
+                          });
                         },
                   icon: Icon(
                     _obscurePassword
@@ -398,33 +490,53 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter a new password.';
+                  return context.tr(
+                    'forgotPassword.passwordRequired',
+                  );
                 }
+
                 if (value.length < 8) {
-                  return 'Password must be at least 8 characters.';
+                  return context.tr(
+                    'forgotPassword.passwordTooShort',
+                  );
                 }
+
                 return null;
               },
             ),
+
             const SizedBox(height: 16),
+
             TextFormField(
               controller: _confirmController,
               obscureText: true,
               textInputAction: TextInputAction.done,
               enabled: !_isLoading,
               onFieldSubmitted: (_) => _submitStep(),
-              decoration: const InputDecoration(
-                labelText: 'Confirm new password',
-                hintText: 'Repeat your new password',
-                prefixIcon: Icon(Icons.lock_outline),
+              decoration: InputDecoration(
+                labelText: context.tr(
+                  'forgotPassword.confirmPassword',
+                ),
+                hintText: context.tr(
+                  'forgotPassword.confirmPasswordHint',
+                ),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please confirm your new password.';
+                  return context.tr(
+                    'forgotPassword.confirmRequired',
+                  );
                 }
+
                 if (value != _passwordController.text) {
-                  return 'Passwords do not match.';
+                  return context.tr(
+                    'forgotPassword.passwordMismatch',
+                  );
                 }
+
                 return null;
               },
             ),
