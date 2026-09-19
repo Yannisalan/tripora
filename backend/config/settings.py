@@ -85,6 +85,23 @@ class Config:
         )
 
     # ============================================================
+    # EMAIL / SMTP
+    # ============================================================
+    MAIL_HOST=os.getenv("MAIL_HOST", "smtp.gmail.com")
+    MAIL_PORT=int(os.getenv("MAIL_PORT", "4665"))
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "false").lower() in (
+        "1", "true", "yes", "on"
+    )
+    MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "true").lower() in (
+        "1", "true", "yes", "on"
+    )
+
+    MAIL_USER = os.getenv("MAIL_USER", "")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    MAIL_FROM = os.getenv("MAIL_FROM", "")
+    MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Tripora")
+
+    # ============================================================
     # SOCIAL AUTHENTICATION (GOOGLE / APPLE)
     # ============================================================
     #

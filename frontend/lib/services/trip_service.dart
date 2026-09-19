@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -6,8 +7,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/auth/auth_guard.dart';
 import '../core/config/app_config.dart';
+import '../trip_reminder.dart';
 import '../core/preferences/app_preferences.dart';
 import '../models/trip_model.dart';
+
+/// Adapts TripModel to the TripLike interface TripReminderScheduler
+/// expects. If your TripModel's field names differ from `destination`,
+/// `startDate`, or `endDate`, update the getters below — nothing else
+/// needs to change.
+class _TripModelReminderAdapter implements TripLike {
+  _TripModelReminderAdapter(this._trip);
+
+  final TripModel _trip;
+
+  @override
+  String get id => _trip.id!.toString();
+
+  @override
+  String get destination => _trip.destination;
+
+  @override
+  DateTime get startDate => _trip.startDate;
+
+  @override
+  DateTime get endDate => _trip.endDate;
+}
 
 class TripService {
   static const String baseUrl = AppConfig.apiBaseUrl;
@@ -17,6 +41,37 @@ class TripService {
       debugPrint(message);
       return true;
     }());
+  }
+
+  /// Schedules trip reminders for a freshly fetched/updated TripModel.
+  /// Wrapped in try/catch so a notification-scheduling failure (e.g.
+  /// permission denied, platform channel error) never breaks the
+  /// underlying trip fetch/update/delete flow.
+  Future<void> _scheduleReminders(TripModel trip) async {
+    if (trip.id == null) {
+      // No server-assigned id yet — nothing stable to key reminders on.
+      // This shouldn't happen for trips returned by update/regenerate/get,
+      // since those always come back from the backend with an id, but
+      // guarding here avoids silently scheduling under a bogus "null" key.
+      _debugLog('TripService: skipped scheduling, trip has no id yet');
+      return;
+    }
+
+    try {
+      await TripReminderScheduler.scheduleForTrip(
+        _TripModelReminderAdapter(trip),
+      );
+    } catch (e) {
+      _debugLog('TripService: failed to schedule reminders for trip: $e');
+    }
+  }
+
+  Future<void> _cancelReminders(int tripId) async {
+    try {
+      await TripReminderScheduler.cancelForTripId(tripId.toString());
+    } catch (e) {
+      _debugLog('TripService: failed to cancel reminders for trip: $e');
+    }
   }
 
   // ============================================================
@@ -119,6 +174,14 @@ class TripService {
       throw Exception('Failed to generate trip.');
     }
 
+    // NOTE: this endpoint returns a raw decoded map rather than a
+    // TripModel (unlike updateTrip/regenerateItinerary/getTrip below),
+    // so reminders aren't scheduled here. Once the caller that invokes
+    // generateTrip() parses the response into a TripModel and saves it,
+    // have that call site call TripReminderScheduler.scheduleForTrip()
+    // (via the _TripModelReminderAdapter pattern above) or, simpler,
+    // route the newly created trip through updateTrip()/getTrip() so
+    // scheduling happens automatically.
     return decoded;
   }
 
@@ -177,7 +240,13 @@ class TripService {
       throw Exception('Backend response does not contain a valid trip.');
     }
 
-    return TripModel.fromJson(Map<String, dynamic>.from(updatedTrip));
+    final parsed = TripModel.fromJson(Map<String, dynamic>.from(updatedTrip));
+
+    // Dates may have changed (or the trip may have just been confirmed),
+    // so reschedule reminders against the latest start/end dates.
+    unawaited(_scheduleReminders(parsed));
+
+    return parsed;
   }
 
   // ============================================================
@@ -231,7 +300,14 @@ class TripService {
       throw Exception('Backend response does not contain a valid trip.');
     }
 
-    return TripModel.fromJson(Map<String, dynamic>.from(updatedTrip));
+    final parsed = TripModel.fromJson(Map<String, dynamic>.from(updatedTrip));
+
+    // Itinerary content changed but dates are unlikely to — rescheduling
+    // is still cheap (cancel + re-add 3 local notifications) and keeps
+    // this correct even if regeneration ever touches dates later.
+    unawaited(_scheduleReminders(parsed));
+
+    return parsed;
   }
 
   // ============================================================
@@ -326,6 +402,15 @@ class TripService {
 
       return TripModel.fromJson(tripMap);
     }).toList();
+
+    // Resync local reminders against the source of truth from the
+    // backend. scheduleForTrip() cancels-then-reschedules per trip, so
+    // this stays correct even after a reinstall or a fresh login on a
+    // new device — and it's all local, no network cost, so looping
+    // over a typical trip list is cheap.
+    for (final trip in parsedTrips) {
+      unawaited(_scheduleReminders(trip));
+    }
 
     return parsedTrips;
   }
@@ -423,7 +508,11 @@ class TripService {
     );
     _debugLog('====================================');
 
-    return TripModel.fromJson(tripMap);
+    final parsed = TripModel.fromJson(tripMap);
+
+    unawaited(_scheduleReminders(parsed));
+
+    return parsed;
   }
 
   // ============================================================
@@ -492,5 +581,9 @@ class TripService {
         decoded['message']?.toString() ?? 'Failed to delete trip.',
       );
     }
+
+    // Trip is confirmed deleted server-side — clear its local reminders
+    // so the user doesn't get notified about a trip they removed.
+    await _cancelReminders(tripId);
   }
 }

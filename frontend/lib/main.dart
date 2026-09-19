@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/auth/auth_guard.dart';
+import '../services/notification_service.dart';
 import 'core/preferences/app_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/route_tracker.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
   await prefs.load();
   unawaited(prefs.ensureRates());
 
+  await NotificationService.instance.init();
   runApp(const TriporaApp());
 }
 
@@ -35,6 +37,17 @@ class TriporaApp extends StatefulWidget {
 
 class _TriporaAppState extends State<TriporaApp> {
   final RouteTrackingObserver _routeTracker = RouteTrackingObserver();
+
+  @override
+  void initState() {
+    super.initState();
+    // Ask for notification permission right after the first frame renders.
+    // Doing this before runApp() (e.g. in main()) risks failing silently on
+    // Android, since the plugin needs a live Activity attached first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.instance.requestPermission();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

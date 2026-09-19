@@ -1,7 +1,7 @@
 import logging
 import secrets
 from datetime import datetime, timedelta
-
+from werkzeug.security import check_password_hash, generate_password_hash
 from flask import Blueprint, jsonify, request
 
 from werkzeug.security import (
@@ -70,7 +70,7 @@ RESET_TOKEN_LIFETIME_MINUTES = 30
 RESET_MAX_ATTEMPTS = 5
 
 GENERIC_RESET_MESSAGE = (
-    "If the account exists, a password reset code has been sent."
+    "A password reset code has been sent."
 )
 INVALID_RESET_CODE_MESSAGE = "Invalid or expired reset code."
 INVALID_RESET_TOKEN_MESSAGE = "Invalid or expired reset token."
@@ -975,6 +975,12 @@ def reset_password():
                 "success": False,
                 "message": INVALID_RESET_TOKEN_MESSAGE,
             }), 400
+        
+        if check_password_hash(user.passwod_hash, password):
+            return jsonify({
+                "succes": False,
+                "message": "New password must be different from your old password."
+            })
 
         user.password_hash = generate_password_hash(password)
         _clear_reset_fields(user)

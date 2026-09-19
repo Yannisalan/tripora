@@ -2,6 +2,8 @@
     <!-- Required for all network access (API calls, auth, premium checks, etc.).
          Present in the main manifest so release builds retain network access. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Tripora"
         android:name="${applicationName}"

@@ -6,7 +6,6 @@ from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, decode_token
-from sqlalchemy import text
 
 from config.database import db
 from config.settings import Config
@@ -20,6 +19,8 @@ from routes.rates import rates_bp
 from routes.weather import weather_bp
 from services.rate_limiter import limiter, RateLimitExceeded
 logger = logging.getLogger(__name__)
+
+
 
 # Diagnostic: confirm whether the Travelpayouts token reached the process,
 # without ever logging the secret itself. The key name and length are enough
@@ -128,6 +129,8 @@ def create_app():
     # ========================================================
 
     app.config.from_object(Config)
+
+
 
     # ========================================================
     # CORS

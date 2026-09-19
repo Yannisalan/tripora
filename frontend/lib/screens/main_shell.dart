@@ -570,6 +570,15 @@ class _TriporaWebDrawer extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Native app bottom navigation
+//
+// FIX: previously used a hardcoded SizedBox height (64 + safe-area inset)
+// wrapped around a Stack/Positioned pill. The pill's actual content
+// (padding + icon + spacing + label) added up to more than 64px, so the
+// Stack clipped it and the bar looked misaligned/squished, especially on
+// iOS where the home-indicator inset ate further into the fixed height.
+//
+// Now the bar sizes itself naturally via SafeArea + Padding, so nothing
+// gets clipped and it stays consistent across Android and iOS.
 // ---------------------------------------------------------------------------
 
 class _TriporaBottomNav extends StatelessWidget {
@@ -586,90 +595,50 @@ class _TriporaBottomNav extends StatelessWidget {
     final colors = context.triporaColors;
     final items = _navItems(context);
 
-    return SizedBox(
-      height:
-          64 + MediaQuery.of(context).padding.bottom,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Positioned.fill(
-            child: Container(
-              color: Colors.transparent,
-            ),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 8,
           ),
-
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom:
-                MediaQuery.of(context).padding.bottom,
-            child: Center(
-              child: Container(
-                margin:
-                    const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      colors.surface.withValues(
-                    alpha: 0.92,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          AppColors.primary.withValues(
-                        alpha: 0.12,
-                      ),
-                      blurRadius: 24,
-                      spreadRadius: 0,
-                      offset:
-                          const Offset(0, -4),
-                    ),
-                    BoxShadow(
-                      color:
-                          Colors.black.withValues(
-                        alpha: 0.08,
-                      ),
-                      blurRadius: 12,
-                      offset:
-                          const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(
-                    color:
-                        colors.border.withValues(
-                      alpha: 0.5,
-                    ),
-                    width: 0.8,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    for (var i = 0;
-                        i < items.length;
-                        i++)
-                      Expanded(
-                        child: _TriporaNavItem(
-                          item: items[i],
-                          selected:
-                              i == currentIndex,
-                          onTap: () =>
-                              onSelected(i),
-                        ),
-                      ),
-                  ],
-                ),
+          decoration: BoxDecoration(
+            color: colors.surface.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                blurRadius: 24,
+                spreadRadius: 0,
+                offset: const Offset(0, -4),
               ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: colors.border.withValues(alpha: 0.5),
+              width: 0.8,
             ),
           ),
-        ],
+          child: Row(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: _TriporaNavItem(
+                    item: items[i],
+                    selected: i == currentIndex,
+                    onTap: () => onSelected(i),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

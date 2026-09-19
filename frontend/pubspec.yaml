@@ -27,8 +27,11 @@
     url_launcher: ^6.3.2
     web: ^1.1.1
     http_parser: ^4.1.2
+    flutter_local_notifications: ^20.1.0
+    timezone: ^0.10.1
 
   dev_dependencies:
+
     flutter_test:
       sdk: flutter
 
