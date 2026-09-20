@@ -10,6 +10,10 @@ import 'package:timezone/timezone.dart' as tz;
 /// - permission requests for Android 13+ and iOS
 /// - a single notification channel for trip reminders
 /// - helpers to schedule/cancel notifications tied to a trip
+///
+/// On web, every method is a safe no-op: flutter_local_notifications has no
+/// web support and dart:io's Platform throws there, so we return early
+/// instead of crashing app startup.
 class NotificationService {
   NotificationService._();
 
@@ -26,6 +30,7 @@ class NotificationService {
       'Reminders about your upcoming trips and itineraries';
 
   Future<void> init() async {
+    if (kIsWeb) return; // notifications not supported on web
     if (_initialized) return;
 
     tz_data.initializeTimeZones();
@@ -79,6 +84,8 @@ class NotificationService {
   }
 
   Future<bool> requestPermission() async {
+    if (kIsWeb) return false; // nothing to request on web
+
     if (Platform.isIOS) {
       final granted = await _plugin
           .resolvePlatformSpecificImplementation<
@@ -115,6 +122,7 @@ class NotificationService {
     required DateTime scheduledDate,
     String? payload,
   }) async {
+    if (kIsWeb) return;
     if (!_initialized) await init();
 
     if (scheduledDate.isBefore(DateTime.now())) {
@@ -154,11 +162,13 @@ class NotificationService {
   }
 
   Future<void> cancel(int id) async {
+    if (kIsWeb) return;
     if (!_initialized) await init();
     await _plugin.cancel(id: id);
   }
 
   Future<void> cancelAll(List<int> ids) async {
+    if (kIsWeb) return;
     if (!_initialized) await init();
 
     for (final id in ids) {
@@ -167,6 +177,7 @@ class NotificationService {
   }
 
   Future<List<PendingNotificationRequest>> pending() async {
+    if (kIsWeb) return const [];
     if (!_initialized) await init();
     return _plugin.pendingNotificationRequests();
   }

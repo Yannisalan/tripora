@@ -30,6 +30,7 @@
     flutter_local_notifications: ^20.1.0
     timezone: ^0.10.1
 
+
   dev_dependencies:
 
     flutter_test:

@@ -39,6 +39,13 @@ class SocialAuthService {
 
   bool _googleInitialized = false;
 
+  /// True when running as a native Android app (never true on web).
+  /// dart:io's Platform throws on web, so kIsWeb must be checked first.
+  bool get _isAndroid => !kIsWeb && Platform.isAndroid;
+
+  /// True when running as a native iOS app (never true on web).
+  bool get _isIOS => !kIsWeb && Platform.isIOS;
+
   /// Configures the native Google sign-in plugin.
   ///
   /// `initialize` must be called exactly once per process, so this is guarded
@@ -58,7 +65,7 @@ class SocialAuthService {
       return;
     }
 
-    if (Platform.isAndroid) {
+    if (_isAndroid) {
       final serverClientId = AppConfig.googleWebClientId.isNotEmpty
           ? AppConfig.googleWebClientId
           : null;
@@ -75,7 +82,7 @@ class SocialAuthService {
           ? AppConfig.googleWebClientId
           : null;
     }
-    if (Platform.isIOS) {
+    if (_isIOS) {
       return AppConfig.googleIosClientId.isNotEmpty
           ? AppConfig.googleIosClientId
           : null;
@@ -93,6 +100,16 @@ class SocialAuthService {
   /// the sheet. Re-throws [GoogleSignInException] (e.g. a client configuration
   /// problem) and any plugin `PlatformException` for the caller to surface.
   Future<SocialLoginResult> signInWithGoogle() async {
+    // google_sign_in's authenticate() is not supported on web (web uses a
+    // rendered Google button instead), so fail with a clear message rather
+    // than an UnimplementedError.
+    if (kIsWeb) {
+      throw Exception(
+        'Google sign-in is not available on the web version yet. '
+        'Please use email and password.',
+      );
+    }
+
     await _ensureGoogleInitialized();
 
     final GoogleSignInAccount account;
@@ -120,6 +137,8 @@ class SocialAuthService {
   /// sign-in. Best-effort: a stale native session is harmless to Tripora log
   /// out, so errors are swallowed here.
   Future<void> signOutGoogle() async {
+    if (kIsWeb) return;
+
     try {
       await _google.signOut();
     } catch (_) {
@@ -135,7 +154,7 @@ class SocialAuthService {
     final rawNonce = _generateNonce();
     final nonceHash = _sha256(rawNonce);
 
-    final requiresWebAuth = kIsWeb || Platform.isAndroid;
+    final requiresWebAuth = kIsWeb || _isAndroid;
 
     final credential = await SignInWithApple.getAppleIDCredential(
       scopes: [

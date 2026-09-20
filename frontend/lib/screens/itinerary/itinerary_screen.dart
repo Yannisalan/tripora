@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_localizations.dart';
@@ -1306,38 +1307,41 @@ class ItineraryScreen extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 12),
+        // add_2_calendar has no web support, so hide the button on web.
+        if (!kIsWeb) ...[
+          const SizedBox(height: 12),
 
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              _addToCalendar(context);
-            },
-            icon: const Icon(
-              Icons.event_outlined,
-              size: 18,
-            ),
-            label: Text(
-              context.tr('it.addToCalendar'),
-              style: const TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                _addToCalendar(context);
+              },
+              icon: const Icon(
+                Icons.event_outlined,
+                size: 18,
               ),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _midnight,
-              side: const BorderSide(
-                color: _strongBorder,
+              label: Text(
+                context.tr('it.addToCalendar'),
+                style: const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _midnight,
+                side: const BorderSide(
+                  color: _strongBorder,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1364,6 +1368,9 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Future<void> _addToCalendar(BuildContext context) async {
+    // Not supported on web (button is hidden there too).
+    if (kIsWeb) return;
+
     final messenger = ScaffoldMessenger.of(context);
 
     try {
