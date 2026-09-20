@@ -35,26 +35,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   List<Map<String, dynamic>> _flights = [];
   String? _disclaimer;
 
-  // ---------------------------------------------------------------------------
-  // Tripora / Nocturne Voyage design tokens
-  // ---------------------------------------------------------------------------
-
-  static const Color midnight = Color(0xFF1E1B4B);
-  static const Color midnightDark = Color(0xFF070235);
-
-  static const Color porcelain = Color(0xFFF7F9FB);
-  static const Color white = Color(0xFFFFFFFF);
-
-  static const Color slate100 = Color(0xFFF1F5F9);
-  static const Color slate200 = Color(0xFFE2E8F0);
-  static const Color slate300 = Color(0xFFCBD5E1);
-  static const Color slate500 = Color(0xFF64748B);
-
-  static const Color textSecondary = Color(0xFF47464F);
-
-  static const Color blue = Color(0xFF3B82F6);
-  static const Color emerald = Color(0xFF10B981);
-
   @override
   void dispose() {
     _origin.dispose();
@@ -132,8 +112,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Scaffold(
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
       appBar: _buildAppBar(),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -198,16 +180,18 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   PreferredSizeWidget _buildAppBar() {
+    final colors = context.triporaColors;
+
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
         context.tr('flights.title'),
         style: GoogleFonts.manrope(
-          color: midnight,
+          color: context.headingColor,
           fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.4,
@@ -221,16 +205,18 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildIntro(bool isMobile) {
+    final colors = context.triporaColors;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(
         isMobile ? 24 : 32,
       ),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
         boxShadow: const [
           BoxShadow(
@@ -249,10 +235,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               vertical: 7,
             ),
             decoration: BoxDecoration(
-              color: slate100,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: slate200,
+                color: colors.border,
               ),
             ),
             child: FittedBox(
@@ -260,16 +246,16 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.flight_takeoff_rounded,
                     size: 14,
-                    color: blue,
+                    color: context.appStatus.info,
                   ),
                   const SizedBox(width: 7),
                   Text(
                     context.tr('flights.flightSearch').toUpperCase(),
-                    style: const TextStyle(
-                      color: midnight,
+                    style: TextStyle(
+                      color: context.headingColor,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -285,7 +271,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           Text(
             context.tr('flights.findNextFlight'),
             style: GoogleFonts.notoSerif(
-              color: midnightDark,
+              color: context.headingColor,
               fontSize: isMobile ? 32 : 40,
               height: 1.08,
               fontWeight: FontWeight.w600,
@@ -297,8 +283,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
           Text(
             context.tr('flights.description'),
-            style: const TextStyle(
-              color: textSecondary,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 15,
               height: 1.5,
               fontWeight: FontWeight.w400,
@@ -314,16 +300,19 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildForm(bool isMobile) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(
         isMobile ? 20 : 28,
       ),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
         boxShadow: const [
           BoxShadow(
@@ -480,12 +469,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
             child: ElevatedButton.icon(
               onPressed: _busy ? null : _search,
               icon: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 17,
                       height: 17,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: white,
+                        color: scheme.onPrimary,
                       ),
                     )
                   : const Icon(
@@ -498,10 +487,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                     : context.tr('flights.search'),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: midnight,
-                foregroundColor: white,
-                disabledBackgroundColor: slate300,
-                disabledForegroundColor: white,
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                disabledBackgroundColor: colors.borderStrong,
+                disabledForegroundColor: scheme.onPrimary,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -523,10 +512,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _sectionLabel(String label) {
+    final colors = context.triporaColors;
+
     return Text(
       label,
-      style: const TextStyle(
-        color: slate500,
+      style: TextStyle(
+        color: colors.textMuted,
         fontSize: 9,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.1,
@@ -578,61 +569,64 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     required String? hint,
     required IconData icon,
   }) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return InputDecoration(
       labelText: label,
       hintText: hint,
       prefixIcon: Icon(
         icon,
         size: 19,
-        color: slate500,
+        color: colors.textMuted,
       ),
       filled: true,
-      fillColor: porcelain,
+      fillColor: colors.backgroundColor,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
         vertical: 15,
       ),
-      labelStyle: const TextStyle(
-        color: slate500,
+      labelStyle: TextStyle(
+        color: colors.textMuted,
         fontSize: 13,
       ),
-      hintStyle: const TextStyle(
-        color: slate500,
+      hintStyle: TextStyle(
+        color: colors.textMuted,
         fontSize: 13,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: slate200,
+        borderSide: BorderSide(
+          color: colors.border,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: slate200,
+        borderSide: BorderSide(
+          color: colors.border,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(
-          color: midnight,
+        borderSide: BorderSide(
+          color: scheme.primary,
           width: 1.4,
         ),
       ),
-      errorBorder: const OutlineInputBorder(
+      errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.all(
           Radius.circular(8),
         ),
         borderSide: BorderSide(
-          color: Color(0xFFBA1A1A),
+          color: scheme.error,
         ),
       ),
-      focusedErrorBorder: const OutlineInputBorder(
+      focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.all(
           Radius.circular(8),
         ),
         borderSide: BorderSide(
-          color: Color(0xFFBA1A1A),
+          color: scheme.error,
           width: 1.4,
         ),
       ),
@@ -640,6 +634,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Widget _buildDateModeSelector() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return SegmentedButton<String>(
       segments: [
         ButtonSegment(
@@ -674,24 +671,24 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) {
             if (states.contains(WidgetState.selected)) {
-              return white;
+              return scheme.onPrimary;
             }
 
-            return midnight;
+            return scheme.primary;
           },
         ),
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) {
             if (states.contains(WidgetState.selected)) {
-              return midnight;
+              return scheme.primary;
             }
 
-            return white;
+            return colors.surface;
           },
         ),
         side: WidgetStateProperty.all(
-          const BorderSide(
-            color: slate300,
+          BorderSide(
+            color: colors.borderStrong,
           ),
         ),
       ),
@@ -770,29 +767,32 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildLoading() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         vertical: 32,
       ),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
       ),
       child: Column(
         children: [
-          const CircularProgressIndicator(
-            color: midnight,
+          CircularProgressIndicator(
+            color: scheme.primary,
             strokeWidth: 2.5,
           ),
           const SizedBox(height: 14),
           Text(
             context.tr('flights.searchingForFlights'),
-            style: const TextStyle(
-              color: slate500,
+            style: TextStyle(
+              color: colors.textMuted,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -803,6 +803,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Widget _buildResults() {
+    final colors = context.triporaColors;
     final resultWord = _flights.length == 1
         ? context.tr('flights.result')
         : context.tr('flights.results');
@@ -821,8 +822,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                     context
                         .tr('flights.availableFlights')
                         .toUpperCase(),
-                    style: const TextStyle(
-                      color: slate500,
+                    style: TextStyle(
+                      color: colors.textMuted,
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.1,
@@ -832,7 +833,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                   Text(
                     '${_flights.length} $resultWord',
                     style: GoogleFonts.notoSerif(
-                      color: midnightDark,
+                      color: context.headingColor,
                       fontSize: 27,
                       height: 1.15,
                       fontWeight: FontWeight.w600,
@@ -859,18 +860,18 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: slate100,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: slate200,
+                color: colors.border,
               ),
             ),
             child: Text(
               _disclaimer!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.4,
-                color: slate500,
+                color: colors.textMuted,
               ),
             ),
           ),
@@ -910,11 +911,14 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         const Duration(days: 365),
       ),
       builder: (context, child) {
+        final colors = context.triporaColors;
+        final scheme = Theme.of(context).colorScheme;
+
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: midnight,
-                  surface: white,
+            colorScheme: scheme.copyWith(
+                  primary: scheme.primary,
+                  surface: colors.surface,
                 ),
           ),
           child: child!,
@@ -957,11 +961,14 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         'flights.selectTravelMonth',
       ),
       builder: (context, child) {
+        final colors = context.triporaColors;
+        final scheme = Theme.of(context).colorScheme;
+
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: midnight,
-                  surface: white,
+            colorScheme: scheme.copyWith(
+                  primary: scheme.primary,
+                  surface: colors.surface,
                 ),
           ),
           child: child!,
@@ -986,17 +993,11 @@ class _FlightCard extends StatelessWidget {
 
   const _FlightCard(this.flight);
 
-  static const Color midnight = Color(0xFF1E1B4B);
-  static const Color midnightDark = Color(0xFF070235);
-  static const Color white = Color(0xFFFFFFFF);
-  static const Color slate100 = Color(0xFFF1F5F9);
-  static const Color slate200 = Color(0xFFE2E8F0);
-  static const Color slate500 = Color(0xFF64748B);
-  static const Color blue = Color(0xFF3B82F6);
-  static const Color emerald = Color(0xFF10B981);
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final price = flight['price'];
 
     final money = price is Map
@@ -1062,10 +1063,10 @@ class _FlightCard extends StatelessWidget {
         bottom: 16,
       ),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
         boxShadow: const [
           BoxShadow(
@@ -1087,13 +1088,13 @@ class _FlightCard extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: midnight,
+                    color: scheme.primary,
                     borderRadius:
                         BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.flight_takeoff_rounded,
-                    color: white,
+                    color: scheme.onPrimary,
                     size: 19,
                   ),
                 ),
@@ -1109,8 +1110,8 @@ class _FlightCard extends StatelessWidget {
                         context
                             .tr('flights.airline')
                             .toUpperCase(),
-                        style: const TextStyle(
-                          color: slate500,
+                        style: TextStyle(
+                          color: colors.textMuted,
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
@@ -1126,8 +1127,8 @@ class _FlightCard extends StatelessWidget {
                         maxLines: 1,
                         overflow:
                             TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: midnightDark,
+                        style: TextStyle(
+                          color: context.headingColor,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1146,7 +1147,7 @@ class _FlightCard extends StatelessWidget {
                   style: GoogleFonts.manrope(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: midnight,
+                    color: context.headingColor,
                   ),
                 ),
               ],
@@ -1154,9 +1155,9 @@ class _FlightCard extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            const Divider(
+            Divider(
               height: 1,
-              color: slate200,
+              color: colors.border,
             ),
 
             const SizedBox(height: 20),
@@ -1184,10 +1185,9 @@ class _FlightCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: stops == 0
-                                ? const Color(
-                                    0xFFEAF8F3,
-                                  )
-                                : slate100,
+                                ? colors.appStatus.success
+                                    .withValues(alpha: 0.12)
+                                : colors.surfaceSecondary,
                             borderRadius:
                                 BorderRadius.circular(
                               999,
@@ -1207,8 +1207,8 @@ class _FlightCard extends StatelessWidget {
                                   ).toUpperCase(),
                             style: TextStyle(
                               color: stops == 0
-                                  ? emerald
-                                  : slate500,
+                                  ? colors.appStatus.success
+                                  : colors.textMuted,
                               fontSize: 9,
                               fontWeight:
                                   FontWeight.w800,
@@ -1219,23 +1219,23 @@ class _FlightCard extends StatelessWidget {
 
                         const SizedBox(height: 8),
 
-                        const Row(
+                        Row(
                           children: [
                             Expanded(
                               child: Divider(
-                                color: slate200,
+                                color: colors.border,
                               ),
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Icon(
                               Icons.flight_rounded,
                               size: 15,
-                              color: blue,
+                              color: context.appStatus.info,
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: Divider(
-                                color: slate200,
+                                color: colors.border,
                               ),
                             ),
                           ],
@@ -1274,14 +1274,10 @@ class _TimeColumn extends StatelessWidget {
     this.alignEnd = false,
   });
 
-  static const Color midnightDark =
-      Color(0xFF070235);
-
-  static const Color slate500 =
-      Color(0xFF64748B);
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     final label = time.isEmpty
         ? '\u2014'
         : time.replaceFirst(
@@ -1299,7 +1295,7 @@ class _TimeColumn extends StatelessWidget {
           style: GoogleFonts.manrope(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: midnightDark,
+            color: context.headingColor,
           ),
         ),
 
@@ -1307,9 +1303,9 @@ class _TimeColumn extends StatelessWidget {
 
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: slate500,
+            color: colors.textMuted,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1325,31 +1321,19 @@ class _TimeColumn extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
-  static const Color midnight =
-      Color(0xFF1E1B4B);
-
-  static const Color midnightDark =
-      Color(0xFF070235);
-
-  static const Color white =
-      Color(0xFFFFFFFF);
-
-  static const Color slate200 =
-      Color(0xFFE2E8F0);
-
-  static const Color slate500 =
-      Color(0xFF64748B);
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
       ),
       child: Column(
@@ -1358,14 +1342,14 @@ class _EmptyState extends StatelessWidget {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: midnight,
+              color: scheme.primary,
               borderRadius:
                   BorderRadius.circular(16),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.search_off_rounded,
               size: 27,
-              color: white,
+              color: scheme.onPrimary,
             ),
           ),
 
@@ -1376,7 +1360,7 @@ class _EmptyState extends StatelessWidget {
             style: GoogleFonts.notoSerif(
               fontSize: 23,
               fontWeight: FontWeight.w600,
-              color: midnightDark,
+              color: context.headingColor,
             ),
           ),
 
@@ -1385,8 +1369,8 @@ class _EmptyState extends StatelessWidget {
           Text(
             context.tr('flights.noFlightsDescription'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: slate500,
+            style: TextStyle(
+              color: colors.textMuted,
               fontSize: 13,
               height: 1.5,
             ),
@@ -1410,16 +1394,15 @@ class _Banner extends StatelessWidget {
     required this.color,
   });
 
-  static const Color white =
-      Color(0xFFFFFFFF);
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: color.withValues(alpha: 0.25),

@@ -470,16 +470,35 @@ class TriporaColors extends ThemeExtension<TriporaColors> {
 /// ---------------------------------------------------------------------
 
 extension TriporaColorsX on BuildContext {
+  /// Tripora semantic colors for the CURRENT brightness.
+  ///
+  /// Both ThemeData objects register the extension, so the fallback below
+  /// should never be used. If it ever is (e.g. a widget wrapped in a bare
+  /// `Theme(data: ThemeData(...))`), it now falls back to the palette that
+  /// matches the current brightness instead of always returning light.
   TriporaColors get triporaColors =>
       Theme.of(this).extension<TriporaColors>() ??
-      TriporaColors.light;
+      (Theme.of(this).brightness == Brightness.dark
+          ? TriporaColors.dark
+          : TriporaColors.light);
 
   AppStatusColors get appStatus =>
       Theme.of(this).extension<AppStatusColors>() ??
-      AppStatusColors.light;
+      (Theme.of(this).brightness == Brightness.dark
+          ? AppStatusColors.dark
+          : AppStatusColors.light);
 
   bool get isDark =>
       Theme.of(this).brightness == Brightness.dark;
+
+  /// Serif heading color.
+  ///
+  /// Light mode keeps the original deep-indigo heading (0xFF070235) so light
+  /// mode looks exactly as before. Dark mode uses the normal primary text
+  /// color, because that indigo is nearly invisible on dark surfaces.
+  Color get headingColor => isDark
+      ? triporaColors.textPrimary
+      : const Color(0xFF070235);
 }
 
 /// ---------------------------------------------------------------------
@@ -567,6 +586,11 @@ class AppTheme {
       surface: AppColorsDark.surface,
       onSurface: AppColorsDark.textPrimary,
 
+      // Secondary text/icon color on surfaces. Many default Material 3
+      // widgets (ListTile icons, dropdowns, default IconButtons, labels)
+      // read this. Without it, it silently falls back to onSurface.
+      onSurfaceVariant: AppColorsDark.textSecondary,
+
       surfaceContainerHighest: AppColorsDark.surfaceHighest,
       surfaceContainerHigh: AppColorsDark.surfaceElevated,
       surfaceContainer: AppColorsDark.surface,
@@ -585,9 +609,82 @@ class AppTheme {
       scrim: Colors.black,
     );
 
-    return _base(
+    final base = _base(
       scheme,
       TriporaColors.dark,
+    );
+
+    return _applyDarkOverrides(
+      base,
+      scheme,
+      TriporaColors.dark,
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Dark-only global fixes
+  //
+  // These themes are ONLY applied in dark mode, so light mode keeps
+  // exactly the appearance it had before.
+  // ------------------------------------------------------------
+
+  static ThemeData _applyDarkOverrides(
+    ThemeData base,
+    ColorScheme scheme,
+    TriporaColors bg,
+  ) {
+    final textTheme = base.textTheme;
+
+    return base.copyWith(
+      // Default icon color for any bare Icon(...) that has no explicit
+      // color. Flutter's default is pure white in dark mode.
+      iconTheme: IconThemeData(
+        color: bg.textPrimary,
+      ),
+
+      // ListTile leading/trailing icons and title text.
+      listTileTheme: ListTileThemeData(
+        iconColor: bg.textSecondary,
+        textColor: bg.textPrimary,
+      ),
+
+      // Drawer.
+      drawerTheme: DrawerThemeData(
+        backgroundColor: bg.surface,
+        surfaceTintColor: Colors.transparent,
+        scrimColor: AppColorsDark.overlay,
+      ),
+
+      // Overflow ("...") menus, e.g. the trip card menu.
+      popupMenuTheme: PopupMenuThemeData(
+        color: bg.surfaceElevated,
+        surfaceTintColor: Colors.transparent,
+        textStyle: textTheme.bodyMedium?.copyWith(
+          color: bg.textPrimary,
+        ),
+      ),
+
+      // Classic BottomNavigationBar (NavigationBar is themed in _base).
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: bg.surface,
+        selectedItemColor: scheme.primary,
+        unselectedItemColor: bg.textMuted,
+      ),
+
+      // DropdownMenu (not DropdownButtonFormField).
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: textTheme.bodyLarge?.copyWith(
+          color: bg.textPrimary,
+        ),
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(
+            bg.surfaceElevated,
+          ),
+          surfaceTintColor: const WidgetStatePropertyAll(
+            Colors.transparent,
+          ),
+        ),
+      ),
     );
   }
 
@@ -716,6 +813,10 @@ class AppTheme {
 
       // ----------------------------------------------------------
       // AppBar
+      //
+      // iconTheme / actionsIconTheme are now explicit so the automatic
+      // back arrow, drawer icon and action icons always use the
+      // theme's text color (never a default or hardcoded color).
       // ----------------------------------------------------------
 
       appBarTheme: AppBarTheme(
@@ -725,6 +826,12 @@ class AppTheme {
         backgroundColor: bg.backgroundColor,
         foregroundColor: bg.textPrimary,
         surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(
+          color: bg.textPrimary,
+        ),
+        actionsIconTheme: IconThemeData(
+          color: bg.textPrimary,
+        ),
         titleTextStyle: textTheme.headlineSmall,
       ),
 
@@ -905,12 +1012,18 @@ class AppTheme {
 
       // ----------------------------------------------------------
       // Chips
+      //
+      // The label color now depends on the selected state. Previously a
+      // selected chip (primary background) always used the normal text
+      // color, which is dark-on-dark in light mode and light-on-light in
+      // dark mode whenever a screen did not override the label style.
       // ----------------------------------------------------------
 
       chipTheme: ChipThemeData(
         backgroundColor: bg.surfaceSecondary,
         selectedColor: scheme.primary,
         disabledColor: bg.border,
+        checkmarkColor: scheme.onPrimary,
         side: BorderSide(
           color: bg.border,
         ),
@@ -919,7 +1032,18 @@ class AppTheme {
           horizontal: 12,
           vertical: 6,
         ),
-        labelStyle: textTheme.labelMedium,
+        labelStyle: WidgetStateTextStyle.resolveWith(
+          (states) {
+            final style =
+                textTheme.labelMedium ?? const TextStyle();
+
+            return style.copyWith(
+              color: states.contains(WidgetState.selected)
+                  ? scheme.onPrimary
+                  : bg.textPrimary,
+            );
+          },
+        ),
         secondaryLabelStyle: textTheme.labelMedium?.copyWith(
           color: scheme.onPrimary,
         ),
@@ -1075,6 +1199,12 @@ class AppTheme {
 
       // ----------------------------------------------------------
       // Snackbars
+      //
+      // Dark mode: the background is a dark surface, so the message text
+      // uses the theme text color and the action button uses the dark
+      // primary. Previously the action defaulted to inversePrimary (dark
+      // indigo), which is invisible on a dark snackbar.
+      // Light mode is unchanged.
       // ----------------------------------------------------------
 
       snackBarTheme: SnackBarThemeData(
@@ -1083,8 +1213,9 @@ class AppTheme {
             ? bg.surfaceHighest
             : const Color(0xFF1F2937),
         contentTextStyle: textTheme.bodyMedium?.copyWith(
-          color: Colors.white,
+          color: bg.isDarkBg ? bg.textPrimary : Colors.white,
         ),
+        actionTextColor: bg.isDarkBg ? scheme.primary : null,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(
             AppRadius.md,
@@ -1106,6 +1237,9 @@ class AppTheme {
 
       // ----------------------------------------------------------
       // Theme extensions
+      //
+      // _base() is used for BOTH light and dark, so TriporaColors and
+      // AppStatusColors are registered in both ThemeData objects.
       // ----------------------------------------------------------
 
       extensions: <ThemeExtension<dynamic>>[

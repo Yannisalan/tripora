@@ -155,7 +155,7 @@ class _OrDivider extends StatelessWidget {
           child: Text(
             'or continue with',
             style: TextStyle(
-              color: AppColors.textMuted,
+              color: context.triporaColors.textMuted,
               fontWeight: FontWeight.w500,
             ),
           ),

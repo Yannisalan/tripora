@@ -28,28 +28,6 @@ class _TripsScreenState extends State<TripsScreen> {
 
   String? _errorMessage;
 
-  // ---------------------------------------------------------------------------
-  // Tripora / Nocturne Voyage design tokens
-  // ---------------------------------------------------------------------------
-
-  static const Color midnight = Color(0xFF1E1B4B);
-  static const Color midnightDark = Color(0xFF070235);
-
-  static const Color porcelain = Color(0xFFF7F9FB);
-  static const Color white = Color(0xFFFFFFFF);
-
-  static const Color slate100 = Color(0xFFF1F5F9);
-  static const Color slate200 = Color(0xFFE2E8F0);
-  static const Color slate300 = Color(0xFFCBD5E1);
-  static const Color slate400 = Color(0xFF94A3B8);
-  static const Color slate500 = Color(0xFF64748B);
-  static const Color slate600 = Color(0xFF475569);
-
-  static const Color textSecondary = Color(0xFF47464F);
-
-  static const Color blue = Color(0xFF3B82F6);
-  static const Color emerald = Color(0xFF10B981);
-
   @override
   void initState() {
     super.initState();
@@ -129,8 +107,10 @@ class _TripsScreenState extends State<TripsScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final colors = dialogContext.triporaColors;
+
         return AlertDialog(
-          backgroundColor: white,
+          backgroundColor: colors.surface,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -140,7 +120,7 @@ class _TripsScreenState extends State<TripsScreen> {
             style: GoogleFonts.notoSerif(
               fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: midnightDark,
+              color: dialogContext.headingColor,
             ),
           ),
           content: Text(
@@ -150,10 +130,10 @@ class _TripsScreenState extends State<TripsScreen> {
                 'destination': trip.destination,
               },
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.5,
-              color: textSecondary,
+              color: colors.textSecondary,
             ),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(
@@ -168,7 +148,7 @@ class _TripsScreenState extends State<TripsScreen> {
                 Navigator.of(dialogContext).pop(false);
               },
               style: TextButton.styleFrom(
-                foregroundColor: midnight,
+                foregroundColor: dialogContext.headingColor,
               ),
               child: Text(
                 dialogContext.tr('trips.cancel'),
@@ -180,7 +160,7 @@ class _TripsScreenState extends State<TripsScreen> {
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.red.shade700,
-                foregroundColor: white,
+                foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -253,7 +233,7 @@ class _TripsScreenState extends State<TripsScreen> {
           duration: const Duration(seconds: 3),
           backgroundColor: isError
               ? context.appStatus.error
-              : midnight,
+              : Theme.of(context).colorScheme.primary,
         ),
       );
   }
@@ -322,6 +302,8 @@ class _TripsScreenState extends State<TripsScreen> {
     IconData icon,
     Color color,
   }) _tripStatus(TripModel trip) {
+    final colors = context.triporaColors;
+
     final now = DateTime.now();
 
     if (now.isBefore(trip.startDate)) {
@@ -337,9 +319,12 @@ class _TripsScreenState extends State<TripsScreen> {
           'trips.upcomingOne',
         );
       } else {
+        // Pass the number under both names so the {n} / {count}
+        // placeholder in the translation is always replaced.
         label = context.tr(
           'trips.upcomingMany',
           params: {
+            'n': daysUntil.toString(),
             'count': daysUntil.toString(),
           },
         );
@@ -348,7 +333,7 @@ class _TripsScreenState extends State<TripsScreen> {
       return (
         label: label,
         icon: Icons.event_outlined,
-        color: blue,
+        color: context.appStatus.info,
       );
     }
 
@@ -356,14 +341,14 @@ class _TripsScreenState extends State<TripsScreen> {
       return (
         label: context.tr('trips.completed'),
         icon: Icons.check_circle_outline,
-        color: slate400,
+        color: colors.textMuted,
       );
     }
 
     return (
       label: context.tr('trips.inProgress'),
       icon: Icons.flight_takeoff_rounded,
-      color: emerald,
+      color: context.appStatus.success,
     );
   }
 
@@ -420,8 +405,10 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Scaffold(
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
       appBar: _buildAppBar(context),
       body: _buildBody(context),
     );
@@ -430,16 +417,18 @@ class _TripsScreenState extends State<TripsScreen> {
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
         context.tr('trips.title'),
         style: GoogleFonts.manrope(
-          color: midnight,
+          color: context.headingColor,
           fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.4,
@@ -449,6 +438,9 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   Widget _buildBody(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     if (_isLoading) {
       return const TripsScreenShimmer();
     }
@@ -462,8 +454,8 @@ class _TripsScreenState extends State<TripsScreen> {
     }
 
     return RefreshIndicator(
-      color: midnight,
-      backgroundColor: white,
+      color: scheme.primary,
+      backgroundColor: colors.surface,
       onRefresh: _loadTrips,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -528,11 +520,16 @@ class _TripsScreenState extends State<TripsScreen> {
     BuildContext context,
     bool isMobile,
   ) {
+    final colors = context.triporaColors;
+
+    // Pass the number under both names so the {n} / {count}
+    // placeholder in the translation is always replaced.
     final journeyText = _trips.length == 1
         ? context.tr('trips.journeyOne')
         : context.tr(
             'trips.journeyMany',
             params: {
+              'n': _trips.length.toString(),
               'count': _trips.length.toString(),
             },
           );
@@ -543,10 +540,10 @@ class _TripsScreenState extends State<TripsScreen> {
         isMobile ? 24 : 32,
       ),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
         boxShadow: const [
           BoxShadow(
@@ -566,11 +563,11 @@ class _TripsScreenState extends State<TripsScreen> {
               vertical: 7,
             ),
             decoration: BoxDecoration(
-              color: slate100,
+              color: colors.surfaceSecondary,
               borderRadius:
                   BorderRadius.circular(999),
               border: Border.all(
-                color: slate200,
+                color: colors.border,
               ),
             ),
             child: FittedBox(
@@ -578,18 +575,18 @@ class _TripsScreenState extends State<TripsScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.luggage_outlined,
                     size: 14,
-                    color: blue,
+                    color: context.appStatus.info,
                   ),
                   const SizedBox(width: 7),
                   Text(
                     context.tr(
                       'trips.journeysBadge',
                     ),
-                    style: const TextStyle(
-                      color: midnight,
+                    style: TextStyle(
+                      color: context.headingColor,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -605,7 +602,7 @@ class _TripsScreenState extends State<TripsScreen> {
           Text(
             context.tr('trips.archiveTitle'),
             style: GoogleFonts.notoSerif(
-              color: midnightDark,
+              color: context.headingColor,
               fontSize: isMobile ? 32 : 40,
               height: 1.08,
               fontWeight: FontWeight.w600,
@@ -617,8 +614,8 @@ class _TripsScreenState extends State<TripsScreen> {
 
           Text(
             journeyText,
-            style: const TextStyle(
-              color: textSecondary,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 15,
               height: 1.5,
               fontWeight: FontWeight.w400,
@@ -666,6 +663,9 @@ class _TripsScreenState extends State<TripsScreen> {
   Widget _buildErrorState(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final authError = _isAuthError;
 
     final errorText =
@@ -678,8 +678,8 @@ class _TripsScreenState extends State<TripsScreen> {
             : context.tr('trips.genericError');
 
     return RefreshIndicator(
-      color: midnight,
-      backgroundColor: white,
+      color: scheme.primary,
+      backgroundColor: colors.surface,
       onRefresh: _loadTrips,
       child: ListView(
         physics:
@@ -706,7 +706,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             ? Icons.lock_outline_rounded
                             : Icons.cloud_off_outlined,
                         authError
-                            ? blue
+                            ? context.appStatus.info
                             : context.appStatus.error,
                       ),
 
@@ -726,7 +726,7 @@ class _TripsScreenState extends State<TripsScreen> {
                           fontSize: 28,
                           fontWeight:
                               FontWeight.w600,
-                          color: midnightDark,
+                          color: context.headingColor,
                         ),
                       ),
 
@@ -735,10 +735,10 @@ class _TripsScreenState extends State<TripsScreen> {
                       Text(
                         description,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           height: 1.6,
-                          color: slate500,
+                          color: colors.textMuted,
                         ),
                       ),
 
@@ -786,9 +786,12 @@ class _TripsScreenState extends State<TripsScreen> {
   Widget _buildEmptyState(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return RefreshIndicator(
-      color: midnight,
-      backgroundColor: white,
+      color: scheme.primary,
+      backgroundColor: colors.surface,
       onRefresh: _loadTrips,
       child: ListView(
         physics:
@@ -810,11 +813,11 @@ class _TripsScreenState extends State<TripsScreen> {
                     padding:
                         const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: white,
+                      color: colors.surface,
                       borderRadius:
                           BorderRadius.circular(24),
                       border: Border.all(
-                        color: slate200,
+                        color: colors.border,
                       ),
                       boxShadow: const [
                         BoxShadow(
@@ -832,17 +835,17 @@ class _TripsScreenState extends State<TripsScreen> {
                           width: 76,
                           height: 76,
                           decoration: BoxDecoration(
-                            color: midnight,
+                            color: scheme.primary,
                             borderRadius:
                                 BorderRadius.circular(
                               20,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons
                                 .flight_takeoff_outlined,
                             size: 34,
-                            color: white,
+                            color: scheme.onPrimary,
                           ),
                         ),
 
@@ -860,7 +863,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             height: 1.15,
                             fontWeight:
                                 FontWeight.w600,
-                            color: midnightDark,
+                            color: context.headingColor,
                           ),
                         ),
 
@@ -872,10 +875,10 @@ class _TripsScreenState extends State<TripsScreen> {
                           ),
                           textAlign:
                               TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             height: 1.6,
-                            color: slate500,
+                            color: colors.textMuted,
                           ),
                         ),
 
@@ -909,11 +912,14 @@ class _TripsScreenState extends State<TripsScreen> {
   Widget _buildTripCard(
     TripModel trip,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final isDeleting =
         _deletingTripId == trip.id;
 
     return Material(
-      color: white,
+      color: colors.surface,
       borderRadius:
           BorderRadius.circular(16),
       child: InkWell(
@@ -929,7 +935,7 @@ class _TripsScreenState extends State<TripsScreen> {
             borderRadius:
                 BorderRadius.circular(16),
             border: Border.all(
-              color: slate200,
+              color: colors.border,
             ),
             boxShadow: const [
               BoxShadow(
@@ -952,15 +958,15 @@ class _TripsScreenState extends State<TripsScreen> {
                     height: 44,
                     decoration:
                         BoxDecoration(
-                      color: midnight,
+                      color: scheme.primary,
                       borderRadius:
                           BorderRadius.circular(
                         12,
                       ),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.location_on_outlined,
-                      color: white,
+                      color: scheme.onPrimary,
                       size: 21,
                     ),
                   ),
@@ -978,12 +984,12 @@ class _TripsScreenState extends State<TripsScreen> {
                             'trips.destination',
                           ),
                           style:
-                              const TextStyle(
+                              TextStyle(
                             fontSize: 9,
                             fontWeight:
                                 FontWeight.w800,
                             letterSpacing: 1.1,
-                            color: slate500,
+                            color: colors.textMuted,
                           ),
                         ),
 
@@ -1003,7 +1009,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             fontWeight:
                                 FontWeight.w600,
                             color:
-                                midnightDark,
+                                context.headingColor,
                             letterSpacing:
                                 -0.3,
                           ),
@@ -1015,13 +1021,13 @@ class _TripsScreenState extends State<TripsScreen> {
                   const SizedBox(width: 8),
 
                   if (isDeleting)
-                    const SizedBox(
+                    SizedBox(
                       width: 24,
                       height: 24,
                       child:
                           CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: midnight,
+                        color: scheme.primary,
                       ),
                     )
                   else
@@ -1029,9 +1035,9 @@ class _TripsScreenState extends State<TripsScreen> {
                       tooltip: context.tr(
                         'trips.options',
                       ),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.more_horiz_rounded,
-                        color: slate500,
+                        color: colors.textMuted,
                       ),
                       onSelected: (value) {
                         switch (value) {
@@ -1097,9 +1103,9 @@ class _TripsScreenState extends State<TripsScreen> {
 
               const SizedBox(height: 20),
 
-              const Divider(
+              Divider(
                 height: 1,
-                color: slate200,
+                color: colors.border,
               ),
 
               const SizedBox(height: 18),
@@ -1135,9 +1141,9 @@ class _TripsScreenState extends State<TripsScreen> {
 
               const SizedBox(height: 20),
 
-              const Divider(
+              Divider(
                 height: 1,
-                color: slate200,
+                color: colors.border,
               ),
 
               const SizedBox(height: 16),
@@ -1151,7 +1157,7 @@ class _TripsScreenState extends State<TripsScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: midnight,
+                      color: scheme.primary,
                       borderRadius:
                           BorderRadius.circular(
                         999,
@@ -1161,8 +1167,8 @@ class _TripsScreenState extends State<TripsScreen> {
                       '${trip.numberOfDays} '
                       '${trip.numberOfDays == 1 ? context.tr('trips.day') : context.tr('trips.days')}',
                       style:
-                          const TextStyle(
-                        color: white,
+                          TextStyle(
+                        color: scheme.onPrimary,
                         fontSize: 10,
                         fontWeight:
                             FontWeight.w800,
@@ -1179,20 +1185,20 @@ class _TripsScreenState extends State<TripsScreen> {
                         'trips.savedItinerary',
                       ),
                       style:
-                          const TextStyle(
+                          TextStyle(
                         fontSize: 9,
                         fontWeight:
                             FontWeight.w800,
                         letterSpacing: 1,
-                        color: slate500,
+                        color: colors.textMuted,
                       ),
                     ),
                   ),
 
-                  const Icon(
+                  Icon(
                     Icons.arrow_outward_rounded,
                     size: 18,
-                    color: slate500,
+                    color: colors.textMuted,
                   ),
                 ],
               ),
@@ -1212,6 +1218,8 @@ class _TripsScreenState extends State<TripsScreen> {
     String label,
     String value,
   ) {
+    final colors = context.triporaColors;
+
     return ConstrainedBox(
       constraints:
           const BoxConstraints(
@@ -1224,7 +1232,7 @@ class _TripsScreenState extends State<TripsScreen> {
           Icon(
             icon,
             size: 16,
-            color: slate500,
+            color: colors.textMuted,
           ),
 
           const SizedBox(width: 8),
@@ -1236,12 +1244,12 @@ class _TripsScreenState extends State<TripsScreen> {
               Text(
                 label,
                 style:
-                    const TextStyle(
+                    TextStyle(
                   fontSize: 9,
                   fontWeight:
                       FontWeight.w800,
                   letterSpacing: 1,
-                  color: slate500,
+                  color: colors.textMuted,
                 ),
               ),
 
@@ -1253,11 +1261,11 @@ class _TripsScreenState extends State<TripsScreen> {
                 overflow:
                     TextOverflow.ellipsis,
                 style:
-                    const TextStyle(
+                    TextStyle(
                   fontSize: 13,
                   fontWeight:
                       FontWeight.w600,
-                  color: midnightDark,
+                  color: context.headingColor,
                 ),
               ),
             ],
@@ -1306,6 +1314,8 @@ class _TripsScreenState extends State<TripsScreen> {
     required IconData icon,
     required VoidCallback onPressed,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       height: 48,
       child: ElevatedButton.icon(
@@ -1316,8 +1326,8 @@ class _TripsScreenState extends State<TripsScreen> {
         ),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: midnight,
-          foregroundColor: white,
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
           elevation: 0,
           padding:
               const EdgeInsets.symmetric(

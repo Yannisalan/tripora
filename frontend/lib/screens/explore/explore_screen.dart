@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/destinations.dart';
 import '../../models/destination_model.dart';
 import '../../routes/app_routes.dart';
@@ -15,22 +16,6 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  // ============================================================
-  // TRIPORA DESIGN TOKENS
-  // ============================================================
-
-  static const midnight = Color(0xFF1E1B4B);
-  static const midnightDark = Color(0xFF070235);
-
-  static const porcelain = Color(0xFFF7F9FB);
-  static const white = Color(0xFFFFFFFF);
-
-  static const slate100 = Color(0xFFF1F5F9);
-  static const slate200 = Color(0xFFE2E8F0);
-  static const slate300 = Color(0xFFCBD5E1);
-  static const slate500 = Color(0xFF64748B);
-  static const slate600 = Color(0xFF475569);
-
   // Internal value only. Never displayed directly to the user.
   static const String _allTag = '__all__';
 
@@ -101,10 +86,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
+        final colors = sheetContext.triporaColors;
+        final scheme = Theme.of(sheetContext).colorScheme;
+
         return SafeArea(
           child: Container(
-            decoration: const BoxDecoration(
-              color: porcelain,
+            decoration: BoxDecoration(
+              color: colors.backgroundColor,
               borderRadius: BorderRadius.vertical(
                 top: Radius.circular(24),
               ),
@@ -126,7 +114,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: slate300,
+                        color: colors.borderStrong,
                         borderRadius: BorderRadius.circular(100),
                       ),
                     ),
@@ -152,10 +140,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               stackTrace,
                             ) {
                               return Container(
-                                color: slate100,
-                                child: const Icon(
+                                color: colors.surfaceSecondary,
+                                child: Icon(
                                   Icons.image_not_supported_outlined,
-                                  color: slate500,
+                                  color: colors.textMuted,
                                   size: 36,
                                 ),
                               );
@@ -190,7 +178,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     style: GoogleFonts.notoSerif(
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
-                      color: midnightDark,
+                      color: sheetContext.headingColor,
                       height: 1.15,
                     ),
                   ),
@@ -200,10 +188,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   // Country
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on_outlined,
                         size: 17,
-                        color: midnight,
+                        color: scheme.primary,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -211,7 +199,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         style: GoogleFonts.manrope(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: midnight,
+                          color: sheetContext.headingColor,
                         ),
                       ),
                     ],
@@ -225,7 +213,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     style: GoogleFonts.manrope(
                       fontSize: 14,
                       height: 1.55,
-                      color: slate600,
+                      color: colors.textSecondary,
                     ),
                   ),
 
@@ -256,9 +244,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: slate100,
+                          color: colors.surfaceSecondary,
                           border: Border.all(
-                            color: slate200,
+                            color: colors.border,
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -267,7 +255,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           style: GoogleFonts.manrope(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: midnight,
+                            color: sheetContext.headingColor,
                           ),
                         ),
                       );
@@ -286,8 +274,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         _planDestination(destination);
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: midnight,
-                        foregroundColor: white,
+                        backgroundColor: scheme.primary,
+                        foregroundColor: scheme.onPrimary,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -342,6 +330,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final width = MediaQuery.of(context).size.width;
 
     final isCompact = width < 760;
@@ -356,14 +347,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
             : 40.0;
 
     return Scaffold(
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
 
       // ========================================================
       // APP BAR
       // ========================================================
 
       appBar: AppBar(
-        backgroundColor: porcelain,
+        backgroundColor: colors.backgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -373,7 +364,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           style: GoogleFonts.manrope(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: midnight,
+            color: context.headingColor,
           ),
         ),
       ),
@@ -383,8 +374,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       // ========================================================
 
       body: RefreshIndicator(
-        color: midnight,
-        backgroundColor: white,
+        color: scheme.primary,
+        backgroundColor: colors.surface,
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -411,7 +402,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
-                        color: slate500,
+                        color: colors.textMuted,
                       ),
                     ),
 
@@ -423,7 +414,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         fontSize: isCompact ? 28 : 32,
                         fontWeight: FontWeight.w600,
                         height: 1.15,
-                        color: midnightDark,
+                        color: context.headingColor,
                       ),
                     ),
 
@@ -438,7 +429,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         style: GoogleFonts.manrope(
                           fontSize: 14,
                           height: 1.55,
-                          color: slate500,
+                          color: colors.textMuted,
                         ),
                       ),
                     ),
@@ -451,9 +442,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                     Container(
                       decoration: BoxDecoration(
-                        color: white,
+                        color: colors.surface,
                         border: Border.all(
-                          color: slate200,
+                          color: colors.border,
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
@@ -474,7 +465,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         },
                         style: GoogleFonts.manrope(
                           fontSize: 14,
-                          color: midnightDark,
+                          color: context.headingColor,
                         ),
                         decoration: InputDecoration(
                           hintText: context.tr(
@@ -482,11 +473,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                           hintStyle: GoogleFonts.manrope(
                             fontSize: 13,
-                            color: slate500,
+                            color: colors.textMuted,
                           ),
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search,
-                            color: midnight,
+                            color: scheme.primary,
                             size: 21,
                           ),
                           suffixIcon: _query.isEmpty
@@ -502,14 +493,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                       _query = '';
                                     });
                                   },
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.close,
-                                    color: slate500,
+                                    color: colors.textMuted,
                                     size: 19,
                                   ),
                                 ),
                           filled: true,
-                          fillColor: porcelain,
+                          fillColor: colors.backgroundColor,
                           contentPadding:
                               const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -517,20 +508,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: slate200,
+                            borderSide: BorderSide(
+                              color: colors.border,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: slate200,
+                            borderSide: BorderSide(
+                              color: colors.border,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: midnight,
+                            borderSide: BorderSide(
+                              color: scheme.primary,
                               width: 1.5,
                             ),
                           ),
@@ -550,7 +541,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.3,
-                        color: slate500,
+                        color: colors.textMuted,
                       ),
                     ),
 
@@ -583,12 +574,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: selected
-                                      ? midnight
-                                      : white,
+                                      ? scheme.primary
+                                      : colors.surface,
                                   border: Border.all(
                                     color: selected
-                                        ? midnight
-                                        : slate300,
+                                        ? scheme.primary
+                                        : colors.borderStrong,
                                   ),
                                   borderRadius:
                                       BorderRadius.circular(8),
@@ -601,8 +592,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: selected
-                                        ? white
-                                        : slate600,
+                                        ? scheme.onPrimary
+                                        : colors.textSecondary,
                                   ),
                                 ),
                               ),
@@ -627,7 +618,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             style: GoogleFonts.notoSerif(
                               fontSize: 24,
                               fontWeight: FontWeight.w600,
-                              color: midnightDark,
+                              color: context.headingColor,
                             ),
                           ),
                         ),
@@ -643,7 +634,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           style: GoogleFonts.manrope(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: slate500,
+                            color: colors.textMuted,
                           ),
                         ),
                       ],
@@ -726,6 +717,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // ============================================================
 
   Widget _buildEmptyState(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final hasActiveSearch = _query.isNotEmpty;
     final hasActiveTag = _selectedTag != _allTag;
 
@@ -761,9 +755,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         vertical: 42,
       ),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         border: Border.all(
-          color: slate200,
+          color: colors.border,
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -773,13 +767,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: slate100,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.travel_explore_outlined,
               size: 28,
-              color: midnight,
+              color: scheme.primary,
             ),
           ),
 
@@ -791,7 +785,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             style: GoogleFonts.notoSerif(
               fontSize: 21,
               fontWeight: FontWeight.w600,
-              color: midnightDark,
+              color: context.headingColor,
             ),
           ),
 
@@ -807,7 +801,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               style: GoogleFonts.manrope(
                 fontSize: 13,
                 height: 1.5,
-                color: slate500,
+                color: colors.textMuted,
               ),
             ),
           ),
@@ -825,11 +819,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 });
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: midnight,
-                side: const BorderSide(
-                  color: slate300,
+                foregroundColor: scheme.primary,
+                side: BorderSide(
+                  color: colors.borderStrong,
                 ),
-                backgroundColor: porcelain,
+                backgroundColor: colors.backgroundColor,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -875,6 +869,9 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(
         bottom: 10,
@@ -886,13 +883,13 @@ class _DetailRow extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               size: 17,
-              color: const Color(0xFF1E1B4B),
+              color: scheme.primary,
             ),
           ),
 
@@ -903,7 +900,7 @@ class _DetailRow extends StatelessWidget {
             style: GoogleFonts.manrope(
               fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF1E1B4B),
+              color: context.headingColor,
             ),
           ),
 
@@ -913,7 +910,7 @@ class _DetailRow extends StatelessWidget {
               style: GoogleFonts.manrope(
                 fontSize: 12,
                 height: 1.4,
-                color: const Color(0xFF64748B),
+                color: colors.textMuted,
               ),
             ),
           ),

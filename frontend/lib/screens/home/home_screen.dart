@@ -36,18 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
 
   static const Color midnight = Color(0xFF1E1B4B);
-  static const Color midnightDark = Color(0xFF070235);
-  static const Color porcelain = Color(0xFFF7F9FB);
   static const Color white = Color(0xFFFFFFFF);
-  static const Color slate100 = Color(0xFFF1F5F9);
-  static const Color slate200 = Color(0xFFE2E8F0);
-  static const Color slate300 = Color(0xFFCBD5E1);
-  static const Color slate500 = Color(0xFF64748B);
-  static const Color slate600 = Color(0xFF475569);
-  static const Color textSecondary = Color(0xFF47464F);
-  static const Color blue = Color(0xFF3B82F6);
-  static const Color amber = Color(0xFFF59E0B);
-  static const Color emerald = Color(0xFF10B981);
 
   @override
   void initState() {
@@ -85,11 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openPlanner([String? destination]) {
     HapticFeedback.lightImpact();
 
-    Navigator.pushNamed(
-      context,
-      AppRoutes.planner,
-      arguments: destination,
-    );
+    Navigator.pushNamed(context, AppRoutes.planner, arguments: destination);
   }
 
   void _openExplore() {
@@ -97,18 +82,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTrips() {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.trips,
-    ).then((_) => _loadTrips());
+    Navigator.pushNamed(context, AppRoutes.trips).then((_) => _loadTrips());
   }
 
   void _openTrip(TripModel trip) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => TripDetailsScreen(trip: trip),
-      ),
+      MaterialPageRoute(builder: (_) => TripDetailsScreen(trip: trip)),
     ).then((_) => _loadTrips());
   }
 
@@ -118,12 +98,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
       appBar: widget.showAppBar ? _buildAppBar() : null,
       body: RefreshIndicator(
-        color: midnight,
-        backgroundColor: white,
+        color: scheme.primary,
+        backgroundColor: colors.surface,
         onRefresh: _loadTrips,
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -135,8 +118,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final horizontalPadding = isMobile
                 ? 16.0
                 : isTablet
-                    ? 24.0
-                    : 40.0;
+                ? 24.0
+                : 40.0;
 
             const maxContentWidth = 1280.0;
 
@@ -181,16 +164,18 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
 
   PreferredSizeWidget _buildAppBar() {
+    final colors = context.triporaColors;
+
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: porcelain,
+      backgroundColor: colors.backgroundColor,
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
         'Tripora',
         style: GoogleFonts.manrope(
-          color: midnight,
+          color: context.headingColor,
           fontSize: 20,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.4,
@@ -219,13 +204,15 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildHero(bool isMobile) {
+    final colors = context.triporaColors;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(isMobile ? 24 : 40),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: slate200),
+        border: Border.all(color: colors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A1E1B4B),
@@ -238,30 +225,23 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 7,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: slate100,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: slate200),
+              border: Border.all(color: colors.border),
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 14,
-                    color: blue,
-                  ),
+                  Icon(Icons.auto_awesome_rounded, size: 14, color: context.appStatus.info),
                   const SizedBox(width: 7),
                   Text(
                     context.tr('home.aiPoweredTravelPlanning'),
-                    style: const TextStyle(
-                      color: midnight,
+                    style: TextStyle(
+                      color: context.headingColor,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -277,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             context.tr('home.heroTitle'),
             style: GoogleFonts.notoSerif(
-              color: midnightDark,
+              color: context.headingColor,
               fontSize: isMobile ? 34 : 48,
               height: 1.08,
               fontWeight: FontWeight.w600,
@@ -291,8 +271,8 @@ class _HomeScreenState extends State<HomeScreen> {
             constraints: const BoxConstraints(maxWidth: 650),
             child: Text(
               context.tr('home.heroDescription'),
-              style: const TextStyle(
-                color: textSecondary,
+              style: TextStyle(
+                color: colors.textSecondary,
                 fontSize: 16,
                 height: 1.55,
                 fontWeight: FontWeight.w400,
@@ -323,10 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 28),
 
-          Container(
-            height: 1,
-            color: slate200,
-          ),
+          Container(height: 1, color: colors.border),
 
           const SizedBox(height: 18),
 
@@ -364,10 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Trips
   // ---------------------------------------------------------------------------
 
-  Widget _buildTripSnapshot(
-    bool isMobile,
-    bool isTablet,
-  ) {
+  Widget _buildTripSnapshot(bool isMobile, bool isTablet) {
     if (_isLoadingTrips) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,8 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               TripCardShimmer(isCompact: isMobile),
               if (!isMobile) TripCardShimmer(isCompact: false),
-              if (!isMobile && !isTablet)
-                TripCardShimmer(isCompact: false),
+              if (!isMobile && !isTablet) TripCardShimmer(isCompact: false),
             ],
           ),
         ],
@@ -405,8 +378,8 @@ class _HomeScreenState extends State<HomeScreen> {
           isMobile
               ? 2
               : isTablet
-                  ? 2
-                  : 3,
+              ? 2
+              : 3,
         )
         .toList();
 
@@ -416,25 +389,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _sectionHeading(
           title: context.tr(
             'home.savedTripsCount',
-            params: {
-              'n': _trips.length.toString(),
-            },
+            params: {'n': _trips.length.toString()},
           ),
           eyebrow: context.tr('home.yourJourneys'),
           trailing: TextButton.icon(
             onPressed: _openTrips,
-            icon: const Icon(
-              Icons.arrow_forward_rounded,
-              size: 16,
-            ),
-            label: Text(
-              context.tr('common.viewAll'),
-            ),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+            label: Text(context.tr('common.viewAll')),
             style: TextButton.styleFrom(
-              foregroundColor: midnight,
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
+              foregroundColor: context.headingColor,
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -446,17 +410,14 @@ class _HomeScreenState extends State<HomeScreen> {
             final cardWidth = isMobile
                 ? constraints.maxWidth
                 : isTablet
-                    ? (constraints.maxWidth - 16) / 2
-                    : (constraints.maxWidth - 32) / 3;
+                ? (constraints.maxWidth - 16) / 2
+                : (constraints.maxWidth - 32) / 3;
 
             return Wrap(
               spacing: 16,
               runSpacing: 16,
               children: recentTrips.map((trip) {
-                return SizedBox(
-                  width: cardWidth,
-                  child: _buildTripCard(trip),
-                );
+                return SizedBox(width: cardWidth, child: _buildTripCard(trip));
               }).toList(),
             );
           },
@@ -466,8 +427,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTripCard(TripModel trip) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Material(
-      color: white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: () => _openTrip(trip),
@@ -476,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: slate200),
+            border: Border.all(color: colors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -487,20 +451,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: midnight,
+                      color: scheme.primary,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.flight_takeoff_rounded,
-                      color: white,
+                      color: scheme.onPrimary,
                       size: 19,
                     ),
                   ),
                   const Spacer(),
-                  const Icon(
+                  Icon(
                     Icons.arrow_outward_rounded,
                     size: 18,
-                    color: slate500,
+                    color: colors.textMuted,
                   ),
                 ],
               ),
@@ -512,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.notoSerif(
-                  color: midnightDark,
+                  color: context.headingColor,
                   fontSize: 22,
                   height: 1.2,
                   fontWeight: FontWeight.w600,
@@ -530,8 +494,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     'travelers': trip.travelers.toString(),
                   },
                 ),
-                style: const TextStyle(
-                  color: slate500,
+                style: TextStyle(
+                  color: colors.textMuted,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -539,25 +503,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 18),
 
-              Container(
-                height: 1,
-                color: slate200,
-              ),
+              Container(height: 1, color: colors.border),
 
               const SizedBox(height: 14),
 
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.check_circle_outline_rounded,
                     size: 15,
-                    color: emerald,
+                    color: context.appStatus.success,
                   ),
                   const SizedBox(width: 7),
                   Text(
                     context.tr('home.savedItinerary'),
-                    style: const TextStyle(
-                      color: slate600,
+                    style: TextStyle(
+                      color: colors.textSecondary,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.7,
@@ -573,13 +534,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyTrips() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: slate200),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -587,13 +551,10 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: slate100,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.luggage_outlined,
-              color: midnight,
-            ),
+            child: Icon(Icons.luggage_outlined, color: scheme.primary),
           ),
 
           const SizedBox(width: 16),
@@ -607,14 +568,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.notoSerif(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: midnightDark,
+                    color: context.headingColor,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   context.tr('home.createFirstItinerary'),
-                  style: const TextStyle(
-                    color: slate500,
+                  style: TextStyle(
+                    color: colors.textMuted,
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -651,31 +612,31 @@ class _HomeScreenState extends State<HomeScreen> {
         tripError.contains('connection');
 
     final Color accent = isAuthError
-        ? blue
+        ? context.appStatus.info
         : isNetworkError
-            ? amber
-            : const Color(0xFFBA1A1A);
+        ? context.appStatus.warning
+        : const Color(0xFFBA1A1A);
 
     final IconData icon = isAuthError
         ? Icons.lock_outline_rounded
         : isNetworkError
-            ? Icons.wifi_off_outlined
-            : Icons.cloud_off_outlined;
+        ? Icons.wifi_off_outlined
+        : Icons.cloud_off_outlined;
 
     final String message = isAuthError
         ? context.tr('home.signInToSeeTrips')
         : isNetworkError
-            ? context.tr('home.serverConnectionError')
-            : context.tr('home.loadTripsError');
+        ? context.tr('home.serverConnectionError')
+        : context.tr('home.loadTripsError');
+
+    final colors = context.triporaColors;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -686,11 +647,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: accent.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: accent,
-              size: 20,
-            ),
+            child: Icon(icon, color: accent, size: 20),
           ),
 
           const SizedBox(width: 14),
@@ -698,31 +655,23 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                color: accent,
-                fontSize: 13,
-                height: 1.4,
-              ),
+              style: TextStyle(color: accent, fontSize: 13, height: 1.4),
             ),
           ),
 
           TextButton(
             onPressed: isAuthError
                 ? () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.login,
-                    ).then((_) => _loadTrips())
+                    context,
+                    AppRoutes.login,
+                  ).then((_) => _loadTrips())
                 : _loadTrips,
-            style: TextButton.styleFrom(
-              foregroundColor: midnight,
-            ),
+            style: TextButton.styleFrom(foregroundColor: context.headingColor),
             child: Text(
               isAuthError
                   ? context.tr('home.signIn')
                   : context.tr('common.retry'),
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -740,27 +689,17 @@ class _HomeScreenState extends State<HomeScreen> {
       eyebrow: context.tr('home.curatedForYou'),
       trailing: TextButton(
         onPressed: _openExplore,
-        style: TextButton.styleFrom(
-          foregroundColor: midnight,
-        ),
+        style: TextButton.styleFrom(foregroundColor: context.headingColor),
         child: Text(
           context.tr('common.seeAll'),
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
     );
   }
 
   Widget _buildDestinationStrip(bool isMobile) {
-    const featuredKeys = {
-      'Seychelles',
-      'Paris',
-      'Cotonou',
-      'Tokyo',
-      'Bali',
-    };
+    const featuredKeys = {'Seychelles', 'Paris', 'Cotonou', 'Tokyo', 'Bali'};
 
     final featured = destinations
         .where((d) => featuredKeys.contains(d.city))
@@ -790,8 +729,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _editorialDestinationCard(dynamic destination) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Material(
-      color: white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(16),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -799,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: slate200),
+            border: Border.all(color: colors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -814,10 +756,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          color: slate100,
-                          child: const Icon(
+                          color: colors.surfaceSecondary,
+                          child: Icon(
                             Icons.image_not_supported_outlined,
-                            color: slate500,
+                            color: colors.textMuted,
                             size: 32,
                           ),
                         );
@@ -882,8 +824,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         destination.country.toUpperCase(),
-                        style: const TextStyle(
-                          color: slate500,
+                        style: TextStyle(
+                          color: colors.textMuted,
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
@@ -897,8 +839,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           destination.description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: textSecondary,
+                          style: TextStyle(
+                            color: colors.textSecondary,
                             fontSize: 12,
                             height: 1.4,
                           ),
@@ -909,17 +851,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.schedule_outlined,
                             size: 14,
-                            color: midnight,
+                            color: scheme.primary,
                           ),
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               destination.tripLength,
-                              style: const TextStyle(
-                                color: midnight,
+                              style: TextStyle(
+                                color: context.headingColor,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -942,10 +884,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // Quick actions
   // ---------------------------------------------------------------------------
 
-  Widget _buildQuickActions(
-    bool isMobile,
-    bool isTablet,
-  ) {
+  Widget _buildQuickActions(bool isMobile, bool isTablet) {
+    final colors = context.triporaColors;
+
     final actions = [
       _ActionItem(
         icon: Icons.search_rounded,
@@ -975,8 +916,8 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           context.tr('home.travelDesk'),
-          style: const TextStyle(
-            color: slate500,
+          style: TextStyle(
+            color: colors.textMuted,
             fontSize: 10,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
@@ -988,7 +929,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           context.tr('home.everythingForJourney'),
           style: GoogleFonts.notoSerif(
-            color: midnightDark,
+            color: context.headingColor,
             fontSize: 26,
             fontWeight: FontWeight.w600,
           ),
@@ -1001,17 +942,14 @@ class _HomeScreenState extends State<HomeScreen> {
             final width = isMobile
                 ? constraints.maxWidth
                 : isTablet
-                    ? (constraints.maxWidth - 16) / 2
-                    : (constraints.maxWidth - 32) / 3;
+                ? (constraints.maxWidth - 16) / 2
+                : (constraints.maxWidth - 32) / 3;
 
             return Wrap(
               spacing: 16,
               runSpacing: 16,
               children: actions.map((action) {
-                return SizedBox(
-                  width: width,
-                  child: _buildActionCard(action),
-                );
+                return SizedBox(width: width, child: _buildActionCard(action));
               }).toList(),
             );
           },
@@ -1021,8 +959,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActionCard(_ActionItem action) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Material(
-      color: white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: action.onTap,
@@ -1031,7 +972,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: slate200),
+            border: Border.all(color: colors.border),
           ),
           child: Row(
             children: [
@@ -1039,14 +980,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: midnight,
+                  color: scheme.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  action.icon,
-                  color: white,
-                  size: 21,
-                ),
+                child: Icon(action.icon, color: scheme.onPrimary, size: 21),
               ),
 
               const SizedBox(width: 14),
@@ -1057,8 +994,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       action.label,
-                      style: const TextStyle(
-                        color: slate500,
+                      style: TextStyle(
+                        color: colors.textMuted,
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.9,
@@ -1069,8 +1006,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     Text(
                       action.title,
-                      style: const TextStyle(
-                        color: midnightDark,
+                      style: TextStyle(
+                        color: context.headingColor,
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1082,8 +1019,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       action.subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: slate500,
+                      style: TextStyle(
+                        color: colors.textMuted,
                         fontSize: 11,
                         height: 1.35,
                       ),
@@ -1094,10 +1031,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(width: 8),
 
-              const Icon(
+              Icon(
                 Icons.arrow_forward_rounded,
                 size: 17,
-                color: slate500,
+                color: colors.textMuted,
               ),
             ],
           ),
@@ -1115,6 +1052,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required String eyebrow,
     required Widget? trailing,
   }) {
+    final colors = context.triporaColors;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -1124,8 +1063,8 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 eyebrow,
-                style: const TextStyle(
-                  color: slate500,
+                style: TextStyle(
+                  color: colors.textMuted,
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.1,
@@ -1137,7 +1076,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 title,
                 style: GoogleFonts.notoSerif(
-                  color: midnightDark,
+                  color: context.headingColor,
                   fontSize: 27,
                   height: 1.15,
                   fontWeight: FontWeight.w600,
@@ -1148,7 +1087,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        if (trailing != null) trailing,
+        ?trailing,
       ],
     );
   }
@@ -1160,25 +1099,20 @@ class _HomeScreenState extends State<HomeScreen> {
     double height = 48,
     double horizontalPadding = 22,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       height: height,
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(
-          icon,
-          size: 17,
-        ),
+        icon: Icon(icon, size: 17),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: midnight,
-          foregroundColor: white,
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
           elevation: 0,
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
@@ -1195,27 +1129,21 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onPressed,
     double height = 48,
   }) {
+    final colors = context.triporaColors;
+
     return SizedBox(
       height: height,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(
-          icon,
-          size: 17,
-        ),
+        icon: Icon(icon, size: 17),
         label: Text(label),
         style: OutlinedButton.styleFrom(
-          foregroundColor: midnight,
+          foregroundColor: context.headingColor,
           backgroundColor: Colors.transparent,
-          side: const BorderSide(color: slate300),
+          side: BorderSide(color: colors.borderStrong),
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1230,26 +1158,22 @@ class _HeroMeta extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _HeroMeta({
-    required this.icon,
-    required this.label,
-  });
+  const _HeroMeta({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: 14,
-          color: AppColors.primary,
-        ),
+        Icon(icon, size: 14, color: scheme.primary),
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
+          style: TextStyle(
+            color: colors.textMuted,
             fontSize: 9,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.7,

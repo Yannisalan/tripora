@@ -59,17 +59,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
     'Bangkok',
   ];
 
-  static const Color _midnight = Color(0xFF1E1B4B);
-  static const Color _midnightDark = Color(0xFF070235);
-  static const Color _blue = Color(0xFF3B82F6);
-  static const Color _canvas = Color(0xFFF8FAFC);
-  static const Color _white = Colors.white;
-  static const Color _border = Color(0xFFE2E8F0);
-  static const Color _borderStrong = Color(0xFFCBD5E1);
-  static const Color _textPrimary = Color(0xFF191C1E);
-  static const Color _textSecondary = Color(0xFF475569);
-  static const Color _textMuted = Color(0xFF64748B);
-
   @override
   void initState() {
     super.initState();
@@ -282,8 +271,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: _midnight,
-                  surface: _white,
+                  primary: Theme.of(context).colorScheme.primary,
+                  surface: Theme.of(context).colorScheme.surface,
                 ),
           ),
           child: child!,
@@ -479,7 +468,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           backgroundColor: isError
               ? statusColors?.error ??
                   Theme.of(context).colorScheme.error
-              : statusColors?.info ?? _blue,
+              : statusColors?.info ??
+                  context.appStatus.info,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -679,11 +669,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     return ListenableBuilder(
       listenable: AppPreferences.instance,
       builder: (context, _) {
         return Scaffold(
-          backgroundColor: _canvas,
+          backgroundColor: colors.backgroundColor,
           body: SafeArea(
             child: Column(
               children: [
@@ -712,11 +704,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                 context.tr(
                                   'planner.essentials',
                                 ),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Noto Serif',
                                   fontSize: 28,
                                   fontWeight: FontWeight.w600,
-                                  color: _midnight,
+                                  color: context.headingColor,
                                 ),
                               ),
 
@@ -777,6 +769,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildTopBar(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         12,
@@ -790,18 +784,18 @@ class _PlannerScreenState extends State<PlannerScreen> {
             onPressed: isGenerating
                 ? null
                 : () => Navigator.maybePop(context),
-            icon: const Icon(
+            icon: Icon(
               Icons.close,
               size: 20,
-              color: _textPrimary,
+              color: colors.textPrimary,
             ),
             label: Text(
               context.tr('common.cancel'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: _textPrimary,
+                color: colors.textPrimary,
               ),
             ),
           ),
@@ -811,12 +805,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
           Text(
             '${(_completionProgress * 100).round()}% '
             '${context.tr('planner.complete').toUpperCase()}',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
-              color: _blue,
+              color: context.appStatus.info,
             ),
           ),
 
@@ -828,11 +822,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 : _resetForm,
             child: Text(
               context.tr('planner.reset'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: _textMuted,
+                color: colors.textMuted,
               ),
             ),
           ),
@@ -842,12 +836,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _buildProgressBar() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return ClipRRect(
       child: LinearProgressIndicator(
         value: _completionProgress,
         minHeight: 3,
-        backgroundColor: _border,
-        color: _midnight,
+        backgroundColor: colors.border,
+        color: scheme.primary,
       ),
     );
   }
@@ -859,6 +856,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildDestinationSection(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final matchedDestination =
         _matchDestination(
       destinationController.text,
@@ -879,10 +879,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
             controller: destinationController,
             enabled: !isGenerating,
             textInputAction: TextInputAction.done,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
-              color: _textPrimary,
+              color: colors.textPrimary,
             ),
             onChanged: (_) => setState(() {}),
             decoration: _inputDecoration(
@@ -890,6 +890,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 'planner.destinationHint',
               ),
               icon: Icons.location_on_outlined,
+              colors: colors,
+              scheme: scheme,
               suffixIcon:
                   destinationController.text.isEmpty
                       ? null
@@ -916,12 +918,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
             context
                 .tr('planner.trendingCurations')
                 .toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1,
-              color: _textMuted,
+              color: colors.textMuted,
             ),
           ),
 
@@ -956,19 +958,19 @@ class _PlannerScreenState extends State<PlannerScreen> {
                         ? FontWeight.w700
                         : FontWeight.w600,
                     color: selected
-                        ? Colors.white
-                        : _midnight,
+                        ? scheme.onPrimary
+                        : context.headingColor,
                   ),
                 ),
                 selected: selected,
                 showCheckmark: false,
                 backgroundColor:
-                    const Color(0xFFF1F5F9),
-                selectedColor: _midnight,
+                    colors.surfaceSecondary,
+                selectedColor: scheme.primary,
                 side: BorderSide(
                   color: selected
-                      ? _midnight
-                      : _borderStrong,
+                      ? scheme.primary
+                      : colors.borderStrong,
                 ),
                 shape:
                     RoundedRectangleBorder(
@@ -1001,6 +1003,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
           if (matchedDestination != null) ...[
             const SizedBox(height: 16),
             _buildDestinationCard(
+              context,
               matchedDestination,
             ),
           ],
@@ -1034,8 +1037,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _buildDestinationCard(
+    BuildContext context,
     dynamic destination,
   ) {
+    final colors = context.triporaColors;
+
     return ClipRRect(
       borderRadius:
           BorderRadius.circular(16),
@@ -1048,16 +1054,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
             Image.network(
               destination.imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  Container(
-                color:
-                    const Color(0xFFF1F5F9),
-                child: const Icon(
-                  Icons
-                      .image_not_supported_outlined,
-                  color: _textMuted,
+errorBuilder: (_, _, _) =>
+                    Container(
+                  color: colors.surfaceSecondary,
+                  child: Icon(
+                    Icons
+                        .image_not_supported_outlined,
+                    color: colors.textMuted,
+                  ),
                 ),
-              ),
             ),
 
             DecoratedBox(
@@ -1071,7 +1076,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    _midnight.withValues(
+                    Color(0xFF1E1B4B).withValues(
                       alpha: 0.78,
                     ),
                   ],
@@ -1132,6 +1137,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildDatesSection(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final activePreset =
         _activePacingPreset();
 
@@ -1153,7 +1161,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             decoration:
                 BoxDecoration(
               color:
-                  const Color(0xFFF1F5F9),
+                  colors.surfaceSecondary,
               borderRadius:
                   BorderRadius.circular(14),
             ),
@@ -1198,12 +1206,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
                         child:
                             Column(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons
                                   .arrow_forward,
                               size: 16,
                               color:
-                                  _blue,
+                                  colors.appStatus.info,
                             ),
                             const SizedBox(
                               height: 2,
@@ -1212,7 +1220,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                               '${endDate!.difference(startDate!).inDays + 1} '
                               '${context.tr('planner.days')}',
                               style:
-                                  const TextStyle(
+                                  TextStyle(
                                 fontFamily:
                                     'Manrope',
                                 fontSize:
@@ -1221,7 +1229,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                     FontWeight
                                         .w700,
                                 color:
-                                    _blue,
+                                    colors.appStatus.info,
                               ),
                             ),
                           ],
@@ -1259,12 +1267,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       startDate!,
                     ),
                     style:
-                        const TextStyle(
+                        TextStyle(
                       fontFamily:
                           'Manrope',
                       fontSize: 11,
                       color:
-                          _textMuted,
+                          colors.textMuted,
                     ),
                   ),
                 ],
@@ -1278,12 +1286,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
             context
                 .tr('planner.pacingPresets')
                 .toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1,
-              color: _textMuted,
+              color: colors.textMuted,
             ),
           ),
 
@@ -1318,20 +1326,20 @@ class _PlannerScreenState extends State<PlannerScreen> {
                         ? FontWeight.w700
                         : FontWeight.w600,
                     color: selected
-                        ? Colors.white
-                        : _midnight,
+                        ? scheme.onPrimary
+                        : context.headingColor,
                   ),
                 ),
                 selected: selected,
                 showCheckmark: false,
                 backgroundColor:
-                    const Color(0xFFF1F5F9),
+                    colors.surfaceSecondary,
                 selectedColor:
-                    _midnight,
+                    scheme.primary,
                 side: BorderSide(
                   color: selected
-                      ? _midnight
-                      : _borderStrong,
+                      ? scheme.primary
+                      : colors.borderStrong,
                 ),
                 shape:
                     RoundedRectangleBorder(
@@ -1478,10 +1486,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Material(
       color: isSelected
-          ? _midnight
-          : _white,
+          ? scheme.primary
+          : colors.surface,
       borderRadius:
           BorderRadius.circular(14),
       child: InkWell(
@@ -1499,8 +1510,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 BorderRadius.circular(14),
             border: Border.all(
               color: isSelected
-                  ? _midnight
-                  : _border,
+                  ? scheme.primary
+                  : colors.border,
             ),
           ),
           child: Column(
@@ -1513,8 +1524,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     icon,
                     size: 20,
                     color: isSelected
-                        ? Colors.white
-                        : _midnight,
+                        ? scheme.onPrimary
+                        : scheme.primary,
                   ),
 
                   const Spacer(),
@@ -1528,11 +1539,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       fontWeight:
                           FontWeight.w700,
                       color: isSelected
-                          ? Colors.white
+                          ? scheme.onPrimary
                               .withValues(
                               alpha: 0.7,
                             )
-                          : _textMuted,
+                          : colors.textMuted,
                     ),
                   ),
                 ],
@@ -1552,8 +1563,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   fontWeight:
                       FontWeight.w700,
                   color: isSelected
-                      ? Colors.white
-                      : _textPrimary,
+                      ? scheme.onPrimary
+                      : colors.textPrimary,
                 ),
               ),
 
@@ -1566,11 +1577,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       'Manrope',
                   fontSize: 11,
                   color: isSelected
-                      ? Colors.white
+                      ? scheme.onPrimary
                           .withValues(
                           alpha: 0.75,
                         )
-                      : _textMuted,
+                      : colors.textMuted,
                 ),
               ),
             ],
@@ -1587,6 +1598,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildBudgetSection(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return _buildSection(
       context: context,
       number: 4,
@@ -1602,7 +1616,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         decoration:
             BoxDecoration(
           color:
-              const Color(0xFFF1F5F9),
+              colors.surfaceSecondary,
           borderRadius:
               BorderRadius.circular(999),
         ),
@@ -1611,14 +1625,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
             context,
           ),
           style:
-              const TextStyle(
+              TextStyle(
             fontFamily:
                 'Manrope',
             fontSize: 11,
             fontWeight:
                 FontWeight.w700,
             color:
-                _textMuted,
+                colors.textMuted,
           ),
         ),
       ),
@@ -1676,7 +1690,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     )
                     .toUpperCase(),
                 style:
-                    const TextStyle(
+                    TextStyle(
                   fontFamily:
                       'Manrope',
                   fontSize: 10,
@@ -1684,7 +1698,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       FontWeight.w700,
                   letterSpacing: 1,
                   color:
-                      _textMuted,
+                      colors.textMuted,
                 ),
               ),
 
@@ -1695,13 +1709,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   'planner.selectAsMany',
                 ),
                 style:
-                    const TextStyle(
+                    TextStyle(
                   fontFamily:
                       'Manrope',
                   fontSize: 10,
                   fontWeight:
                       FontWeight.w600,
-                  color: _blue,
+                  color:
+                      context.appStatus.info,
                 ),
               ),
             ],
@@ -1735,21 +1750,20 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           ? FontWeight.w700
                           : FontWeight.w600,
                       color: selected
-                          ? Colors.white
-                          : _midnight,
+                          ? scheme.onPrimary
+                          : context.headingColor,
                     ),
                   ),
                   selected: selected,
                   showCheckmark: false,
                   backgroundColor:
-                      const Color(
-                    0xFFF1F5F9,
-                  ),
-                  selectedColor: _blue,
+                      colors.surfaceSecondary,
+                  selectedColor:
+                      context.appStatus.info,
                   side: BorderSide(
                     color: selected
-                        ? _blue
-                        : _borderStrong,
+                        ? context.appStatus.info
+                        : colors.borderStrong,
                   ),
                   shape:
                       RoundedRectangleBorder(
@@ -1828,6 +1842,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
     String label,
     String priceHint,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final String mapped =
         switch (label) {
       'Backpacker' => 'Budget',
@@ -1858,17 +1875,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
         decoration:
             BoxDecoration(
           color: selected
-              ? _white
-              : const Color(
-                  0xFFF1F5F9,
-                ),
+              ? colors.surface
+              : colors.surfaceSecondary,
           borderRadius:
               BorderRadius.circular(
             10,
           ),
           border: Border.all(
             color: selected
-                ? _midnight
+                ? scheme.primary
                 : Colors.transparent,
             width:
                 selected ? 1.4 : 1,
@@ -1891,8 +1906,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 fontWeight:
                     FontWeight.w700,
                 color: selected
-                    ? _midnight
-                    : _textSecondary,
+                    ? context.headingColor
+                    : colors.textSecondary,
               ),
             ),
 
@@ -1907,8 +1922,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     'Manrope',
                 fontSize: 10,
                 color: selected
-                    ? _midnight
-                    : _textMuted,
+                    ? context.headingColor
+                    : colors.textMuted,
               ),
             ),
           ],
@@ -1958,6 +1973,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildGenerateButton(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment:
           CrossAxisAlignment.start,
@@ -1973,11 +1991,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
             style:
                 FilledButton.styleFrom(
               backgroundColor:
-                  _midnightDark,
+                  scheme.primary,
               foregroundColor:
-                  Colors.white,
+                  scheme.onPrimary,
               disabledBackgroundColor:
-                  _midnightDark
+                  scheme.primary
                       .withValues(
                 alpha: 0.55,
               ),
@@ -1991,14 +2009,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
               elevation: 0,
             ),
             icon: isGenerating
-                ? const SizedBox(
+                ? SizedBox(
                     width: 18,
                     height: 18,
                     child:
                         CircularProgressIndicator(
                       strokeWidth: 2,
                       color:
-                          Colors.white,
+                          scheme.onPrimary,
                     ),
                   )
                 : const Icon(
@@ -2032,10 +2050,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
             mainAxisSize:
                 MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.verified_outlined,
                 size: 14,
-                color: _textMuted,
+                color: colors.textMuted,
               ),
 
               const SizedBox(width: 6),
@@ -2048,12 +2066,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   textAlign:
                       TextAlign.center,
                   style:
-                      const TextStyle(
+                      TextStyle(
                     fontFamily:
                         'Manrope',
                     fontSize: 11,
                     color:
-                        _textMuted,
+                        colors.textMuted,
                   ),
                 ),
               ),
@@ -2076,17 +2094,20 @@ class _PlannerScreenState extends State<PlannerScreen> {
     IconData? trailingIcon,
     Widget? trailingWidget,
   }) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding:
           const EdgeInsets.all(18),
       decoration:
           BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius:
             BorderRadius.circular(20),
         border:
-            Border.all(color: _border),
+            Border.all(color: colors.border),
         boxShadow: const [
           BoxShadow(
             color:
@@ -2109,22 +2130,22 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 alignment:
                     Alignment.center,
                 decoration:
-                    const BoxDecoration(
-                  color: _midnight,
+                    BoxDecoration(
+                  color: scheme.primary,
                   shape:
                       BoxShape.circle,
                 ),
                 child: Text(
                   '$number',
                   style:
-                      const TextStyle(
+                      TextStyle(
                     fontFamily:
                         'Manrope',
                     fontSize: 12,
                     fontWeight:
                         FontWeight.w800,
                     color:
-                        Colors.white,
+                        scheme.onPrimary,
                   ),
                 ),
               ),
@@ -2137,14 +2158,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 child: Text(
                   title,
                   style:
-                      const TextStyle(
+                      TextStyle(
                     fontFamily:
                         'Noto Serif',
                     fontSize: 19,
                     fontWeight:
                         FontWeight.w600,
                     color:
-                        _midnight,
+                        context.headingColor,
                   ),
                 ),
               ),
@@ -2156,7 +2177,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 Icon(
                   trailingIcon,
                   size: 20,
-                  color: _textMuted,
+                  color: colors.textMuted,
                 ),
             ],
           ),
@@ -2176,28 +2197,30 @@ class _PlannerScreenState extends State<PlannerScreen> {
   InputDecoration _inputDecoration({
     required String hintText,
     required IconData icon,
+    required TriporaColors colors,
+    required ColorScheme scheme,
     Widget? suffixIcon,
   }) {
     return InputDecoration(
       hintText: hintText,
       hintStyle:
-          const TextStyle(
+          TextStyle(
         fontFamily:
             'Manrope',
         fontSize: 14,
         color:
-            _textMuted,
+            colors.textMuted,
       ),
       prefixIcon: Icon(
         icon,
-        color: _textMuted,
+        color: colors.textMuted,
         size: 21,
       ),
       suffixIcon:
           suffixIcon,
       filled: true,
       fillColor:
-          const Color(0xFFF8FAFC),
+          colors.backgroundColor,
       contentPadding:
           const EdgeInsets.symmetric(
         horizontal: 16,
@@ -2210,8 +2233,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           10,
         ),
         borderSide:
-            const BorderSide(
-          color: _border,
+            BorderSide(
+          color: colors.border,
         ),
       ),
       enabledBorder:
@@ -2221,8 +2244,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           10,
         ),
         borderSide:
-            const BorderSide(
-          color: _border,
+            BorderSide(
+          color: colors.border,
         ),
       ),
       focusedBorder:
@@ -2232,8 +2255,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           10,
         ),
         borderSide:
-            const BorderSide(
-          color: _midnight,
+            BorderSide(
+          color: scheme.primary,
           width: 1.3,
         ),
       ),
@@ -2244,8 +2267,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           10,
         ),
         borderSide:
-            const BorderSide(
-          color: _border,
+            BorderSide(
+          color: colors.border,
         ),
       ),
     );
@@ -2261,6 +2284,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
     required DateTime? date,
     required VoidCallback onTap,
   }) {
+    final colors = context.triporaColors;
+
     final selected =
         date != null;
 
@@ -2277,7 +2302,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
           Text(
             label.toUpperCase(),
             style:
-                const TextStyle(
+                TextStyle(
               fontFamily:
                   'Manrope',
               fontSize: 9,
@@ -2285,7 +2310,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   FontWeight.w700,
               letterSpacing: 1,
               color:
-                  _textMuted,
+                  colors.textMuted,
             ),
           ),
 
@@ -2305,8 +2330,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
               fontWeight:
                   FontWeight.w700,
               color: selected
-                  ? _textPrimary
-                  : _textMuted,
+                  ? colors.textPrimary
+                  : colors.textMuted,
             ),
           ),
         ],
@@ -2322,6 +2347,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
     BuildContext context,
     String label,
   ) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final selected =
         travelStyle == label;
 
@@ -2339,20 +2367,20 @@ class _PlannerScreenState extends State<PlannerScreen> {
               ? FontWeight.w700
               : FontWeight.w600,
           color: selected
-              ? Colors.white
-              : _midnight,
+              ? scheme.onPrimary
+              : context.headingColor,
         ),
       ),
       selected: selected,
       showCheckmark: false,
       backgroundColor:
-          const Color(0xFFF1F5F9),
+          colors.surfaceSecondary,
       selectedColor:
-          _midnight,
+          scheme.primary,
       side: BorderSide(
         color: selected
-            ? _midnight
-            : _borderStrong,
+            ? scheme.primary
+            : colors.borderStrong,
       ),
       shape:
           RoundedRectangleBorder(
@@ -2387,19 +2415,12 @@ class _GenerationDialog
     extends StatelessWidget {
   const _GenerationDialog();
 
-  static const Color _midnight =
-      Color(0xFF1E1B4B);
-  static const Color _blue =
-      Color(0xFF3B82F6);
-  static const Color _white =
-      Colors.white;
-  static const Color _textMuted =
-      Color(0xFF64748B);
-
   @override
   Widget build(
     BuildContext context,
   ) {
+    final colors = context.triporaColors;
+
     return Container(
       width: double.infinity,
       constraints:
@@ -2414,7 +2435,7 @@ class _GenerationDialog
           const EdgeInsets.all(26),
       decoration:
           BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius:
             BorderRadius.circular(24),
         boxShadow: const [
@@ -2438,23 +2459,20 @@ class _GenerationDialog
                 Alignment.center,
             decoration:
                 BoxDecoration(
-              color:
-                  const Color(
-                0xFFEFF6FF,
-              ),
+              color: colors.surfaceInfo,
               borderRadius:
                   BorderRadius.circular(
                 16,
               ),
             ),
             child:
-                const SizedBox(
+                SizedBox(
               width: 25,
               height: 25,
               child:
                   CircularProgressIndicator(
                 strokeWidth: 2.5,
-                color: _blue,
+                color: colors.appStatus.info,
               ),
             ),
           ),
@@ -2470,14 +2488,14 @@ class _GenerationDialog
             textAlign:
                 TextAlign.center,
             style:
-                const TextStyle(
+                TextStyle(
               fontFamily:
                   'Noto Serif',
               fontSize: 22,
               fontWeight:
                   FontWeight.w600,
               color:
-                  _midnight,
+                  context.headingColor,
             ),
           ),
 
@@ -2492,13 +2510,13 @@ class _GenerationDialog
             textAlign:
                 TextAlign.center,
             style:
-                const TextStyle(
+                TextStyle(
               fontFamily:
                   'Manrope',
               fontSize: 12,
               height: 1.45,
               color:
-                  _textMuted,
+                  colors.textMuted,
             ),
           ),
 

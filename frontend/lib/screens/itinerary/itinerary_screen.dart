@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_localizations.dart';
 import '../../core/preferences/app_preferences.dart';
+import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
@@ -15,21 +16,6 @@ class ItineraryScreen extends StatelessWidget {
     super.key,
     required this.tripData,
   });
-
-  // ============================================================
-  // COLORS
-  // ============================================================
-
-  static const Color _background = Color(0xFFF8FAFC);
-  static const Color _surface = Colors.white;
-  static const Color _midnight = Color(0xFF1E1B4B);
-  static const Color _blue = Color(0xFF3B82F6);
-  static const Color _amber = Color(0xFFF59E0B);
-  static const Color _text = Color(0xFF191C1E);
-  static const Color _secondaryText = Color(0xFF475569);
-  static const Color _mutedText = Color(0xFF64748B);
-  static const Color _border = Color(0xFFE2E8F0);
-  static const Color _strongBorder = Color(0xFFCBD5E1);
 
   // ============================================================
   // SAFE VALUE HELPERS
@@ -354,22 +340,25 @@ class ItineraryScreen extends StatelessWidget {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: colors.backgroundColor,
 
       // ========================================================
       // APP BAR
       // ========================================================
 
       appBar: AppBar(
-        backgroundColor: _background,
+        backgroundColor: colors.backgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           tooltip: context.tr('common.back'),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_rounded,
-            color: _midnight,
+            color: scheme.primary,
           ),
           onPressed: () {
             Navigator.pop(context);
@@ -377,11 +366,11 @@ class ItineraryScreen extends StatelessWidget {
         ),
         title: Text(
           context.tr('it.title'),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Noto Serif',
             fontSize: 21,
             fontWeight: FontWeight.w700,
-            color: _midnight,
+            color: context.headingColor,
           ),
         ),
       ),
@@ -465,11 +454,13 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildTripHeader(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: _midnight,
+        color: scheme.primary,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -481,10 +472,10 @@ class ItineraryScreen extends StatelessWidget {
               vertical: 7,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.10),
+              color: scheme.onPrimary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.16),
+                color: scheme.onPrimary.withValues(alpha: 0.16),
               ),
             ),
             child: Row(
@@ -498,12 +489,12 @@ class ItineraryScreen extends StatelessWidget {
                 const SizedBox(width: 7),
                 Text(
                   context.tr('it.aiGenerated'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.1,
-                    color: Colors.white,
+                    color: scheme.onPrimary,
                   ),
                 ),
               ],
@@ -514,12 +505,12 @@ class ItineraryScreen extends StatelessWidget {
 
           Text(
             destination(context),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 38,
               height: 1.08,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: scheme.onPrimary,
             ),
           ),
 
@@ -532,7 +523,7 @@ class ItineraryScreen extends StatelessWidget {
               fontFamily: 'Manrope',
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.70),
+              color: scheme.onPrimary.withValues(alpha: 0.70),
             ),
           ),
 
@@ -543,20 +534,24 @@ class ItineraryScreen extends StatelessWidget {
             runSpacing: 14,
             children: [
               _buildHeaderInfo(
+                context,
                 Icons.calendar_today_outlined,
                 '$numberOfDays ${context.tr('it.days')}',
               ),
               _buildHeaderInfo(
+                context,
                 Icons.people_outline,
                 travelers == 1
                     ? '1 ${context.tr('it.travelerOne')}'
                     : '$travelers ${context.tr('it.travelerPlural')}',
               ),
               _buildHeaderInfo(
+                context,
                 Icons.account_balance_wallet_outlined,
                 _localizedBudget(context),
               ),
               _buildHeaderInfo(
+                context,
                 Icons.explore_outlined,
                 _localizedTravelStyle(context),
               ),
@@ -567,7 +562,7 @@ class ItineraryScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             Divider(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: scheme.onPrimary.withValues(alpha: 0.12),
               height: 1,
             ),
 
@@ -580,7 +575,7 @@ class ItineraryScreen extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.2,
-                color: Colors.white.withValues(alpha: 0.55),
+                color: scheme.onPrimary.withValues(alpha: 0.55),
               ),
             ),
 
@@ -597,10 +592,10 @@ class ItineraryScreen extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: scheme.onPrimary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: scheme.onPrimary.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Text(
@@ -608,11 +603,11 @@ class ItineraryScreen extends StatelessWidget {
                         context,
                         interest,
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: scheme.onPrimary,
                       ),
                     ),
                   );
@@ -700,9 +695,12 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildHeaderInfo(
+    BuildContext context,
     IconData icon,
     String text,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -714,11 +712,11 @@ class ItineraryScreen extends StatelessWidget {
         const SizedBox(width: 7),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: scheme.onPrimary,
           ),
         ),
       ],
@@ -730,17 +728,19 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildSectionHeading(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           context.tr('it.yourItinerary'),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.4,
-            color: _blue,
+            color: context.appStatus.info,
           ),
         ),
 
@@ -748,12 +748,12 @@ class ItineraryScreen extends StatelessWidget {
 
         Text(
           context.tr('it.daysDesigned'),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Noto Serif',
             fontSize: 31,
             height: 1.15,
             fontWeight: FontWeight.w700,
-            color: _midnight,
+            color: context.headingColor,
           ),
         ),
 
@@ -761,11 +761,11 @@ class ItineraryScreen extends StatelessWidget {
 
         Text(
           context.tr('it.suggestedPlan'),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             height: 1.5,
-            color: _secondaryText,
+            color: colors.textSecondary,
           ),
         ),
       ],
@@ -777,14 +777,16 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildEmptyItinerary(BuildContext context) {
+    final colors = context.triporaColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _border,
+          color: colors.border,
         ),
       ),
       child: Row(
@@ -794,12 +796,12 @@ class ItineraryScreen extends StatelessWidget {
             height: 42,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: colors.surfaceInfo,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.event_note_outlined,
-              color: _blue,
+              color: context.appStatus.info,
             ),
           ),
 
@@ -808,11 +810,11 @@ class ItineraryScreen extends StatelessWidget {
           Expanded(
             child: Text(
               context.tr('it.noItinerary'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: _secondaryText,
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -847,14 +849,16 @@ class ItineraryScreen extends StatelessWidget {
 
     final prefs = AppPreferences.instance;
 
+    final colors = context.triporaColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _border,
+          color: colors.border,
         ),
       ),
       child: Column(
@@ -867,13 +871,13 @@ class ItineraryScreen extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
+                  color: colors.surfaceAccent,
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.account_balance_wallet_outlined,
                   size: 20,
-                  color: _amber,
+                  color: context.appStatus.warning,
                 ),
               ),
 
@@ -885,12 +889,12 @@ class ItineraryScreen extends StatelessWidget {
                   children: [
                     Text(
                       context.tr('it.estimatedCost'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.2,
-                        color: _mutedText,
+                        color: colors.textMuted,
                       ),
                     ),
 
@@ -898,11 +902,11 @@ class ItineraryScreen extends StatelessWidget {
 
                     Text(
                       context.tr('it.tripBudgetOverview'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: _text,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ],
@@ -918,11 +922,11 @@ class ItineraryScreen extends StatelessWidget {
               total,
               from: currency,
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 34,
               fontWeight: FontWeight.w700,
-              color: _midnight,
+              color: context.headingColor,
             ),
           ),
 
@@ -930,19 +934,19 @@ class ItineraryScreen extends StatelessWidget {
 
           Text(
             context.tr('it.approxCost'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12,
               height: 1.5,
-              color: _mutedText,
+              color: colors.textMuted,
             ),
           ),
 
           if (costs.isNotEmpty) ...[
             const SizedBox(height: 20),
 
-            const Divider(
-              color: _border,
+            Divider(
+              color: colors.border,
             ),
 
             const SizedBox(height: 16),
@@ -990,6 +994,8 @@ class ItineraryScreen extends StatelessWidget {
     dynamic value,
     String currency,
   ) {
+    final colors = context.triporaColors;
+
     return Padding(
       padding: const EdgeInsets.only(
         bottom: 13,
@@ -999,10 +1005,10 @@ class ItineraryScreen extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 13,
-                color: _secondaryText,
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -1012,11 +1018,11 @@ class ItineraryScreen extends StatelessWidget {
               value ?? 0,
               from: currency,
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: _text,
+              color: colors.textPrimary,
             ),
           ),
         ],
@@ -1035,14 +1041,17 @@ class ItineraryScreen extends StatelessWidget {
     required String title,
     required List<_Activity> activities,
   }) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _border,
+          color: colors.border,
         ),
       ),
       child: Column(
@@ -1056,16 +1065,16 @@ class ItineraryScreen extends StatelessWidget {
                 height: 50,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _midnight,
+                  color: scheme.primary,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   '$day',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: scheme.onPrimary,
                   ),
                 ),
               ),
@@ -1085,12 +1094,12 @@ class ItineraryScreen extends StatelessWidget {
                               .padLeft(2, '0'),
                         },
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.2,
-                        color: _blue,
+                        color: context.appStatus.info,
                       ),
                     ),
 
@@ -1099,11 +1108,11 @@ class ItineraryScreen extends StatelessWidget {
 
                       Text(
                         _formatDate(date, context),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: _mutedText,
+                          color: colors.textMuted,
                         ),
                       ),
                     ],
@@ -1112,12 +1121,12 @@ class ItineraryScreen extends StatelessWidget {
 
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Noto Serif',
                         fontSize: 21,
                         height: 1.2,
                         fontWeight: FontWeight.w700,
-                        color: _text,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ],
@@ -1131,10 +1140,10 @@ class ItineraryScreen extends StatelessWidget {
           if (activities.isEmpty)
             Text(
               context.tr('it.noActivities'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 13,
-                color: _mutedText,
+                color: colors.textMuted,
               ),
             ),
 
@@ -1164,6 +1173,8 @@ class ItineraryScreen extends StatelessWidget {
     _Activity activity, {
     required bool isLast,
   }) {
+    final colors = context.triporaColors;
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: isLast ? 0 : 20,
@@ -1176,13 +1187,13 @@ class ItineraryScreen extends StatelessWidget {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: colors.surfaceInfo,
               borderRadius: BorderRadius.circular(11),
             ),
             child: Icon(
               activity.icon,
               size: 19,
-              color: _blue,
+              color: context.appStatus.info,
             ),
           ),
 
@@ -1195,12 +1206,12 @@ class ItineraryScreen extends StatelessWidget {
                 if (activity.time.isNotEmpty)
                   Text(
                     activity.time,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
-                      color: _blue,
+                      color: context.appStatus.info,
                     ),
                   ),
 
@@ -1209,11 +1220,11 @@ class ItineraryScreen extends StatelessWidget {
 
                 Text(
                   activity.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: _text,
+                    color: colors.textPrimary,
                   ),
                 ),
 
@@ -1222,11 +1233,11 @@ class ItineraryScreen extends StatelessWidget {
 
                   Text(
                     activity.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 13,
                       height: 1.55,
-                      color: _secondaryText,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
@@ -1243,6 +1254,9 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildActionButtons(BuildContext context) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         SizedBox(
@@ -1265,9 +1279,9 @@ class ItineraryScreen extends StatelessWidget {
               ),
             ),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _midnight,
-              side: const BorderSide(
-                color: _strongBorder,
+              foregroundColor: scheme.primary,
+              side: BorderSide(
+                color: colors.borderStrong,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1298,8 +1312,8 @@ class ItineraryScreen extends StatelessWidget {
               ),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: _midnight,
-              foregroundColor: Colors.white,
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1331,9 +1345,9 @@ class ItineraryScreen extends StatelessWidget {
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: _midnight,
-                side: const BorderSide(
-                  color: _strongBorder,
+                foregroundColor: scheme.primary,
+                side: BorderSide(
+                  color: colors.borderStrong,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

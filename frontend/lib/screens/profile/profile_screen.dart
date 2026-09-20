@@ -36,16 +36,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
-  static const Color _midnight = Color(0xFF1E1B4B);
-  static const Color _blue = Color(0xFF3B82F6);
-
-  static const Color _canvas = Color(0xFFF8FAFC);
-  static const Color _white = Colors.white;
-  static const Color _border = Color(0xFFE2E8F0);
-  static const Color _textPrimary = Color(0xFF191C1E);
-  static const Color _textSecondary = Color(0xFF475569);
-  static const Color _textMuted = Color(0xFF64748B);
-
   @override
   void initState() {
     super.initState();
@@ -201,28 +191,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _confirmDeleteAccount() async {
+    final colors = context.triporaColors;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: _white,
+          backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
             context.tr('profile.deleteAccountQuestion'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Noto Serif',
               fontWeight: FontWeight.w600,
-              color: _textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           content: Text(
             context.tr('profile.deleteAccountWarning'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               height: 1.5,
-              color: _textSecondary,
+              color: colors.textSecondary,
             ),
           ),
           actions: [
@@ -281,29 +273,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListenableBuilder(
       listenable: AppPreferences.instance,
       builder: (context, _) {
+        final colors = context.triporaColors;
+        final scheme = Theme.of(context).colorScheme;
+
         return Scaffold(
-          backgroundColor: _canvas,
+          backgroundColor: colors.backgroundColor,
           appBar: AppBar(
-            backgroundColor: _canvas,
+            backgroundColor: colors.backgroundColor,
             elevation: 0,
             scrolledUnderElevation: 0,
             titleSpacing: 20,
             title: Text(
               context.tr('profile.myAccount'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Noto Serif',
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: _midnight,
+                color: context.headingColor,
               ),
             ),
             actions: [
               IconButton(
                 onPressed: _logout,
                 tooltip: context.tr('profile.logout'),
-                icon: const Icon(
+                icon: Icon(
                   Icons.logout_outlined,
-                  color: _midnight,
+                  color: scheme.primary,
                 ),
               ),
               const SizedBox(width: 8),
@@ -726,6 +721,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     final displayName = _nameController.text.trim().isEmpty
         ? context.tr('profile.yourProfile')
         : _nameController.text.trim();
@@ -736,9 +734,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _border),
+        border: Border.all(color: colors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A1E1B4B),
@@ -757,14 +755,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 68,
                 height: 68,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: _midnight,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_outline,
                   size: 32,
-                  color: Colors.white,
+                  color: scheme.onPrimary,
                 ),
               ),
 
@@ -777,12 +775,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(
                       context.tr('profile.travelerProfile'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.4,
-                        color: _blue,
+                        color: context.appStatus.info,
                       ),
                     ),
 
@@ -792,12 +790,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       displayName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Noto Serif',
                         fontSize: 24,
                         height: 1.15,
                         fontWeight: FontWeight.w600,
-                        color: _midnight,
+                        color: context.headingColor,
                       ),
                     ),
 
@@ -807,10 +805,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         email,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 13,
-                          color: _textMuted,
+                          color: colors.textMuted,
                         ),
                       ),
                     ],
@@ -836,25 +834,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: colors.surfaceSecondary,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.public_outlined,
                       size: 16,
-                      color: _midnight,
+                      color: scheme.primary,
                     ),
                     const SizedBox(width: 7),
                     Text(
                       context.tr('profile.triporaTraveler'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _midnight,
+                        color: scheme.primary,
                       ),
                     ),
                   ],
@@ -922,22 +920,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(
           eyebrow,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 10,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.5,
-            color: _blue,
+            color: context.appStatus.info,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Noto Serif',
             fontSize: 22,
             fontWeight: FontWeight.w600,
-            color: _midnight,
+            color: context.headingColor,
           ),
         ),
       ],
@@ -954,43 +952,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool obscureText = false,
     String? Function(String?)? validator,
   }) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,
       validator: validator,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Manrope',
         fontSize: 14,
-        color: _textPrimary,
+        color: colors.textPrimary,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(
           icon,
-          color: _textMuted,
+          color: colors.textMuted,
           size: 21,
         ),
         filled: true,
-        fillColor: _white,
+        fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _border),
+          borderSide: BorderSide(color: colors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _border),
+          borderSide: BorderSide(color: colors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: _midnight,
+          borderSide: BorderSide(
+            color: scheme.primary,
             width: 1.3,
           ),
         ),
@@ -1018,61 +1019,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return DropdownButtonFormField<T>(
       key: ValueKey('$label-$value'),
       initialValue: value,
       items: items,
       onChanged: onChanged,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Manrope',
         fontSize: 14,
-        color: _textPrimary,
+        color: colors.textPrimary,
       ),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(
           icon,
-          color: _textMuted,
+          color: colors.textMuted,
           size: 21,
         ),
         filled: true,
-        fillColor: _white,
+        fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _border),
+          borderSide: BorderSide(color: colors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _border),
+          borderSide: BorderSide(color: colors.border),
         ),
-        focusedBorder: const OutlineInputBorder(
+        focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(
             Radius.circular(8),
           ),
           borderSide: BorderSide(
-            color: _midnight,
+            color: scheme.primary,
             width: 1.3,
           ),
         ),
       ),
-      dropdownColor: _white,
+      dropdownColor: colors.surface,
     );
   }
 
   Widget _buildAppearanceToggle() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 13,
       ),
       decoration: BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1084,13 +1091,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: colors.surfaceSecondary,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.dark_mode_outlined,
                   size: 20,
-                  color: _midnight,
+                  color: scheme.primary,
                 ),
               ),
 
@@ -1103,20 +1110,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(
                       context.tr('profile.appearance'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: _textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       context.tr('profile.appearanceDescription'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
-                        color: _textMuted,
+                        color: colors.textMuted,
                       ),
                     ),
                   ],
@@ -1184,15 +1191,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildPasswordToggle() {
+    final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 13,
       ),
       decoration: BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -1201,13 +1211,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.lock_outline,
               size: 20,
-              color: _midnight,
+              color: scheme.primary,
             ),
           ),
 
@@ -1220,20 +1230,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   context.tr('profile.changePassword'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: _textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   context.tr('profile.changePasswordDescription'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
-                    color: _textMuted,
+                    color: colors.textMuted,
                   ),
                 ),
               ],
@@ -1242,7 +1252,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           Switch.adaptive(
             value: _showPasswordFields,
-            activeTrackColor: _midnight,
+            activeTrackColor: scheme.primary,
             onChanged: (value) {
               setState(() {
                 _showPasswordFields = value;
@@ -1261,34 +1271,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSaveButton() {
+    final scheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: FilledButton.icon(
         onPressed: _isSaving ? null : _saveProfile,
         style: FilledButton.styleFrom(
-          backgroundColor: _midnight,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor:
-              _midnight.withValues(alpha: 0.55),
-          disabledForegroundColor: Colors.white70,
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          disabledBackgroundColor: scheme.primary.withValues(
+            alpha: 0.55,
+          ),
+          disabledForegroundColor: scheme.onPrimary.withValues(
+            alpha: 0.7,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
           elevation: 0,
         ),
         icon: _isSaving
-            ? const SizedBox(
+            ? SizedBox(
                 width: 17,
                 height: 17,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: scheme.onPrimary,
                 ),
               )
-            : const Icon(
+            : Icon(
                 Icons.check_rounded,
                 size: 19,
+                color: scheme.onPrimary,
               ),
         label: Text(
           _isSaving
@@ -1305,13 +1321,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildDangerZone() {
+    final colors = context.triporaColors;
     final errorColor = Theme.of(context).colorScheme.error;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: errorColor.withValues(alpha: 0.20),
@@ -1330,12 +1347,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 8),
               Text(
                 context.tr('profile.dangerZone'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.4,
-                  color: _textSecondary,
+                  color: colors.textSecondary,
                 ),
               ),
             ],
@@ -1345,11 +1362,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           Text(
             context.tr('profile.deleteAccount'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Noto Serif',
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: _textPrimary,
+              color: context.headingColor,
             ),
           ),
 
@@ -1357,11 +1374,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           Text(
             context.tr('profile.deleteAccountDescription'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12,
               height: 1.45,
-              color: _textMuted,
+              color: colors.textMuted,
             ),
           ),
 

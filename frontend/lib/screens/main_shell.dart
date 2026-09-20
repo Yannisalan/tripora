@@ -662,8 +662,9 @@ class _TriporaNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
+    final scheme = Theme.of(context).colorScheme;
 
-    final activeColor = AppColors.primary;
+    final activeColor = scheme.primary;
     final inactiveColor = colors.textMuted;
 
     return Semantics(

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/l10n/app_localizations.dart';
 import '../../core/preferences/app_preferences.dart';
+import '../../core/theme/app_theme.dart';
 import '../../models/trip_model.dart';
 import '../../services/weather_service.dart';
 
@@ -40,16 +41,8 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
   // ---------------------------------------------------------------------------
 
   static const Color _midnightDark = Color(0xFF070235);
-  static const Color _blue = Color(0xFF3B82F6);
-  static const Color _amber = Color(0xFFF59E0B);
-  static const Color _emerald = Color(0xFF10B981);
-  static const Color _surface = Color(0xFFF8FAFC);
   static const Color _white = Colors.white;
-  static const Color _border = Color(0xFFE2E8F0);
   static const Color _slate300 = Color(0xFFCBD5E1);
-  static const Color _slate400 = Color(0xFF94A3B8);
-  static const Color _slate500 = Color(0xFF64748B);
-  static const Color _text = Color(0xFF191C1E);
 
   // ---------------------------------------------------------------------------
   // STATE
@@ -136,10 +129,11 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final colors = context.triporaColors;
     final lang = AppPreferences.instance.language;
 
     return Scaffold(
-      backgroundColor: _surface,
+      backgroundColor: colors.backgroundColor,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(context, lang),
@@ -235,7 +229,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     String lang,
   ) {
     if (_isLoading) {
-      return _buildLoading();
+      return _buildLoading(context);
     }
 
     if (_error != null) {
@@ -279,12 +273,12 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
   // LOADING
   // ---------------------------------------------------------------------------
 
-  Widget _buildLoading() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 80),
+  Widget _buildLoading(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 80),
       child: Center(
         child: CircularProgressIndicator(
-          color: _blue,
+          color: context.appStatus.info,
           strokeWidth: 2.5,
         ),
       ),
@@ -300,6 +294,8 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     String message,
     String lang,
   ) {
+    final colors = context.triporaColors;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         20,
@@ -309,29 +305,29 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
       ),
       child: Column(
         children: [
-          const Icon(
+          Icon(
             Icons.cloud_off_outlined,
-            color: _slate400,
+            color: colors.textMuted,
             size: 56,
           ),
           const SizedBox(height: 16),
           Text(
             context.tr('weather.error'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: _text,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 1.5,
-              color: _slate500,
+              color: colors.textMuted,
             ),
           ),
           const SizedBox(height: 20),
@@ -354,33 +350,36 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     String message,
     String lang,
   ) {
+    final colors = context.triporaColors;
+    final appStatus = context.appStatus;
+
     IconData icon;
     Color iconColor;
 
     switch (reason) {
       case 'missing_dates':
         icon = Icons.date_range_outlined;
-        iconColor = _amber;
+        iconColor = appStatus.warning;
         break;
 
       case 'no_destination':
         icon = Icons.location_off_outlined;
-        iconColor = _slate400;
+        iconColor = colors.textMuted;
         break;
 
       case 'geocoding_failed':
         icon = Icons.location_off_outlined;
-        iconColor = _amber;
+        iconColor = appStatus.warning;
         break;
 
       case 'trip_ended':
         icon = Icons.check_circle_outline;
-        iconColor = _emerald;
+        iconColor = appStatus.success;
         break;
 
       default:
         icon = Icons.cloud_off_outlined;
-        iconColor = _slate400;
+        iconColor = colors.textMuted;
     }
 
     return Padding(
@@ -403,11 +402,11 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                 ? message
                 : context.tr('weather.unavailable'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: _text,
+              color: colors.textPrimary,
               height: 1.4,
             ),
           ),
@@ -429,6 +428,9 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     BuildContext context,
     String lang,
   ) {
+    final colors = context.triporaColors;
+    final appStatus = context.appStatus;
+
     final location =
         _data!['location'] as Map<String, dynamic>? ?? {};
 
@@ -474,19 +476,19 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                 vertical: 7,
               ),
               decoration: BoxDecoration(
-                color: _blue.withValues(alpha: 0.10),
+                color: appStatus.info.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: _blue.withValues(alpha: 0.25),
+                  color: appStatus.info.withValues(alpha: 0.25),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.location_on_outlined,
                     size: 14,
-                    color: _blue,
+                    color: appStatus.info,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -494,10 +496,10 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                       locName,
                       locCountry,
                     ].where((s) => s.isNotEmpty).join(', '),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: _blue,
+                      color: appStatus.info,
                     ),
                   ),
                 ],
@@ -515,9 +517,9 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             Text(
               '${_formatDate(forecastStart, lang)} – '
               '${_formatDate(forecastEnd, lang)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: _slate500,
+                color: colors.textMuted,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -552,9 +554,9 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
           Center(
             child: Text(
               context.tr('weather.attribution'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: _slate400,
+                color: colors.textMuted,
                 fontFamily: 'Manrope',
               ),
             ),
@@ -574,6 +576,9 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     String currency,
     String lang,
   ) {
+    final colors = context.triporaColors;
+    final appStatus = context.appStatus;
+
     final dateStr =
         day['date'] as String? ?? '';
 
@@ -607,35 +612,35 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     switch (iconCode) {
       case 'clear':
       case 'mostly_clear':
-        accent = _amber;
+        accent = appStatus.warning;
         break;
 
       case 'rain':
       case 'drizzle':
       case 'freezing_rain':
-        accent = _blue;
+        accent = appStatus.info;
         break;
 
       case 'snow':
-        accent = const Color(0xFF93C5FD);
+        accent = appStatus.info;
         break;
 
       case 'thunderstorm':
-        accent = const Color(0xFFF97316);
+        accent = appStatus.warning;
         break;
 
       default:
-        accent = _slate400;
+        accent = colors.textMuted;
     }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _border,
+          color: colors.border,
         ),
       ),
       child: Row(
@@ -655,10 +660,10 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                     dateStr,
                     lang,
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: _text,
+                    color: colors.textPrimary,
                   ),
                 ),
                 Text(
@@ -666,9 +671,9 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                     dateStr,
                     lang,
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: _slate400,
+                    color: colors.textMuted,
                   ),
                 ),
               ],
@@ -704,10 +709,10 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: _slate500,
+                color: colors.textMuted,
               ),
             ),
           ),
@@ -718,18 +723,18 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
 
           Text(
             '${_fmtTemp(tempMax)}°',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: _text,
+              color: colors.textPrimary,
             ),
           ),
 
           Text(
             ' / ${_fmtTemp(tempMin)}°',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: _slate400,
+              color: colors.textMuted,
             ),
           ),
 
@@ -742,17 +747,17 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
           if (precipProb != null)
             Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.water_drop_outlined,
                   size: 14,
-                  color: _blue,
+                  color: appStatus.info,
                 ),
                 Text(
                   '$precipProb%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: _blue,
+                    color: appStatus.info,
                   ),
                 ),
               ],
@@ -770,22 +775,24 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     BuildContext context,
     String lang,
   ) {
+    final colors = context.triporaColors;
+
     return Padding(
       padding: const EdgeInsets.only(top: 32),
       child: Column(
         children: [
-          const Icon(
+          Icon(
             Icons.calendar_today_outlined,
-            color: _slate400,
+            color: colors.textMuted,
             size: 44,
           ),
           const SizedBox(height: 12),
           Text(
             context.tr('weather.noForecast'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: _slate500,
+              color: colors.textMuted,
             ),
           ),
         ],
@@ -801,6 +808,8 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
     BuildContext context,
     String lang,
   ) {
+    final appStatus = context.appStatus;
+
     return OutlinedButton.icon(
       onPressed: () => _load(force: true),
       icon: const Icon(
@@ -811,9 +820,9 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
         context.tr('weather.retry'),
       ),
       style: OutlinedButton.styleFrom(
-        foregroundColor: _blue,
-        side: const BorderSide(
-          color: _blue,
+        foregroundColor: appStatus.info,
+        side: BorderSide(
+          color: appStatus.info,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

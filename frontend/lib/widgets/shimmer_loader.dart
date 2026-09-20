@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 /// Reusable shimmer loading skeleton that mimics content while loading
 class ShimmerLoader extends StatefulWidget {
   final double width;
@@ -41,6 +43,8 @@ class _ShimmerLoaderState extends State<ShimmerLoader>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.triporaColors;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -59,9 +63,9 @@ class _ShimmerLoaderState extends State<ShimmerLoader>
                 (_controller.value + 0.3).clamp(0, 1).toDouble(),
               ],
               colors: [
-                const Color(0xFFE5E7EB),
-                const Color(0xFFF3F4F6),
-                const Color(0xFFE5E7EB),
+                colors.border,
+                colors.borderStrong,
+                colors.border,
               ],
             ),
           ),
