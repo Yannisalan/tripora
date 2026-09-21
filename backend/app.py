@@ -6,6 +6,7 @@ from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, decode_token
+from sqlalchemy import text
 
 from config.database import db
 from config.settings import Config
