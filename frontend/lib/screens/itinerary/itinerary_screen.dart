@@ -1297,14 +1297,14 @@ class ItineraryScreen extends StatelessWidget {
           height: 52,
           child: FilledButton.icon(
             onPressed: () {
-              _openFlightPrices(context);
+              _openFlightSearch(context);
             },
             icon: const Icon(
-              Icons.flight_takeoff_outlined,
+              Icons.flight_outlined,
               size: 18,
             ),
             label: Text(
-              context.tr('it.checkFlightPrices'),
+              context.tr('flights.search'),
               style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
@@ -1361,18 +1361,26 @@ class ItineraryScreen extends StatelessWidget {
   }
 
   // ============================================================
-  // OPEN FLIGHT PRICES
+  // OPEN FLIGHT SEARCH
   // ============================================================
 
-  void _openFlightPrices(BuildContext context) {
+  void _openFlightSearch(BuildContext context) {
     final d = destination(context);
+    final origin = _stringValue(trip['origin']);
 
+    // The generated trip is already persisted server-side by
+    // POST /api/trips/generate (it returns a trip with an id), so
+    // opening the existing Flight Search screen simply reuses that
+    // saved trip's data as prefill.
     Navigator.pushNamed(
       context,
-      AppRoutes.checkFlightPrices,
+      AppRoutes.travelFlights,
       arguments: <String, dynamic>{
+        if (origin.isNotEmpty) 'origin': origin,
         if (d.isNotEmpty) 'destination': d,
         'departDate': _dateIso(startDate),
+        'returnDate': _dateIso(endDate),
+        'passengers': travelers,
       },
     );
   }

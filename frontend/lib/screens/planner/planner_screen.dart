@@ -545,8 +545,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
       builder: (_) {
         return const PopScope(
           canPop: false,
-          child: Center(
-            child: _GenerationDialog(),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Center(
+              child: _GenerationDialog(),
+            ),
           ),
         );
       },

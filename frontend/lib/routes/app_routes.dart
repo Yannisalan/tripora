@@ -142,7 +142,16 @@ class AppRoutes {
       },
 
       // Flight search is open to all logged-in users.
-      travelFlights: (_) => const FlightSearchScreen(),
+      travelFlights: (context) {
+        final arguments = ModalRoute.of(context)?.settings.arguments;
+
+        Map<String, dynamic>? prefill;
+        if (arguments is Map) {
+          prefill = Map<String, dynamic>.from(arguments);
+        }
+
+        return FlightSearchScreen(prefill: prefill);
+      },
 
       // ========================================================
       // ADMIN

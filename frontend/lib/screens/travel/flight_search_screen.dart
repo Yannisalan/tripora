@@ -9,7 +9,11 @@ import '../../services/duffel_service.dart';
 
 /// Flight search screen (live results, display only).
 class FlightSearchScreen extends StatefulWidget {
-  const FlightSearchScreen({super.key});
+  /// Optional prefill: `{origin, destination, departDate, returnDate,
+  /// passengers}` (destination/date format `yyyy-MM-dd`, passengers int).
+  final Map<String, dynamic>? prefill;
+
+  const FlightSearchScreen({super.key, this.prefill});
 
   @override
   State<FlightSearchScreen> createState() => _FlightSearchScreenState();
@@ -19,15 +23,46 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   final DuffelService _service = DuffelService();
   final _formKey = GlobalKey<FormState>();
 
-  final _origin = TextEditingController();
-  final _destination = TextEditingController();
-  final _depart = TextEditingController();
-  final _returnCtrl = TextEditingController();
+  late final TextEditingController _origin;
+  late final TextEditingController _destination;
+  late final TextEditingController _depart;
+  late final TextEditingController _returnCtrl;
 
   // These are canonical values used by the flight API.
-  int _passengers = 1;
+  late int _passengers;
   String _cabin = 'economy';
   String _dateMode = 'date';
+
+  @override
+  void initState() {
+    super.initState();
+
+    final p = widget.prefill ?? const <String, dynamic>{};
+
+    _origin = TextEditingController(
+      text: (p['origin'] ?? '').toString(),
+    );
+
+    _destination = TextEditingController(
+      text: (p['destination'] ?? '').toString(),
+    );
+
+    _depart = TextEditingController(
+      text: (p['departDate'] ?? '').toString(),
+    );
+
+    _returnCtrl = TextEditingController(
+      text: (p['returnDate'] ?? '').toString(),
+    );
+
+    final passengers = p['passengers'];
+
+    _passengers = (passengers is num &&
+            passengers >= 1 &&
+            passengers <= 9)
+        ? passengers.toInt()
+        : 1;
+  }
 
   bool _busy = false;
   bool _searched = false;

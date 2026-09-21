@@ -1708,22 +1708,28 @@ style: TextStyle(
           );
         }
 
-        return Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch,
-          children: tiles
-              .map(
-                (tile) => Expanded(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(
-                      horizontal: 6,
+        // IntrinsicHeight gives the Row a bounded height inside the
+        // scrollable (which otherwise passes unbounded heights), so
+        // CrossAxisAlignment.stretch can equalize the three cards'
+        // heights without stretching them to an infinite height.
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch,
+            children: tiles
+                .map(
+                  (tile) => Expanded(
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 6,
+                      ),
+                      child: tile,
                     ),
-                    child: tile,
                   ),
-                ),
-              )
-              .toList(),
+                )
+                .toList(),
+          ),
         );
       },
     );

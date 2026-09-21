@@ -13,6 +13,12 @@ import 'routes/app_routes.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Temporary diagnostic: always print the full stack for every exception so
+  // the "Null check operator used on a null value" source line is visible.
+  FlutterError.onError = (details) {
+    FlutterError.dumpErrorToConsole(details, forceReport: true);
+  };
+
   final prefs = AppPreferences.instance;
 
   // Restore the saved language/currency, then kick off a best-effort
