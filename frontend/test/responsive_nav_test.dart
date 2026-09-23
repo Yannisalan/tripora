@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend/main.dart';
 import 'package:frontend/screens/main_shell.dart';
@@ -10,8 +11,11 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Plan a Trip'), findsOneWidget);
     for (final label in ['Home', 'Explore', 'Flights', 'My Trips', 'Profile']) {
@@ -26,8 +30,11 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     // The web header CTA must not exist on mobile.
     expect(find.text('Plan a Trip'), findsNothing);
@@ -42,8 +49,11 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     // Select the Profile tab while wide.
     MainShell.currentIndex.value = 4;

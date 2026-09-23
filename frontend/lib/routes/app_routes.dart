@@ -16,6 +16,8 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 
+import '../screens/splash/splash_screen.dart';
+
 import '../screens/legal/legal_screen.dart';
 import '../screens/legal/legal_content.dart';
 
@@ -30,6 +32,7 @@ class AppRoutes {
   // ============================================================
 
   static const String home = '/';
+  static const String splash = '/splash';
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
@@ -65,6 +68,11 @@ class AppRoutes {
       // HOME (bottom-tab shell)
       // ========================================================
       home: (_) => const MainShell(),
+
+      // ========================================================
+      // SPLASH (animated launch screen)
+      // ========================================================
+      splash: (_) => const SplashScreen(),
 
       // ========================================================
       // AUTH

@@ -69,7 +69,7 @@ class _TriporaAppState extends State<TriporaApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: resolvedThemeMode,
-          initialRoute: AppRoutes.home,
+          initialRoute: AppRoutes.splash,
           routes: AppRoutes.routes,
           navigatorObservers: [_routeTracker],
           navigatorKey: AuthGuard.navigatorKey,

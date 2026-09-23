@@ -646,6 +646,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
         return;
       }
 
+      if (error is AiBusyException) {
+        _showMessage(
+          context.tr('planner.aiBusy'),
+          isError: true,
+        );
+        return;
+      }
+
       final String message = error
           .toString()
           .replaceFirst('Exception: ', '')

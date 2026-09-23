@@ -90,6 +90,10 @@ class _TripsScreenState extends State<TripsScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _deleteTrip(TripModel trip) async {
+    if (TripService.isOffline) {
+      return;
+    }
+
     final tripId = trip.id;
 
     if (tripId == null) {
@@ -490,6 +494,12 @@ class _TripsScreenState extends State<TripsScreen> {
                     crossAxisAlignment:
                         CrossAxisAlignment.start,
                     children: [
+                      if (TripService.isOffline) ...[
+                        _buildOfflineBanner(context),
+                        SizedBox(
+                          height: isMobile ? 20 : 28,
+                        ),
+                      ],
                       _buildIntro(
                         context,
                         isMobile,
@@ -508,6 +518,66 @@ class _TripsScreenState extends State<TripsScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Offline banner
+  // ---------------------------------------------------------------------------
+
+  Widget _buildOfflineBanner(
+    BuildContext context,
+  ) {
+    final colors = context.triporaColors;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 20,
+            color: context.appStatus.info,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('common.offline'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: context.headingColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  context.tr('trips.offlineBanner'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: colors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1069,8 +1139,9 @@ class _TripsScreenState extends State<TripsScreen> {
                             ],
                           ),
                         ),
-                        PopupMenuItem(
-                          value: 'delete',
+                        if (!TripService.isOffline)
+                          PopupMenuItem(
+                            value: 'delete',
                           child: Row(
                             children: [
                               const Icon(

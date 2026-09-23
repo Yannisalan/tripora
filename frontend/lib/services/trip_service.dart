@@ -11,6 +11,19 @@ import '../trip_reminder.dart';
 import '../core/preferences/app_preferences.dart';
 import '../models/trip_model.dart';
 
+/// Thrown when the backend reports the AI is busy (HTTP 503 `ai_busy`) or
+/// the generate request exceeded the client timeout. The planner turns this
+/// into a friendly, localized "the AI is busy" message instead of a raw
+/// technical error.
+class AiBusyException implements Exception {
+  const AiBusyException([this.message = 'The AI is busy right now.']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Adapts TripModel to the TripLike interface TripReminderScheduler
 /// expects. If your TripModel's field names differ from `destination`,
 /// `startDate`, or `endDate`, update the getters below — nothing else
@@ -35,6 +48,21 @@ class _TripModelReminderAdapter implements TripLike {
 
 class TripService {
   static const String baseUrl = AppConfig.apiBaseUrl;
+
+  /// True when the last fetch could not reach the backend and fell back to
+  /// the locally saved trip data. Read by the trips list / trip details
+  /// screens to show an offline banner and force read-only mode.
+  static bool isOffline = false;
+
+  static const String _tripsCacheKey = 'tripora.offline_trips_v1';
+  static const String _tripCacheKeyPrefix = 'tripora.offline_trip_';
+
+  /// Max time to wait for the backend's generate-trip call. That endpoint
+  /// runs the full AI itinerary generation inline, so this is generous
+  /// enough to not kill a legitimate slow generation, yet bounded so the
+  /// planner's non-dismissible generation overlay can never hang forever
+  /// waiting on a dead connection.
+  static const Duration generateRequestTimeout = Duration(seconds: 60);
 
   void _debugLog(String message) {
     assert(() {
@@ -72,6 +100,122 @@ class TripService {
     } catch (e) {
       _debugLog('TripService: failed to cancel reminders for trip: $e');
     }
+  }
+
+  // ============================================================
+  // OFFLINE CACHE
+  // ============================================================
+  //
+  // Trip data the user last saw is saved locally so the trips list and
+  // trip details stay viewable (read-only) when the backend is
+  // unreachable. Only genuine network failures fall back to this cache —
+  // real HTTP errors (404/401/500) rethrow as before so a deleted or
+  // unauthorized trip is never shown from a stale copy.
+
+  /// Serializes trips the same way the details screen expects
+  /// (`toDetailMap()` carries id + itinerary + estimatedCost), then
+  /// round-trips them through [TripModel.fromJson] so dates, interests,
+  /// and nested lists survive JSON exactly as the backend sends them.
+  String _serializeTrips(List<TripModel> trips) {
+    return jsonEncode(
+      trips.map((trip) => trip.toDetailMap()).toList(),
+    );
+  }
+
+  Future<void> _saveTripsCache(List<TripModel> trips) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tripsCacheKey, _serializeTrips(trips));
+
+      // Mirror each trip into its single-trip cache slot so a fresh trip
+      // details view works offline even when only the list was fetched.
+      for (final trip in trips) {
+        if (trip.id != null) {
+          await prefs.setString(
+            '$_tripCacheKeyPrefix${trip.id}',
+            jsonEncode(trip.toDetailMap()),
+          );
+        }
+      }
+    } catch (e) {
+      _debugLog('TripService: failed to save trips cache: $e');
+    }
+  }
+
+  Future<List<TripModel>> _readTripsCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_tripsCacheKey);
+
+      if (raw == null || raw.isEmpty) {
+        return [];
+      }
+
+      final decoded = jsonDecode(raw);
+
+      if (decoded is! List) {
+        return [];
+      }
+
+      final trips = <TripModel>[];
+
+      for (final item in decoded) {
+        if (item is! Map) continue;
+
+        try {
+          trips.add(
+            TripModel.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          );
+        } catch (e) {
+          _debugLog('TripService: skipped invalid cached trip: $e');
+        }
+      }
+
+      return trips;
+    } catch (e) {
+      _debugLog('TripService: failed to read trips cache: $e');
+      return [];
+    }
+  }
+
+  Future<TripModel?> _readTripCache(int tripId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_tripCacheKeyPrefix$tripId');
+
+      if (raw == null || raw.isEmpty) {
+        return null;
+      }
+
+      final decoded = jsonDecode(raw);
+
+      if (decoded is! Map) {
+        return null;
+      }
+
+      return TripModel.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (e) {
+      _debugLog('TripService: failed to read trip cache: $e');
+      return null;
+    }
+  }
+
+  /// Distinguishes "the backend could not be reached" from real HTTP
+  /// responses. Web-safe: type names are matched from the error string so
+  /// no dart:io import is needed.
+  bool _isNetworkError(Object error) {
+    final message = error.toString();
+
+    return error is http.ClientException ||
+        error is TimeoutException ||
+        message.contains('SocketException') ||
+        message.contains('HandshakeException') ||
+        message.contains('Failed host lookup') ||
+        message.contains('Connection reset') ||
+        message.contains('Connection refused') ||
+        message.toLowerCase().contains('unable to reach host');
   }
 
   // ============================================================
@@ -136,11 +280,23 @@ class TripService {
       ..['preferredLanguage'] = AppPreferences.instance.language
       ..['preferredCurrency'] = AppPreferences.instance.currency;
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/trips/generate'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
+    final http.Response response;
+
+    try {
+      response = await http
+          .post(
+            Uri.parse('$baseUrl/api/trips/generate'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(generateRequestTimeout);
+    } on TimeoutException {
+      _debugLog(
+        'TripService: generateTrip timed out after '
+        '${generateRequestTimeout.inSeconds}s',
+      );
+      throw const AiBusyException();
+    }
 
     final decoded = _decodeResponse(response);
 
@@ -161,6 +317,16 @@ class TripService {
     }
 
     // ----------------------------------------------------------
+    // AI BUSY
+    // ----------------------------------------------------------
+
+    if (response.statusCode == 503 &&
+        decoded is Map &&
+        decoded['error'] == 'ai_busy') {
+      throw const AiBusyException();
+    }
+
+    // ----------------------------------------------------------
     // SERVER ERROR
     // ----------------------------------------------------------
 
@@ -174,14 +340,25 @@ class TripService {
       throw Exception('Failed to generate trip.');
     }
 
-    // NOTE: this endpoint returns a raw decoded map rather than a
-    // TripModel (unlike updateTrip/regenerateItinerary/getTrip below),
-    // so reminders aren't scheduled here. Once the caller that invokes
-    // generateTrip() parses the response into a TripModel and saves it,
-    // have that call site call TripReminderScheduler.scheduleForTrip()
-    // (via the _TripModelReminderAdapter pattern above) or, simpler,
-    // route the newly created trip through updateTrip()/getTrip() so
-    // scheduling happens automatically.
+    // This endpoint returns a raw decoded map rather than a TripModel
+    // (unlike updateTrip/regenerateItinerary/getTrip below), so parse
+    // the created trip here and resync its reminders right away —
+    // otherwise a trip created from the planner would carry no
+    // notifications until the next getTrips()/getTrip() lands.
+    if (decoded is Map && decoded['success'] == true) {
+      final trip = decoded['trip'];
+
+      if (trip is Map) {
+        unawaited(
+          _scheduleReminders(
+            TripModel.fromJson(
+              Map<String, dynamic>.from(trip),
+            ),
+          ),
+        );
+      }
+    }
+
     return decoded;
   }
 
@@ -246,6 +423,11 @@ class TripService {
     // so reschedule reminders against the latest start/end dates.
     unawaited(_scheduleReminders(parsed));
 
+    // A server write confirmed we are online — freshen the local cache so
+    // an offline view later shows this latest version.
+    isOffline = false;
+    unawaited(_saveTripCache(parsed));
+
     return parsed;
   }
 
@@ -307,6 +489,78 @@ class TripService {
     // this correct even if regeneration ever touches dates later.
     unawaited(_scheduleReminders(parsed));
 
+    isOffline = false;
+    unawaited(_saveTripCache(parsed));
+
+    return parsed;
+  }
+
+  // ============================================================
+  // SWAP A SINGLE TRIP ITINERARY ACTIVITY
+  // POST /api/trips/<tripId>/swap-activity
+  // ============================================================
+
+  Future<TripModel> swapActivity({
+    required int tripId,
+    required int day,
+    required String time,
+  }) async {
+    final headers = await _headers();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/trips/$tripId/swap-activity'),
+      headers: headers,
+      body: jsonEncode({'day': day, 'time': time}),
+    );
+
+    final decoded = _decodeResponse(response);
+
+    _debugLog('====================================');
+    _debugLog('POST /api/trips/$tripId/swap-activity');
+    _debugLog('STATUS: ${response.statusCode}');
+    _debugLog('BODY:');
+    _debugLog(response.body);
+    _debugLog('====================================');
+
+    if (response.statusCode == 401) {
+      await AuthGuard.handleUnauthorized();
+      throw Exception('Your session has expired. Please log in again.');
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception('Trip not found.');
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (decoded is Map) {
+        throw Exception(
+          decoded['message']?.toString() ?? 'Failed to swap activity.',
+        );
+      }
+
+      throw Exception('Failed to swap activity.');
+    }
+
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      throw Exception('Failed to swap activity.');
+    }
+
+    final updatedTrip = decoded['trip'];
+
+    if (updatedTrip is! Map) {
+      throw Exception('Backend response does not contain a valid trip.');
+    }
+
+    final parsed = TripModel.fromJson(Map<String, dynamic>.from(updatedTrip));
+
+    // Itinerary content changed but dates are unlikely to — rescheduling
+    // is still cheap (cancel + re-add 3 local notifications) and keeps
+    // this correct even if a swap ever touches dates later.
+    unawaited(_scheduleReminders(parsed));
+
+    isOffline = false;
+    unawaited(_saveTripCache(parsed));
+
     return parsed;
   }
 
@@ -316,6 +570,38 @@ class TripService {
   // ============================================================
 
   Future<List<TripModel>> getTrips() async {
+    List<TripModel> trips;
+
+    try {
+      trips = await _fetchTripsFromNetwork();
+    } catch (error) {
+      // Only fall back to saved data when the backend itself could not
+      // be reached. A real HTTP response (401 session, 404/500, validation)
+      // is rethrown so screens never render a stale trip as if it were live.
+      if (!_isNetworkError(error)) {
+        rethrow;
+      }
+
+      final cached = await _readTripsCache();
+
+      if (cached.isNotEmpty) {
+        isOffline = true;
+        return cached;
+      }
+
+      rethrow;
+    }
+
+    isOffline = false;
+
+    // Save the fresh list before returning so the next offline launch has
+    // the latest version of every trip.
+    unawaited(_saveTripsCache(trips));
+
+    return trips;
+  }
+
+  Future<List<TripModel>> _fetchTripsFromNetwork() async {
     final headers = await _headers();
 
     final response = await http.get(
@@ -421,6 +707,33 @@ class TripService {
   // ============================================================
 
   Future<TripModel> getTrip(int tripId) async {
+    TripModel trip;
+
+    try {
+      trip = await _fetchTripFromNetwork(tripId);
+    } catch (error) {
+      if (!_isNetworkError(error)) {
+        rethrow;
+      }
+
+      final cached = await _readTripCache(tripId);
+
+      if (cached != null) {
+        isOffline = true;
+        return cached;
+      }
+
+      rethrow;
+    }
+
+    isOffline = false;
+
+    unawaited(_saveTripCache(trip));
+
+    return trip;
+  }
+
+  Future<TripModel> _fetchTripFromNetwork(int tripId) async {
     final headers = await _headers();
 
     final response = await http.get(
@@ -516,6 +829,47 @@ class TripService {
   }
 
   // ============================================================
+  // OFFLINE CACHE
+  // ============================================================
+
+  /// Saves a single freshly fetched trip into its dedicated cache slot and
+  /// merges it into the cached trips list so both views stay consistent.
+  Future<void> _saveTripCache(TripModel trip) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setString(
+        '$_tripCacheKeyPrefix${trip.id}',
+        jsonEncode(trip.toDetailMap()),
+      );
+
+      final cached = await _readTripsCache();
+      final upserted = <TripModel>[];
+      var replaced = false;
+
+      for (final item in cached) {
+        if (item.id != null && item.id == trip.id) {
+          upserted.add(trip);
+          replaced = true;
+        } else {
+          upserted.add(item);
+        }
+      }
+
+      if (!replaced) {
+        upserted.add(trip);
+      }
+
+      await prefs.setString(
+        _tripsCacheKey,
+        _serializeTrips(upserted),
+      );
+    } catch (e) {
+      _debugLog('TripService: failed to save trip cache: $e');
+    }
+  }
+
+  // ============================================================
   // DELETE USER TRIP
   // DELETE /api/trips/<tripId>
   // ============================================================
@@ -585,5 +939,26 @@ class TripService {
     // Trip is confirmed deleted server-side — clear its local reminders
     // so the user doesn't get notified about a trip they removed.
     await _cancelReminders(tripId);
+
+    // Drop the deleted trip from the offline cache so a later offline
+    // launch doesn't resurrect it.
+    isOffline = false;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.remove('$_tripCacheKeyPrefix$tripId');
+
+      final cached = await _readTripsCache();
+      final remaining =
+          cached.where((item) => item.id != tripId).toList();
+
+      await prefs.setString(
+        _tripsCacheKey,
+        _serializeTrips(remaining),
+      );
+    } catch (e) {
+      _debugLog('TripService: failed to prune deleted trip from cache: $e');
+    }
   }
 }

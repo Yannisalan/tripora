@@ -1025,6 +1025,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return DropdownButtonFormField<T>(
       key: ValueKey('$label-$value'),
       initialValue: value,
+      isExpanded: true,
       items: items,
       onChanged: onChanged,
       style: TextStyle(

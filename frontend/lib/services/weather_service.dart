@@ -10,6 +10,11 @@ import '../core/config/app_config.dart';
 /// Fetches the weather forecast for a trip from the Tripora backend
 /// (``GET /api/trips/<id>/weather``) with a lightweight 30-minute in-memory
 /// cache keyed by trip id.
+///
+/// Concurrent calls for the same trip are collapsed onto a single backend
+/// request (a shared in-flight future), because the weather screen can be
+/// mounted twice in quick succession and previously fired two simultaneous
+/// Open-Meteo fetches that exhausted the free-tier daily limit.
 class WeatherService {
   WeatherService._();
 
@@ -23,6 +28,11 @@ class WeatherService {
   static const Duration requestTimeout = Duration(seconds: 25);
 
   static final Map<int, _CacheEntry> _cache = {};
+
+  /// In-flight requests keyed by trip id. While a future for a trip is
+  /// pending, further calls for that trip await the same future instead of
+  /// issuing a parallel backend request.
+  static final Map<int, Future<Map<String, dynamic>>> _inflight = {};
 
   // ----------------------------------------------------------
   // AUTH
@@ -39,19 +49,38 @@ class WeatherService {
 
   /// Returns the parsed weather payload for [tripId].
   /// Serves from cache when fresh; otherwise calls the backend.
+  /// Concurrent calls share one in-flight request per trip.
   static Future<Map<String, dynamic>> fetchWeather(
     int tripId, {
     bool force = false,
   }) async {
-    final now = DateTime.now();
+    final pending = _inflight[tripId];
+    if (pending != null) {
+      // A network request for this trip is already running — reuse it.
+      return pending;
+    }
 
     if (!force) {
+      final now = DateTime.now();
       final cached = _cache[tripId];
       if (cached != null && now.difference(cached.fetchedAt) < ttl) {
         return cached.data;
       }
     }
 
+    final future = _fetchFromBackend(tripId);
+    _inflight[tripId] = future;
+    try {
+      return await future;
+    } finally {
+      if (_inflight[tripId] == future) {
+        _inflight.remove(tripId);
+      }
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchFromBackend(int tripId) async {
+    final now = DateTime.now();
     final token = await _getToken();
     if (token == null || token.isEmpty) {
       throw Exception('You are not logged in.');

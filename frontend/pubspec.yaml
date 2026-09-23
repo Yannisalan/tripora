@@ -1,57 +1,74 @@
-  name: frontend
-  description: "Tripora - AI-powered travel planning app."
-  publish_to: 'none'
+name: frontend
+description: "Tripora - AI-powered travel planning app."
+publish_to: 'none'
 
-  version: 1.0.0+1
+version: 1.0.0+1
 
-  environment:
-    sdk: ^3.12.2
+environment:
+  sdk: ^3.12.2
 
-  dependencies:
-    flutter:
-      sdk: flutter
-
-    flutter_localizations:
-      sdk: flutter
-
-    intl: any
-
-    cupertino_icons: ^1.0.8
-    http: ^1.6.0
-    shared_preferences: ^2.5.0
-    google_sign_in: ^7.2.0
-    sign_in_with_apple: ^8.2.0
-    crypto: ^3.0.7
-    add_2_calendar: ^3.1.1
-    google_fonts: ^8.2.1
-    url_launcher: ^6.3.2
-    web: ^1.1.1
-    http_parser: ^4.1.2
-    flutter_local_notifications: ^20.1.0
-    timezone: ^0.10.1
-
-
-  dev_dependencies:
-
-    flutter_test:
-      sdk: flutter
-
-    flutter_lints: ^6.0.0
-    flutter_launcher_icons: ^0.14.4
-
-  flutter_launcher_icons:
-    android: true
-    ios: true
-    web:
-      generate: true
-    windows:
-      generate: true
-    macOs:
-        generate: true
-    image_path: "assets/images/logo_new.png"
-
+dependencies:
   flutter:
-    uses-material-design: true
+    sdk: flutter
 
-    assets:
-      - assets/images/logo_new.png
+  flutter_localizations:
+    sdk: flutter
+
+  intl: any
+
+  cupertino_icons: ^1.0.8
+  http: ^1.6.0
+  shared_preferences: ^2.5.0
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^8.2.0
+  crypto: ^3.0.7
+  add_2_calendar: ^3.1.1
+  google_fonts: ^8.2.1
+  url_launcher: ^6.3.2
+  web: ^1.1.1
+  http_parser: ^4.1.2
+  flutter_local_notifications: ^20.1.0
+  timezone: ^0.10.1
+
+dev_dependencies:
+  flutter_native_splash: ^2.4.1
+
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  web:
+    generate: true
+  windows:
+    generate: true
+  macos:
+    generate: true
+  image_path: "assets/images/logo_new.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo_new.png
+    - assets/splash/logo_new.png
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/splash/logo_new.png
+  web: true
+
+  color_dark: "#121212"
+  image_dark: assets/splash/logo_new.png
+
+  android_12:
+    image: assets/splash/logo_new.png
+    icon_background_color: "#FFFFFF"
+    color: "#FFFFFF"
+    image_dark: assets/splash/logo_new.png
+    icon_background_color_dark: "#121212"
+    color_dark: "#121212"

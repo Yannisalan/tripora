@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -7,14 +8,23 @@ from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
 )
+from sqlalchemy.orm.attributes import flag_modified
 
 from config.database import db
 from models.trip import Trip
 from models.user import User
 from routes.auth import VALID_CURRENCIES, VALID_LANGUAGES
 from routes.rates import convert_cost_from_usd
+from routes.weather import get_forecast_for_generation
 from services.cost_service import calculate_trip_cost
-from services.itinerary_service import generate_itinerary
+from services.itinerary_service import (
+    AIBusyError,
+    GENERATION_BUDGET_SECONDS,
+    SWAP_BUDGET_SECONDS,
+    _validate_swap_activity,
+    generate_activity_swap,
+    generate_itinerary,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +146,31 @@ def _build_cost(payload, currency="USD"):
     return convert_cost_from_usd(cost, currency)
 
 
-def _build_itinerary(payload, language="en"):
+def _build_itinerary(payload, language="en", trip_id=None, deadline=None):
+    if deadline is None:
+        deadline = time.monotonic() + GENERATION_BUDGET_SECONDS
+
+    weather = []
+    try:
+        weather_start = (
+            payload["start_date_obj"]
+            if "start_date_obj" in payload
+            else date.fromisoformat(payload["start_date"][:10])
+        )
+        weather_end = (
+            payload["end_date_obj"]
+            if "end_date_obj" in payload
+            else date.fromisoformat(payload["end_date"][:10])
+        )
+        weather = get_forecast_for_generation(
+            payload["destination"],
+            weather_start,
+            weather_end,
+            trip_id=trip_id,
+        )
+    except Exception:
+        logger.exception("Skipping weather enrichment for itinerary")
+
     itinerary = generate_itinerary(
         destination=payload["destination"],
         start_date=payload["start_date"],
@@ -146,6 +180,8 @@ def _build_itinerary(payload, language="en"):
         travel_style=payload["travel_style"],
         interests=payload["interests"],
         language=language,
+        weather=weather,
+        deadline=deadline,
     )
 
     if not isinstance(itinerary, dict):
@@ -311,14 +347,28 @@ def generate_trip():
     # GENERATE AI ITINERARY
     # ========================================================
 
+    # Hard deadline for the whole generate request (weather + Gemini +
+    # parsing), kept comfortably below the client's 60s request timeout.
+    deadline = time.monotonic() + GENERATION_BUDGET_SECONDS
+
     try:
 
         generated_itinerary = _build_itinerary(
             payload,
             language=preferred_language,
+            deadline=deadline,
         )
 
         logger.info("AI itinerary generated successfully for user: %s", user_id)
+
+    except AIBusyError as error:
+
+        logger.warning("AI busy for user %s: %s", user_id, error)
+
+        return jsonify({
+            "error": "ai_busy",
+            "message": "The AI is busy right now, please try again in a minute.",
+        }), 503
 
     except Exception as error:
 
@@ -333,6 +383,18 @@ def generate_trip():
     # ========================================================
     # SAVE TRIP
     # ========================================================
+
+    # Never persist a trip once the time budget has expired: the client has
+    # already given up, so saving here would only create an orphan trip (and
+    # a duplicate on retry).
+    if time.monotonic() >= deadline:
+        logger.warning(
+            "Skipping save for user %s: time budget expired.", user_id
+        )
+        return jsonify({
+            "error": "ai_busy",
+            "message": "The AI is busy right now, please try again in a minute.",
+        }), 503
 
     try:
 
@@ -618,6 +680,8 @@ def update_trip(trip_id):
             trip.itinerary = _build_itinerary(
                 payload,
                 language=preferred_language,
+                trip_id=trip_id,
+                deadline=time.monotonic() + GENERATION_BUDGET_SECONDS,
             )
 
         db.session.commit()
@@ -627,6 +691,14 @@ def update_trip(trip_id):
             "message": "Trip updated successfully.",
             "trip": trip_to_dict(trip),
         }), 200
+
+    except AIBusyError as error:
+        db.session.rollback()
+        logger.warning("AI busy updating trip %s: %s", trip_id, error)
+        return jsonify({
+            "error": "ai_busy",
+            "message": "The AI is busy right now, please try again in a minute.",
+        }), 503
 
     except Exception as error:
         db.session.rollback()
@@ -676,6 +748,8 @@ def regenerate_trip_itinerary(trip_id):
         trip.itinerary = _build_itinerary(
             payload,
             language=preferred_language,
+            trip_id=trip_id,
+            deadline=time.monotonic() + GENERATION_BUDGET_SECONDS,
         )
 
         db.session.commit()
@@ -686,11 +760,246 @@ def regenerate_trip_itinerary(trip_id):
             "trip": trip_to_dict(trip),
         }), 200
 
+    except AIBusyError as error:
+        db.session.rollback()
+        logger.warning("AI busy regenerating trip %s: %s", trip_id, error)
+        return jsonify({
+            "error": "ai_busy",
+            "message": "The AI is busy right now, please try again in a minute.",
+        }), 503
+
     except Exception as error:
         db.session.rollback()
         logger.exception("Regenerating itinerary failed")
         return jsonify({
             "success": False,
             "message": "Failed to regenerate itinerary.",
+            "error": "Internal server error.",
+        }), 500
+
+
+# ============================================================
+# SWAP A SINGLE ACTIVITY
+# POST /api/trips/<trip_id>/swap-activity
+# ============================================================
+
+@trips_bp.route("/<int:trip_id>/swap-activity", methods=["POST"])
+@jwt_required()
+def swap_activity(trip_id):
+    try:
+        user_id = _get_authenticated_user_id()
+    except ValueError as error:
+        return jsonify({
+            "success": False,
+            "message": str(error),
+        }), 401
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "success": False,
+            "message": "No activity data provided.",
+        }), 400
+
+    day_number = data.get("day")
+    time_slot = data.get("time")
+
+    if not isinstance(day_number, int) or day_number <= 0:
+        return jsonify({
+            "success": False,
+            "message": "A valid day number is required.",
+        }), 400
+
+    if time_slot not in (
+        "Morning",
+        "Afternoon",
+        "Evening",
+    ):
+        return jsonify({
+            "success": False,
+            "message": "Time slot must be Morning, Afternoon or Evening.",
+        }), 400
+
+    try:
+        trip = Trip.query.filter_by(
+            id=trip_id,
+            user_id=user_id,
+        ).first()
+
+        if trip is None:
+            return jsonify({
+                "success": False,
+                "message": "Trip not found.",
+            }), 404
+
+        itinerary = trip.itinerary or []
+
+        if not isinstance(itinerary, list):
+            raise ValueError("Trip itinerary is corrupt.")
+
+        target_day = next(
+            (
+                day
+                for day in itinerary
+                if isinstance(day, dict)
+                and day.get("day") == day_number
+            ),
+            None,
+        )
+
+        if target_day is None:
+            return jsonify({
+                "success": False,
+                "message": "Itinerary day not found.",
+            }), 404
+
+        activities = target_day.get("activities")
+
+        if not isinstance(activities, list):
+            raise ValueError("Trip itinerary is corrupt.")
+
+        target_index = next(
+            (
+                index
+                for index, activity in enumerate(activities)
+                if isinstance(activity, dict)
+                and activity.get("time") == time_slot
+            ),
+            None,
+        )
+
+        if target_index is None:
+            return jsonify({
+                "success": False,
+                "message": "Activity slot not found.",
+            }), 404
+
+        current_activity = activities[target_index]
+
+        # Every title elsewhere in the trip, so a replacement can never
+        # duplicate an existing activity. Identity compares against the
+        # activity being replaced (dicts would compare equal to a copy).
+        existing_titles = []
+        for day in itinerary:
+            if not isinstance(day, dict):
+                continue
+            day_activities = day.get("activities")
+            if not isinstance(day_activities, list):
+                continue
+            for activity in day_activities:
+                if not isinstance(activity, dict):
+                    continue
+                if activity is current_activity:
+                    continue
+                title = str(activity.get("title") or "").strip()
+                if title:
+                    existing_titles.append(title)
+
+        preferred_language, preferred_currency = _get_user_preferences(user_id)
+
+        # Best-effort: reuse the Task 1 forecast helper for this day's
+        # weather. An unavailable forecast means the model simply gets no
+        # weather guidance for the swap.
+        day_weather = []
+        day_date = str(target_day.get("date") or "")
+        forecast = get_forecast_for_generation(
+            trip.destination,
+            trip.start_date,
+            trip.end_date,
+            trip_id=trip.id,
+        )
+        for entry in forecast:
+            if isinstance(entry, dict) and entry.get("date") == day_date:
+                day_weather = [entry]
+                break
+
+        replacement = generate_activity_swap(
+            destination=trip.destination,
+            day_number=day_number,
+            day_date=day_date,
+            time_slot=time_slot,
+            current_activity=current_activity,
+            day_activities=activities,
+            existing_titles=existing_titles,
+            travelers=trip.travelers,
+            budget=trip.budget,
+            travel_style=trip.travel_style,
+            interests=trip.interests or [],
+            language=preferred_language,
+            day_weather=day_weather,
+            deadline=time.monotonic() + SWAP_BUDGET_SECONDS,
+        )
+
+        # Server-side safety net before the trip is touched.
+        _validate_swap_activity(
+            replacement,
+            time_slot,
+            existing_titles,
+        )
+
+        # Reassign the whole itinerary so the JSON column change is tracked
+        # by SQLAlchemy (in-place list mutation is not detected on commit).
+        activities_copy = list(activities)
+        activities_copy[target_index] = replacement
+        day_copy = dict(target_day)
+        day_copy["activities"] = activities_copy
+        trip.itinerary = [
+            day_copy if day is target_day else day
+            for day in itinerary
+        ]
+
+        # Mark the column modified explicitly: plain JSON attribute
+        # reassignment can be treated as a no-op by SQLAlchemy's history
+        # tracking (old/new compare by value), silently dropping the update.
+        flag_modified(trip, "itinerary")
+
+        # Refresh the derived estimate so the returned trip stays
+        # consistent with generate/update (the figure itself is
+        # itinerary-independent, but it is recomputed through the same
+        # path).
+        trip.estimated_cost = _build_cost(
+            {
+                "destination": trip.destination,
+                "start_date": trip.start_date.isoformat(),
+                "end_date": trip.end_date.isoformat(),
+                "travelers": trip.travelers,
+                "budget": trip.budget,
+            },
+            currency=preferred_currency,
+        )
+        flag_modified(trip, "estimated_cost")
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Activity swapped successfully.",
+            "trip": trip_to_dict(trip),
+        }), 200
+
+    except AIBusyError as error:
+        db.session.rollback()
+        logger.warning("AI busy swapping activity on trip %s: %s", trip_id, error)
+        return jsonify({
+            "error": "ai_busy",
+            "message": "The AI is busy right now, please try again in a minute.",
+        }), 503
+
+    except RuntimeError as error:
+        db.session.rollback()
+        logger.error("Activity swap generation failed: %s", error)
+        return jsonify({
+            "success": False,
+            "message": str(error),
+            "error": "Internal server error.",
+        }), 500
+
+    except Exception as error:
+        db.session.rollback()
+        logger.exception("Swapping activity failed")
+        return jsonify({
+            "success": False,
+            "message": "Failed to swap activity.",
             "error": "Internal server error.",
         }), 500

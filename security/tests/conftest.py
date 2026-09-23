@@ -110,6 +110,8 @@ def _stub_generate_itinerary(
     travel_style,
     interests,
     language="en",
+    weather=(),
+    deadline=None,
 ):
     """Deterministic itinerary stand-in for the Gemini service.
 
@@ -142,6 +144,37 @@ def _stub_generate_itinerary(
     return {"itinerary": itinerary}
 
 
+def _stub_generate_activity_swap(
+    destination,
+    day_number,
+    day_date,
+    time_slot,
+    current_activity,
+    day_activities,
+    existing_titles,
+    travelers,
+    budget,
+    travel_style,
+    interests,
+    language="en",
+    day_weather=(),
+    deadline=None,
+):
+    """Deterministic single-activity replacement for the Gemini service.
+
+    Returns a valid activity in the itinerary schema (distinct title,
+    requested time slot, valid category). The title never collides with
+    titles produced by ``_stub_generate_itinerary``.
+    """
+    return {
+        "time": time_slot,
+        "title": "Fusee Museum Tour",
+        "description": "A quirky museum replacement activity.",
+        "category": "Sightseeing",
+        "location": "Marais District",
+    }
+
+
 @pytest.fixture(autouse=True)
 def stub_ai(monkeypatch):
     """Ensure every test uses the deterministic itinerary stub.
@@ -151,6 +184,17 @@ def stub_ai(monkeypatch):
     This guarantees no real Gemini network calls and no API cost.
     """
     monkeypatch.setattr(trips_module, "generate_itinerary", _stub_generate_itinerary)
+    monkeypatch.setattr(
+        trips_module, "generate_activity_swap", _stub_generate_activity_swap
+    )
+    # Itinerary generation now tries to enrich the prompt with a daily weather
+    # forecast via the shared weather helpers; return nothing so the suite
+    # stays hermetic (no real Open-Meteo calls) and generation proceeds.
+    monkeypatch.setattr(
+        trips_module,
+        "get_forecast_for_generation",
+        lambda *a, **k: [],
+    )
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import time
 from datetime import date, timedelta
 
@@ -62,6 +63,53 @@ if not api_key:
 
 
 client = genai.Client(api_key=api_key)
+
+
+# Hard ceilings for the whole AI generation, kept comfortably below the
+# Flutter client's 60s request timeout so the backend always answers first.
+GENERATION_BUDGET_SECONDS = 50.0
+SWAP_BUDGET_SECONDS = 25.0
+
+# An attempt shorter than this is not worth starting; a small reserve
+# covers request/response overhead before an attempt begins.
+MIN_ATTEMPT_SECONDS = 8.0
+ATTEMPT_OVERHEAD_SECONDS = 1.0
+
+
+class AIBusyError(RuntimeError):
+    """Raised when Gemini stays unavailable until the time budget runs out.
+
+    The route layer translates this into an HTTP 503 ``ai_busy`` response so
+    the client can show a friendly "the AI is busy" message instead of
+    waiting past its own timeout while the backend keeps retrying.
+    """
+
+
+def _attempt_timeout_seconds(total_days):
+    """Per-attempt Gemini timeout, scaled by trip length.
+
+    Roughly 25s for a short trip, growing with the number of days and capped
+    so a single attempt can never swallow the whole request budget.
+    """
+
+    try:
+        days = int(total_days)
+    except (TypeError, ValueError):
+        days = 1
+
+    return min(35.0, 25.0 + max(0, days - 3) * 2.0)
+
+
+def _swap_attempt_timeout_seconds():
+    """Per-attempt Gemini timeout for a single-activity swap."""
+
+    return 15.0
+
+
+def _backoff_seconds(attempt_number):
+    """Short retry backoff with a little jitter to avoid thundering herds."""
+
+    return 0.5 * attempt_number + random.uniform(0.0, 0.25)
 
 
 # ============================================================
@@ -404,8 +452,15 @@ def _is_transient_error(error):
     ``google.api_core.exceptions`` statuses when the rich error object is
     available. Anything else (auth, invalid argument) is treated as permanent.
     """
-    message = str(error).upper()
+    message = (str(error) + " " + repr(error)).upper()
     if any(code in message for code in ("429", "503", "500", "502", "504")):
+        return True
+    # Per-attempt client timeouts surface as httpx TimeoutException (whose
+    # str() is empty), a builtin TimeoutError, or a "deadline exceeded"
+    # API error — all retry-friendly if time still remains.
+    if "TIMEOUT" in type(error).__name__.upper():
+        return True
+    if "TIMEOUT" in message or "TIMED OUT" in message or "DEADLINE" in message:
         return True
     try:
         from google.api_core import exceptions as gax
@@ -447,16 +502,28 @@ def generate_itinerary(
     travel_style,
     interests,
     language="en",
+    weather=(),
+    deadline=None,
 ):
 
     # ========================================================
-    # NUMBER OF GENERATION ATTEMPTS
+    # GENERATION ATTEMPTS + TIME BUDGET
     # ========================================================
 
-    # Budget must cover the worst realistic case: every fallback model
-    # transiently failing twice before swapping to the next one.
-    # (3 models * 2 transient errors + slack for a final try = 8.)
-    max_attempts = 8
+    # At most three tries: the primary model twice, then one fallback model.
+    # Retrying further would push the request past the client's timeout.
+    max_attempts = 3
+
+    if deadline is None:
+        deadline = time.monotonic() + GENERATION_BUDGET_SECONDS
+
+    try:
+        total_days = (
+            date.fromisoformat(str(end_date)[:10])
+            - date.fromisoformat(str(start_date)[:10])
+        ).days + 1
+    except (TypeError, ValueError):
+        total_days = 1
 
     last_error = None
 
@@ -488,11 +555,60 @@ Keep the JSON keys, the 'time' values (e.g. "Morning"), and the
 (mainly the description fields) must be in {language_name}.
 """
 
+    weather_block = ""
+    if weather:
+        forecast_lines = []
+        for day in weather:
+            if not isinstance(day, dict):
+                continue
+            date_str = day.get("date")
+            if not date_str:
+                continue
+            label = day.get("label") or "Unknown"
+            t_max = day.get("tempMax")
+            t_min = day.get("tempMin")
+            rain = day.get("precipitationProbability")
+            parts = [str(date_str), str(label)]
+            if t_max is not None and t_min is not None:
+                parts.append("{:.0f}..{:.0f} C".format(t_min, t_max))
+            elif t_max is not None:
+                parts.append("{:.0f} C".format(t_max))
+            if rain is not None:
+                parts.append("rain {:.0f}%".format(rain))
+            forecast_lines.append(", ".join(parts))
+        if forecast_lines:
+            weather_block = (
+                "WEATHER FORECAST (one line per date):\n"
+                + "\n".join(forecast_lines)
+                + "\n"
+            )
+
     # ========================================================
     # GENERATION LOOP
     # ========================================================
 
     for attempt in range(1, max_attempts + 1):
+
+        # Stop before starting an attempt that cannot finish in time, so the
+        # whole request always answers before the client's timeout.
+        remaining = deadline - time.monotonic()
+
+        if remaining < MIN_ATTEMPT_SECONDS:
+            raise AIBusyError(
+                "AI is busy and the time budget was exhausted before "
+                "a valid itinerary could be generated."
+            )
+
+        attempt_timeout = min(
+            _attempt_timeout_seconds(total_days),
+            remaining - ATTEMPT_OVERHEAD_SECONDS,
+        )
+
+        if attempt_timeout < MIN_ATTEMPT_SECONDS:
+            raise AIBusyError(
+                "AI is busy and the time budget was exhausted before "
+                "a valid itinerary could be generated."
+            )
 
         # ----------------------------------------------------
         # First attempt uses the normal prompt.
@@ -523,7 +639,7 @@ Before returning the JSON, verify every day contains:
 6. No activity title is repeated anywhere else in the trip.
 7. Every selected interest appears in at least one activity.
 
-Do not return the previous invalid structure.
+        Do not return the previous invalid structure.
 """
 
         prompt = f"""
@@ -540,7 +656,7 @@ Budget: {budget}
 Travel style: {travel_style}
 Interests: {interests}
 {language_requirement}
-REQUIREMENTS:
+{weather_block}REQUIREMENTS:
 
 1. Create EXACTLY ONE itinerary entry for EVERY calendar day
    from the provided start date through the provided end date,
@@ -642,6 +758,11 @@ REQUIREMENTS:
     - No activity title repeated anywhere in the trip.
     - Every selected interest is represented at least once.
 
+26. Use the WEATHER FORECAST when choosing activities: put outdoor
+    activities on dry, mild days and indoor ones on rainy or very hot
+    days (e.g. max temperature >= 32 C or rain probability >= 50%).
+    Do not mention the weather in every activity description.
+
 {correction_message}
 """
 
@@ -720,6 +841,9 @@ REQUIREMENTS:
                             "itinerary"
                         ],
                     },
+                    http_options=types.HttpOptions(
+                        timeout=int(attempt_timeout * 1000),
+                    ),
                 ),
             )
 
@@ -756,21 +880,25 @@ REQUIREMENTS:
             # A 429/5xx (notably 503 UNAVAILABLE under high demand) is
             # transient, so back off briefly and, if the model stays down,
             # fall back to the next capable model.
-            transient = _is_transient_error(error)
-            if transient:
-                model_transient_errors += 1
-                if (
-                    model_transient_errors >= 2
-                    and model_index < len(GEMINI_MODELS) - 1
-                ):
-                    model_index += 1
-                    model = GEMINI_MODELS[model_index]
-                    model_transient_errors = 0
-                    logger.warning(
-                        "Falling back to Gemini model %s after transient error.",
-                        model,
-                    )
-                time.sleep(2 * model_transient_errors)
+            if not _is_transient_error(error):
+                # 400/401/403 and other permanent API errors: retrying
+                # cannot help and would only waste the remaining budget.
+                raise
+
+            model_transient_errors += 1
+            if (
+                model_transient_errors >= 2
+                and model_index < len(GEMINI_MODELS) - 1
+                and attempt < max_attempts
+            ):
+                model_index += 1
+                model = GEMINI_MODELS[model_index]
+                model_transient_errors = 0
+                logger.warning(
+                    "Falling back to Gemini model %s after transient error.",
+                    model,
+                )
+            time.sleep(_backoff_seconds(model_transient_errors))
 
             continue
 
@@ -853,8 +981,466 @@ REQUIREMENTS:
     # ALL ATTEMPTS FAILED
     # ========================================================
 
-    raise RuntimeError(
-        "Failed to generate a valid itinerary after "
+    raise AIBusyError(
+        "AI is busy and could not produce a valid itinerary within "
         f"{max_attempts} attempts. "
+        f"Last error: {last_error}"
+    )
+
+
+# ============================================================
+# SWAP A SINGLE ACTIVITY
+# ============================================================
+
+def _validate_swap_activity(activity, time_slot, seen_titles):
+    """Validate the single replacement activity Gemini returned.
+
+    Enforces the exact same activity contract the itinerary uses
+    (time/title/description/category/location), keeps the requested
+    ``time_slot``, and rejects titles already used elsewhere in the trip
+    so a swap can never create an accidental duplicate.
+    """
+
+    if not isinstance(activity, dict):
+        raise ValueError(
+            "Gemini response must be a JSON object."
+        )
+
+    required_fields = [
+        "time",
+        "title",
+        "description",
+        "category",
+        "location",
+    ]
+
+    for field in required_fields:
+        if field not in activity:
+            raise ValueError(
+                f"Replacement activity is missing '{field}'."
+            )
+
+    if activity["time"] != time_slot:
+        raise ValueError(
+            f"Replacement activity must keep the '{time_slot}' "
+            f"slot, but received '{activity['time']}'."
+        )
+
+    if activity["category"] not in ACTIVITY_CATEGORIES:
+        raise ValueError(
+            f"Replacement activity has invalid category "
+            f"'{activity['category']}'. Must be one of: "
+            f"{', '.join(ACTIVITY_CATEGORIES)}."
+        )
+
+    activity_location = activity["location"]
+
+    if (
+        not isinstance(activity_location, str)
+        or not activity_location.strip()
+    ):
+        raise ValueError(
+            "Replacement activity has an empty 'location'."
+        )
+
+    activity_title = activity["title"]
+    title_key = activity_title.strip().lower()
+
+    if title_key in {title.strip().lower() for title in seen_titles}:
+        raise ValueError(
+            f"Replacement activity '{activity_title}' duplicates "
+            f"an existing activity in the trip."
+        )
+
+    return True
+
+
+def generate_activity_swap(
+    destination,
+    day_number,
+    day_date,
+    time_slot,
+    current_activity,
+    day_activities,
+    existing_titles,
+    travelers,
+    budget,
+    travel_style,
+    interests,
+    language="en",
+    day_weather=(),
+    deadline=None,
+):
+    """Ask Gemini for ONE replacement activity for a single itinerary slot.
+
+    Returns one activity dict in the exact same JSON shape existing
+    itinerary activities use (time/title/description/category/location),
+    so the existing rendering and storage paths keep working unchanged.
+    It never mutates anything itself — the caller applies the swap.
+    """
+
+    # Single activity: at most three tries and a short budget, so a swap
+    # always answers well within the client's request timeout.
+    max_attempts = 3
+
+    if deadline is None:
+        deadline = time.monotonic() + SWAP_BUDGET_SECONDS
+
+    last_error = None
+
+    model_index = 0
+    model = GEMINI_MODELS[model_index]
+    model_transient_errors = 0
+
+    categories_list = ", ".join(ACTIVITY_CATEGORIES)
+
+    language_name = LANGUAGES_BY_CODE.get(
+        (language or "en").lower(),
+        "English",
+    )
+
+    language_requirement = ""
+    if language_name != "English":
+        language_requirement = f"""
+
+LANGUAGE REQUIREMENT:
+
+Write the replacement activity title, description, and location in
+{language_name}.
+
+Keep the JSON keys, the 'time' value, and the 'category' value in
+English.
+"""
+
+    weather_line = ""
+    if day_weather:
+        for day in day_weather:
+            if not isinstance(day, dict):
+                continue
+            label = day.get("label") or "Unknown"
+            t_max = day.get("tempMax")
+            t_min = day.get("tempMin")
+            rain = day.get("precipitationProbability")
+            parts = [str(label)]
+            if t_max is not None and t_min is not None:
+                parts.append("{:.0f}..{:.0f} C".format(t_min, t_max))
+            elif t_max is not None:
+                parts.append("{:.0f} C".format(t_max))
+            if rain is not None:
+                parts.append("rain {:.0f}%".format(rain))
+            weather_line = "FORECAST FOR THIS DAY: " + ", ".join(parts)
+            break
+
+    current_title = str((current_activity or {}).get("title") or "").strip()
+
+    other_day_activities = []
+    for activity in day_activities or []:
+        if not isinstance(activity, dict):
+            continue
+        if str(activity.get("title") or "").strip() == current_title:
+            continue
+        other_day_activities.append(
+            ", ".join([
+                str(activity.get("time") or ""),
+                str(activity.get("title") or ""),
+                str(activity.get("category") or ""),
+                str(activity.get("location") or ""),
+            ])
+        )
+
+    existing_titles_list = [
+        str(title).strip()
+        for title in existing_titles or []
+        if str(title).strip()
+    ]
+
+    for attempt in range(1, max_attempts + 1):
+
+        # Stop before starting an attempt that cannot finish in time.
+        remaining = deadline - time.monotonic()
+
+        if remaining < MIN_ATTEMPT_SECONDS:
+            raise AIBusyError(
+                "AI is busy and the time budget was exhausted before "
+                "a valid replacement activity could be generated."
+            )
+
+        attempt_timeout = min(
+            _swap_attempt_timeout_seconds(),
+            remaining - ATTEMPT_OVERHEAD_SECONDS,
+        )
+
+        if attempt_timeout < MIN_ATTEMPT_SECONDS:
+            raise AIBusyError(
+                "AI is busy and the time budget was exhausted before "
+                "a valid replacement activity could be generated."
+            )
+
+        correction_message = ""
+        if last_error is not None:
+            correction_message = f"""
+
+IMPORTANT CORRECTION FROM PREVIOUS ATTEMPT:
+
+The previous replacement activity was invalid because:
+
+{last_error}
+
+You MUST correct this problem in this attempt.
+
+Before returning the JSON, verify:
+1. The 'time' value is exactly "{time_slot}".
+2. Every field (title, description, category, location) is present
+   and non-empty.
+3. The 'category' is one of: {categories_list}.
+4. The 'location' names a real neighborhood, district, or area.
+5. The 'title' is NOT any of the existing titles listed above.
+"""
+
+        existing_titles_block = (
+            "\n".join(
+                "- " + title for title in existing_titles_list
+            )
+            if existing_titles_list
+            else "None"
+        )
+
+        other_day_block = (
+            "\n".join(
+                "- " + entry for entry in other_day_activities
+            )
+            if other_day_activities
+            else "None"
+        )
+
+        prompt = f"""
+You are Tripora, an AI travel planning assistant.
+
+Replace ONE activity spot in a trip itinerary with a single, realistic
+alternative. Return ONLY one activity as JSON.
+
+TRIP DETAILS:
+Destination: {destination}
+Day: {day_number} of the trip ({day_date})
+Time slot to fill: {time_slot}
+Travelers: {travelers}
+Budget: {budget}
+Travel style / pace: {travel_style}
+Highlight priorities (interests): {interests}
+{language_requirement}
+ACTIVITY TO REPLACE:
+title: "{current_title}"
+description: {str((current_activity or {}).get("description") or "")}
+category: {str((current_activity or {}).get("category") or "")}
+location: {str((current_activity or {}).get("location") or "")}
+
+OTHER ACTIVITIES ON THE SAME DAY (keep the new activity realistic and
+geographically practical together with these):
+{other_day_block}
+
+{weather_line}
+
+TITLES ALREADY USED ELSEWHERE IN THIS TRIP (do NOT reuse them):
+{existing_titles_block}
+
+REQUIREMENTS:
+
+1. Return EXACTLY ONE replacement activity.
+2. The new activity MUST use time = "{time_slot}".
+3. Use the SAME JSON structure as the existing itinerary activities:
+   keys 'time', 'title', 'description', 'category', 'location'.
+4. The new 'title' must differ from every title listed above and from
+   the activity being replaced. No duplicates.
+5. Choose a 'category' that is exactly one of: {categories_list}.
+6. Fill 'location' with a specific neighborhood, district, or named
+   area. Never the whole city name, never empty.
+7. Match the traveler's budget, travel style/pace, and interests.
+8. If the day has a weather forecast, prefer outdoor options on dry,
+   mild weather and indoor options on rainy or very hot days.
+9. Prefer a realistic, distinct alternative — ideally a different
+   neighborhood or a different kind of place than the one replaced.
+10. Do not invent exact opening hours, prices, reservations,
+    availability, or transportation schedules.
+11. Keep the description concise, specific, and useful.
+12. Return ONLY valid JSON matching the schema. No markdown, no
+    explanations, no comments.
+
+{correction_message}
+"""
+
+        # ====================================================
+        # CALL GEMINI
+        # ====================================================
+
+        try:
+
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "time": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "category": {
+                                "type": "string",
+                                "enum": ACTIVITY_CATEGORIES,
+                            },
+                            "location": {
+                                "type": "string"
+                            },
+                        },
+                        "required": [
+                            "time",
+                            "title",
+                            "description",
+                            "category",
+                            "location",
+                        ],
+                    },
+                    http_options=types.HttpOptions(
+                        timeout=int(attempt_timeout * 1000),
+                    ),
+                ),
+            )
+
+        except Exception as error:
+
+            logger.error(
+                "GEMINI API ERROR (swap, attempt %s/%s, model %s): %s",
+                attempt,
+                max_attempts,
+                model,
+                error,
+            )
+
+            last_error = str(error)
+
+            if (
+                _is_permanent_model_error(error)
+                and model_index < len(GEMINI_MODELS) - 1
+            ):
+                model_index += 1
+                model = GEMINI_MODELS[model_index]
+                model_transient_errors = 0
+                logger.warning(
+                    "Skipping permanently unavailable Gemini model, "
+                    "falling back to %s.",
+                    model,
+                )
+                continue
+
+            if not _is_transient_error(error):
+                # 400/401/403 and other permanent API errors: retrying
+                # cannot help and would only waste the remaining budget.
+                raise
+
+            model_transient_errors += 1
+            if (
+                model_transient_errors >= 2
+                and model_index < len(GEMINI_MODELS) - 1
+                and attempt < max_attempts
+            ):
+                model_index += 1
+                model = GEMINI_MODELS[model_index]
+                model_transient_errors = 0
+                logger.warning(
+                    "Falling back to Gemini model %s after "
+                    "transient error.",
+                    model,
+                )
+            time.sleep(_backoff_seconds(model_transient_errors))
+
+            continue
+
+        # ====================================================
+        # PARSE JSON
+        # ====================================================
+
+        try:
+
+            result = json.loads(response.text)
+
+        except (json.JSONDecodeError, TypeError) as error:
+
+            logger.error(
+                "GEMINI JSON ERROR (swap, attempt %s/%s): %s",
+                attempt,
+                max_attempts,
+                error,
+            )
+
+            logger.error(
+                "GEMINI RESPONSE: %s",
+                response.text,
+            )
+
+            last_error = (
+                f"Gemini returned invalid JSON: {error}"
+            )
+
+            continue
+
+        # ====================================================
+        # VALIDATE
+        # ====================================================
+
+        try:
+
+            _validate_swap_activity(
+                result,
+                time_slot,
+                existing_titles_list,
+            )
+
+        except ValueError as error:
+
+            logger.error(
+                "SWAP VALIDATION ERROR (attempt %s/%s): %s",
+                attempt,
+                max_attempts,
+                error,
+            )
+
+            logger.error(
+                "INVALID REPLACEMENT: %s",
+                json.dumps(
+                    result,
+                    indent=2,
+                    ensure_ascii=False,
+                ),
+            )
+
+            last_error = str(error)
+
+            continue
+
+        # ====================================================
+        # SUCCESS
+        # ====================================================
+
+        logger.info(
+            "AI ACTIVITY SWAP GENERATED SUCCESSFULLY ON ATTEMPT %s",
+            attempt,
+        )
+
+        return result
+
+    # ========================================================
+    # ALL ATTEMPTS FAILED
+    # ========================================================
+
+    raise AIBusyError(
+        "AI is busy and could not produce a valid replacement activity "
+        f"within {max_attempts} attempts. "
         f"Last error: {last_error}"
     )

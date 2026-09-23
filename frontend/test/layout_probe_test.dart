@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend/main.dart';
 import 'package:frontend/screens/main_shell.dart';
@@ -13,8 +14,10 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
       await tester.pumpWidget(const TriporaApp());
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 1500));
       await tester.pump(const Duration(milliseconds: 50));
 
       for (final tab in [0, 1, 2, 3, 4]) {
@@ -34,8 +37,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
 
     for (var i = 0; i < 5; i++) {
       MainShell.currentIndex.value = i % 5;
@@ -55,8 +60,10 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
     await tester.pump(const Duration(milliseconds: 50));
 
     final exception = tester.takeException();
@@ -69,8 +76,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
 
     MainShell.currentIndex.value = 2;
     await tester.pump(const Duration(milliseconds: 100));
@@ -100,8 +109,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
 
     MainShell.currentIndex.value = 2;
     await tester.pump(const Duration(milliseconds: 100));
@@ -140,8 +151,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
 
     MainShell.currentIndex.value = 2;
     await tester.pump(const Duration(milliseconds: 100));
@@ -163,8 +176,10 @@ void main() {
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
 
     for (var i = 0; i < 20; i++) {
       MainShell.currentIndex.value = i % 5;
@@ -187,8 +202,10 @@ void main() {
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
+    SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 1500));
     MainShell.currentIndex.value = 1;
     await tester.pump(const Duration(milliseconds: 16));
 

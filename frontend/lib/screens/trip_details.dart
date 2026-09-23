@@ -31,6 +31,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isSaving = false;
   bool _isRegenerating = false;
 
+  String? _swappingKey;
+
   String? _errorMessage;
 
   static const List<String> _availableInterests = [
@@ -253,7 +255,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             IconButton(
               tooltip: context.tr('details.editTrip'),
               icon: const Icon(Icons.edit_outlined),
-              onPressed: _isSaving || _isRegenerating
+              onPressed:
+                      _isSaving || _isRegenerating || TripService.isOffline
                   ? null
                   : _showEditTripSheet,
             ),
@@ -262,7 +265,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               tooltip: context.tr('details.regenerateItinerary'),
               icon: const Icon(Icons.auto_awesome_outlined),
               color: context.appStatus.info,
-              onPressed: _isSaving || _isRegenerating
+              onPressed:
+                      _isSaving || _isRegenerating || TripService.isOffline
                   ? null
                   : _regenerateItinerary,
             ),
@@ -300,6 +304,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 40),
             children: [
+              if (TripService.isOffline) ...[
+                _buildOfflineBanner(),
+                const SizedBox(height: 14),
+              ],
               _buildHeroSection(),
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -468,7 +476,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Future<void> _regenerateItinerary() async {
     final tripId = _trip.id;
 
-    if (tripId == null || _isRegenerating) {
+    if (tripId == null || _isRegenerating || TripService.isOffline) {
       return;
     }
 
@@ -571,10 +579,59 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+  Future<void> _swapActivity(
+    int dayNumber,
+    String time,
+  ) async {
+    final tripId = _trip.id;
+
+    if (tripId == null || _swappingKey != null || TripService.isOffline) {
+      return;
+    }
+
+    final swappingKey = '$dayNumber|$time';
+
+    setState(() {
+      _swappingKey = swappingKey;
+    });
+
+    try {
+      final updatedTrip = await _tripService.swapActivity(
+        tripId: tripId,
+        day: dayNumber,
+        time: time,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _trip = updatedTrip;
+        _swappingKey = null;
+      });
+
+      _showMessage(
+        context.tr('details.swapSuccess'),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      final message = _extractErrorMessage(error);
+
+      setState(() {
+        _swappingKey = null;
+      });
+
+      _showMessage(
+        message,
+        isError: true,
+      );
+    }
+  }
+
   Future<void> _showEditTripSheet() async {
     final tripId = _trip.id;
 
-    if (tripId == null || _isSaving) {
+    if (tripId == null || _isSaving || TripService.isOffline) {
       return;
     }
 
@@ -1284,6 +1341,60 @@ style: TextStyle(
     );
   }
 
+  Widget _buildOfflineBanner() {
+    final colors = context.triporaColors;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 20,
+            color: context.appStatus.info,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('common.offline'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: context.headingColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  context.tr('details.offlineBanner'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: colors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeroSection() {
     return Container(
       width: double.infinity,
@@ -1844,7 +1955,9 @@ style: TextStyle(
         Icons.account_balance_wallet_outlined,
         context.tr('details.expenses'),
         context.tr('details.trackSpending'),
-        _openExpenseTracker,
+        TripService.isOffline
+            ? null
+            : _openExpenseTracker,
       ),
       _DeckItem(
         Icons.cloud_outlined,
@@ -1965,6 +2078,10 @@ style: TextStyle(
   }
 
   void _openExpenseTracker() {
+    if (TripService.isOffline) {
+      return;
+    }
+
     final tripId = _trip.id;
 
     if (tripId == null) {
@@ -2789,7 +2906,7 @@ style: TextStyle(
                 ),
               )
             else
-              _buildTimeline(activities),
+              _buildTimeline(activities, dayNumber: dayNumber),
           ],
         ),
       ),
@@ -2797,8 +2914,9 @@ style: TextStyle(
   }
 
   Widget _buildTimeline(
-    List<Map<String, dynamic>> activities,
-  ) {
+    List<Map<String, dynamic>> activities, {
+    required int? dayNumber,
+  }) {
     return Column(
       children: List.generate(
         activities.length,
@@ -2808,6 +2926,7 @@ style: TextStyle(
 
           return _buildTimelineActivity(
             activity,
+            dayNumber: dayNumber,
             isLast:
                 index == activities.length - 1,
           );
@@ -2818,6 +2937,7 @@ style: TextStyle(
 
   Widget _buildTimelineActivity(
     Map<String, dynamic> activity, {
+    required int? dayNumber,
     required bool isLast,
   }) {
     final time =
@@ -2958,6 +3078,43 @@ style: TextStyle(
                             ),
                           ),
                         ),
+                      if (dayNumber != null && time.isNotEmpty)
+                        IconButton(
+                          onPressed:
+                              _swappingKey != null ||
+                                      TripService.isOffline
+                                  ? null
+                                  : () => _swapActivity(
+                                        dayNumber,
+                                        time,
+                                      ),
+                          icon: _swappingKey ==
+                                  '$dayNumber|$time'
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: context.appStatus.info,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.swap_horiz,
+                                  size: 18,
+                                  color: context.appStatus.info,
+                                ),
+                          tooltip: context.tr(
+                            'details.swapActivity',
+                          ),
+                          visualDensity:
+                              VisualDensity.compact,
+                          padding:
+                              const EdgeInsets.all(6),
+                          constraints:
+                              const BoxConstraints(),
+                          alignment:
+                              Alignment.centerRight,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -3075,7 +3232,7 @@ class _DeckItem {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   _DeckItem(
     this.icon,
