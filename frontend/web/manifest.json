@@ -1,11 +1,11 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "Tripora",
+    "short_name": "Tripora",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F8FAFC",
+    "theme_color": "#F8FAFC",
+    "description": "Tripora — plan trips, find flights and check the weather.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

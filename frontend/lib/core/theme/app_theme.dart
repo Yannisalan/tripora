@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../design/glass/glass_tokens.dart';
@@ -521,6 +522,40 @@ class AppTheme {
 
   static final ThemeData lightTheme = _buildLight();
   static final ThemeData darkTheme = _buildDark();
+
+  // ------------------------------------------------------------
+  // System UI (status / navigation bar)
+  //
+  // The status bar is fully transparent so the app's own header — the
+  // light AppBar / glass top bar — shows through instead of Android's
+  // opaque default bar (the black gap above the header). Icon brightness
+  // is inverted per theme so the clock / battery stay legible:
+  //   light background -> dark icons
+  //   dark  background -> light icons
+  //
+  // `statusBarIconBrightness` is read on Android; `statusBarBrightness`
+  // is read on iOS (it is the brightness OF the bar background).
+  // ------------------------------------------------------------
+
+  static const SystemUiOverlayStyle lightSystemUiOverlayStyle =
+      SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  );
+
+  static const SystemUiOverlayStyle darkSystemUiOverlayStyle =
+      SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+  );
 
   // ------------------------------------------------------------
   // Light

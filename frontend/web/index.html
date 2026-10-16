@@ -20,7 +20,7 @@
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Tripora">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -30,6 +30,14 @@
   <title>Tripora</title>
   <link rel="manifest" href="manifest.json">
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+
+  <!--
+    Browser / PWA chrome color. Keeps the mobile status bar (and the
+    Android Chrome address bar) the same light color as the app header
+    instead of a dark bar; dark scheme matches the app's dark theme.
+  -->
+  <meta name="theme-color" content="#F8FAFC">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0D0D14">
 
   <!--
     First-paint background only. Flutter paints over this within a frame, so

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../services/auth_service.dart';
 import 'core/auth/auth_guard.dart';
@@ -23,6 +24,23 @@ Future<void> main() async {
 
   await prefs.load();
   unawaited(prefs.ensureRates());
+
+  // Make the system status bar transparent so the app's own header shows
+  // through (Android otherwise draws its opaque theme bar as a black gap
+  // above the light header). Applied before the first frame; the root
+  // AnnotatedRegion below keeps it in sync when the theme changes.
+  final themeMode = AppPreferences.instance.themeMode;
+  final platformBrightness =
+      WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  final useDarkChrome = themeMode == ThemeMode.dark ||
+      (themeMode == ThemeMode.system &&
+          platformBrightness == Brightness.dark);
+
+  SystemChrome.setSystemUIOverlayStyle(
+    useDarkChrome
+        ? AppTheme.darkSystemUiOverlayStyle
+        : AppTheme.lightSystemUiOverlayStyle,
+  );
 
   await NotificationService.instance.init();
 
@@ -88,6 +106,21 @@ class _TriporaAppState extends State<TriporaApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: resolvedThemeMode,
+
+          // Keep the transparent status bar + icon brightness in sync with
+          // the active theme (light -> dark icons, dark -> light icons),
+          // even when no AppBar is present.
+          builder: (context, child) {
+            final isDark =
+                Theme.of(context).brightness == Brightness.dark;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: isDark
+                  ? AppTheme.darkSystemUiOverlayStyle
+                  : AppTheme.lightSystemUiOverlayStyle,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+
           initialRoute: widget.initialRoute,
           routes: AppRoutes.routes,
           navigatorObservers: [_routeTracker],
