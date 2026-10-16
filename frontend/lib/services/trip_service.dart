@@ -202,6 +202,27 @@ class TripService {
     }
   }
 
+  /// Wipes every locally cached trip (list + per-trip slots). Called on
+  /// logout, account deletion, and forced logged-out redirects so a new
+  /// session never starts from another user's leftover data.
+  static Future<void> clearOfflineCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.remove(_tripsCacheKey);
+
+      for (final key in prefs.getKeys().toList()) {
+        if (key.startsWith(_tripCacheKeyPrefix)) {
+          await prefs.remove(key);
+        }
+      }
+
+      isOffline = false;
+    } catch (e) {
+      debugPrint('TripService: failed to clear offline cache: $e');
+    }
+  }
+
   /// Distinguishes "the backend could not be reached" from real HTTP
   /// responses. Web-safe: type names are matched from the error string so
   /// no dart:io import is needed.

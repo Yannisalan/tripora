@@ -46,6 +46,8 @@
 		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSCalendarsUsageDescription</key>
+		<string>Tripora adds your generated itineraries to your calendar so you can follow your trip schedule.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

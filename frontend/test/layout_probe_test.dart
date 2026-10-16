@@ -5,6 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend/main.dart';
 import 'package:frontend/screens/main_shell.dart';
 
+/// Pump through the animated splash: 1100ms delay + 400ms exit fade, then
+/// one frame for the replaced route to build plus its transition.
+Future<void> pumpThroughSplash(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 1500));
+  await tester.pump(const Duration(milliseconds: 600));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
 void main() {
   const widths = <double>[320, 360, 400, 480, 560, 720, 900, 1200];
 
@@ -17,8 +26,7 @@ void main() {
       SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
       await tester.pumpWidget(const TriporaApp());
-      await tester.pump(const Duration(milliseconds: 1500));
-      await tester.pump(const Duration(milliseconds: 50));
+      await pumpThroughSplash(tester);
 
       for (final tab in [0, 1, 2, 3, 4]) {
         MainShell.currentIndex.value = tab;
@@ -40,7 +48,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
+    await pumpThroughSplash(tester);
 
     for (var i = 0; i < 5; i++) {
       MainShell.currentIndex.value = i % 5;
@@ -63,8 +71,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
-    await tester.pump(const Duration(milliseconds: 50));
+    await pumpThroughSplash(tester);
 
     final exception = tester.takeException();
     expect(exception, isNull, reason: 'text-scale exception: $exception');
@@ -79,7 +86,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
+    await pumpThroughSplash(tester);
 
     MainShell.currentIndex.value = 2;
     await tester.pump(const Duration(milliseconds: 100));
@@ -89,6 +96,8 @@ void main() {
         find.byType(DropdownButtonFormField<String>),
       );
       if (cabin.isNotEmpty) {
+        await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+        await tester.pumpAndSettle();
         await tester.tap(find.byType(DropdownButtonFormField<String>).last);
         await tester.pump(const Duration(milliseconds: 150));
       }
@@ -112,7 +121,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
+    await pumpThroughSplash(tester);
 
     MainShell.currentIndex.value = 2;
     await tester.pump(const Duration(milliseconds: 100));
@@ -154,7 +163,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
+    await pumpThroughSplash(tester);
 
     MainShell.currentIndex.value = 2;
     await tester.pump(const Duration(milliseconds: 100));
@@ -179,7 +188,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
+    await pumpThroughSplash(tester);
 
     for (var i = 0; i < 20; i++) {
       MainShell.currentIndex.value = i % 5;
@@ -205,7 +214,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
 
     await tester.pumpWidget(const TriporaApp());
-    await tester.pump(const Duration(milliseconds: 1500));
+    await pumpThroughSplash(tester);
     MainShell.currentIndex.value = 1;
     await tester.pump(const Duration(milliseconds: 16));
 

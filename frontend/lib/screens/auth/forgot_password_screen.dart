@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/logger.dart';
 import '../../routes/app_routes.dart';
@@ -213,8 +216,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -252,7 +256,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             child: Form(
               key: _formKey,
-              child: Column(
+              child: GlassSurface(
+                padding: const EdgeInsets.all(24),
+                borderRadius:
+                    BorderRadius.circular(GlassRadius.lg),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
@@ -333,8 +341,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 ],
               ),
+              ),
             ),
           ),
+        ),
         ),
       ),
     );
@@ -403,6 +413,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           decoration: InputDecoration(
             labelText: context.tr('login.email'),
             hintText: context.tr('login.emailHint'),
+            filled: true,
+            fillColor: colors.surface.withValues(alpha: 0.35),
             prefixIcon: const Icon(
               Icons.email_outlined,
             ),
@@ -435,6 +447,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             hintText: context.tr(
               'forgotPassword.codeHint',
             ),
+            filled: true,
+            fillColor: colors.surface.withValues(alpha: 0.35),
             prefixIcon: const Icon(
               Icons.pin_outlined,
             ),
@@ -466,6 +480,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 hintText: context.tr(
                   'forgotPassword.newPasswordHint',
                 ),
+                filled: true,
+                fillColor:
+                    colors.surface.withValues(alpha: 0.35),
                 prefixIcon: const Icon(
                   Icons.lock_outline,
                 ),
@@ -520,6 +537,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 hintText: context.tr(
                   'forgotPassword.confirmPasswordHint',
                 ),
+                filled: true,
+                fillColor:
+                    colors.surface.withValues(alpha: 0.35),
                 prefixIcon: const Icon(
                   Icons.lock_outline,
                 ),

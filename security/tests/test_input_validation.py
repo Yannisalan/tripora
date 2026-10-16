@@ -121,7 +121,7 @@ class TestMissingRegistrationFields:
     def test_short_password_rejected(self, client):
         resp = register(client, name="Alice", password="12345")
         assert resp.status_code == 400
-        assert "6" in resp.get_json().get("message", "")
+        assert "at least 8" in resp.get_json().get("message", "")
 
 
 class TestMissingLoginFields:

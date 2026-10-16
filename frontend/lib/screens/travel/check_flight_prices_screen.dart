@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
@@ -132,8 +135,9 @@ class _CheckFlightPricesScreenState
   Widget _buildScaffold(BuildContext context) {
     final colors = context.triporaColors;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -234,6 +238,7 @@ class _CheckFlightPricesScreenState
             ),
           ),
         ),
+        ),
       ),
     );
   }
@@ -243,19 +248,10 @@ class _CheckFlightPricesScreenState
   // ---------------------------------------------------------------------------
 
   Widget _buildForm() {
-    final colors = context.triporaColors;
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: colors.border,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
+    return GlassSurface(
+      padding: const EdgeInsets.all(18),
+      borderRadius: BorderRadius.circular(GlassRadius.md),
+      child: Column(
           crossAxisAlignment:
               CrossAxisAlignment.stretch,
           children: [
@@ -352,7 +348,6 @@ class _CheckFlightPricesScreenState
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -442,20 +437,13 @@ class _PriceCard extends StatelessWidget {
     final depart =
         (result['departureTime'] ?? '').toString();
 
-    return Card(
-      elevation: 0,
+    return GlassSurface(
       margin: const EdgeInsets.only(
         bottom: 12,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colors.border,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(GlassRadius.md),
+      child: Row(
           children: [
             Icon(
               Icons.flight,
@@ -522,7 +510,6 @@ class _PriceCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -538,9 +525,10 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
 
-    return Padding(
+    return GlassSurface(
       padding: const EdgeInsets.symmetric(
         vertical: 24,
+        horizontal: 16,
       ),
       child: Column(
         children: [

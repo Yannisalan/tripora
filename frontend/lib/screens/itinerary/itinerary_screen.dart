@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_background.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -340,18 +341,18 @@ class ItineraryScreen extends StatelessWidget {
   }
 
   Widget _buildScaffold(BuildContext context) {
-    final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
 
       // ========================================================
       // APP BAR
       // ========================================================
 
       appBar: AppBar(
-        backgroundColor: colors.backgroundColor,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -444,6 +445,7 @@ class ItineraryScreen extends StatelessWidget {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
@@ -1394,6 +1396,10 @@ class ItineraryScreen extends StatelessWidget {
     if (kIsWeb) return;
 
     final messenger = ScaffoldMessenger.of(context);
+    // Resolve before the async gap below so the BuildContext is not used
+    // after the await.
+    final addedMessage = context.tr('it.calendarAdded');
+    final errorMessage = context.tr('it.calendarError');
 
     try {
       final event = Event(
@@ -1424,9 +1430,7 @@ class ItineraryScreen extends StatelessWidget {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              added
-                  ? context.tr('it.calendarAdded')
-                  : context.tr('it.calendarError'),
+              added ? addedMessage : errorMessage,
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1437,7 +1441,7 @@ class ItineraryScreen extends StatelessWidget {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              context.tr('it.calendarError'),
+              errorMessage,
             ),
             behavior: SnackBarBehavior.floating,
           ),

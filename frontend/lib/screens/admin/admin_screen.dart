@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../services/admin_service.dart';
@@ -171,16 +174,25 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     if (_checkingToken) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Tripora Admin')),
+      return GlassBackground(
+        child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text('Tripora Admin'),
+        ),
         body: const Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
-    return DefaultTabController(
+    return GlassBackground(
+      child: DefaultTabController(
       length: 4,
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
+          backgroundColor: Colors.transparent,
           title: const Text('Tripora Admin'),
           actions: [
             IconButton(
@@ -212,6 +224,7 @@ class _AdminScreenState extends State<AdminScreen> {
             _buildActivity(),
           ],
         ),
+      ),
       ),
     );
   }
@@ -271,12 +284,9 @@ class _AdminScreenState extends State<AdminScreen> {
             style: TextStyle(color: context.triporaColors.textMuted),
           )
         else
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: context.triporaColors.border),
-            ),
+          GlassSurface(
+            padding: EdgeInsets.zero,
+            borderRadius: BorderRadius.circular(GlassRadius.sm),
             child: Column(
               children: [
                 for (final d in topDestinations)
@@ -317,8 +327,9 @@ class _AdminScreenState extends State<AdminScreen> {
       itemBuilder: (context, index) {
         final u = _users[index];
         final verified = u['emailVerified'] == true;
-        return Card(
-          elevation: 0,
+        return GlassSurface(
+          padding: EdgeInsets.zero,
+          borderRadius: BorderRadius.circular(GlassRadius.sm),
           child: ListTile(
             leading: CircleAvatar(
               child: Icon(
@@ -380,8 +391,9 @@ class _AdminScreenState extends State<AdminScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final t = _trips[index];
-        return Card(
-          elevation: 0,
+        return GlassSurface(
+          padding: EdgeInsets.zero,
+          borderRadius: BorderRadius.circular(GlassRadius.sm),
           child: ListTile(
             leading: const Icon(Icons.flag_outlined),
             title: Text((t['destination'] ?? '').toString()),
@@ -516,13 +528,9 @@ class _AdminScreenState extends State<AdminScreen> {
     String value,
   ) {
     final colors = context.triporaColors;
-    return Container(
+    return GlassSurface(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border),
-      ),
+      borderRadius: BorderRadius.circular(GlassRadius.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,

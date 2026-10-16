@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/trip_model.dart';
@@ -9,7 +12,7 @@ import '../../services/weather_service.dart';
 
 /// Displays the Open-Meteo forecast for a trip.
 ///
-/// Fetches from GET /api/trips/<id>/weather.
+/// Fetches from `GET /api/trips/<id>/weather`.
 /// The backend handles geocoding + forecast, so no API key is needed
 /// in Flutter.
 ///
@@ -129,11 +132,11 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
-    final colors = context.triporaColors;
     final lang = AppPreferences.instance.language;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(context, lang),
@@ -141,6 +144,7 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             child: _buildBody(context, lang),
           ),
         ],
+      ),
       ),
     );
   }
@@ -190,10 +194,12 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
             child: Padding(
               padding: const EdgeInsetsDirectional.only(
                 start: 20,
-                bottom: 16,
+                bottom: 48,
               ),
               child: Text(
                 widget.trip.destination,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'Noto Serif',
                   color: Color(0xFF94A3B8),
@@ -491,15 +497,19 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                     color: appStatus.info,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    [
-                      locName,
-                      locCountry,
-                    ].where((s) => s.isNotEmpty).join(', '),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: appStatus.info,
+                  Flexible(
+                    child: Text(
+                      [
+                        locName,
+                        locCountry,
+                      ].where((s) => s.isNotEmpty).join(', '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: appStatus.info,
+                      ),
                     ),
                   ),
                 ],
@@ -633,16 +643,10 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
         accent = colors.textMuted;
     }
 
-    return Container(
+    return GlassSurface(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colors.border,
-        ),
-      ),
+      borderRadius: BorderRadius.circular(GlassRadius.sm),
       child: Row(
         children: [
           // -------------------------------------------------------------------
@@ -718,50 +722,57 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
           ),
 
           // -------------------------------------------------------------------
-          // TEMPERATURE
+          // TEMPERATURE + PRECIPITATION
           // -------------------------------------------------------------------
 
-          Text(
-            '${_fmtTemp(tempMax)}°',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
-          ),
-
-          Text(
-            ' / ${_fmtTemp(tempMin)}°',
-            style: TextStyle(
-              fontSize: 13,
-              color: colors.textMuted,
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          // -------------------------------------------------------------------
-          // PRECIPITATION
-          // -------------------------------------------------------------------
-
-          if (precipProb != null)
-            Column(
-              children: [
-                Icon(
-                  Icons.water_drop_outlined,
-                  size: 14,
-                  color: appStatus.info,
-                ),
-                Text(
-                  '$precipProb%',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: appStatus.info,
+          Flexible(
+            fit: FlexFit.loose,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${_fmtTemp(tempMax)}°',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    ' / ${_fmtTemp(tempMin)}°',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colors.textMuted,
+                    ),
+                  ),
+                  if (precipProb != null) ...[
+                    const SizedBox(width: 10),
+                    Column(
+                      children: [
+                        Icon(
+                          Icons.water_drop_outlined,
+                          size: 14,
+                          color: appStatus.info,
+                        ),
+                        Text(
+                          '$precipProb%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: appStatus.info,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
+          ),
         ],
       ),
     );

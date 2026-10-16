@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/preferences/app_preferences.dart';
+import '../../core/design/glass/glass_background.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/utils/logger.dart';
@@ -117,16 +118,6 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
       0.0,
       (sum, expense) => sum + expense.amount,
     );
-  }
-
-  double? get _remaining {
-    final budget = _budgetAmount;
-
-    if (budget == null) {
-      return null;
-    }
-
-    return budget - _totalSpent;
   }
 
   String _formatAmount(double amount, [String? from]) {
@@ -365,13 +356,14 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
   Widget _buildScaffold(BuildContext context) {
     final colors = context.triporaColors;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           context.tr('expense.tracker'),
         ),
-        backgroundColor: colors.backgroundColor,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -394,6 +386,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
         ),
       ),
       body: _buildBody(colors),
+      ),
     );
   }
 
@@ -534,8 +527,6 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     final spent = _totalSpent;
     final ratio = budget > 0 ? spent / budget : 0.0;
     final overBudget = ratio > 1.0;
-
-    final progress = ratio.clamp(0.0, 1.0);
 
     final progressColor = overBudget
         ? colors.appStatus.error

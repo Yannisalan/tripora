@@ -17,3 +17,24 @@ security/reports/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Python test and runtime artifacts
+*.pyo
+*.log
+.coverage
+htmlcov/
+
+# Flutter and Dart generated files
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Android / Gradle generated output
+.gradle/
+
+# Local working artifacts (audit / DB backup / patch) — do not publish
+audit_findings.md
+frontend_audit.patch
+cleanup_quarantine/

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/design/glass/glass_surface.dart';
 import '../core/theme/app_theme.dart';
 
 /// Reusable shimmer loading skeleton that mimics content while loading
@@ -83,7 +84,7 @@ class TripCardShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return GlassSurface(padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -120,7 +121,7 @@ class DestinationCardShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
+          GlassSurface(padding: EdgeInsets.zero,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: ShimmerLoader(
@@ -131,7 +132,7 @@ class DestinationCardShimmer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Card(
+          GlassSurface(padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               child: ShimmerLoader(
@@ -176,7 +177,7 @@ class ProfileScreenShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
+          GlassSurface(padding: EdgeInsets.zero,
             child: Padding(
               padding: EdgeInsets.all(20),
               child: Row(
@@ -198,7 +199,7 @@ class ProfileScreenShimmer extends StatelessWidget {
             ),
           ),
           SizedBox(height: 20),
-          Card(
+          GlassSurface(padding: EdgeInsets.zero,
             child: Padding(
               padding: EdgeInsets.all(20),
               child: Column(

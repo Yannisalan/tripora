@@ -117,11 +117,22 @@ def _install_fakes(monkeypatch, geocode_payload=_GEOCODE_PAYLOAD):
 
 
 @pytest.fixture(autouse=True)
-def _clear_weather_cache():
-    """The in-memory forecast cache is process-global; isolate per test."""
-    weather_module._cache.clear()
+def _clear_weather_cache(app):
+    """The forecast cache is DB-backed; isolate per test.
+
+    ``app`` already provides a fresh in-memory DB per test, but clearing the
+    table explicitly also keeps the suite hermetic when a maintainer points
+    ``TRIPORA_TEST_DB_URI`` at a shared external test database.
+    """
+    from config.database import db
+    from models.weather_cache import WeatherCache
+    with app.app_context():
+        db.session.query(WeatherCache).delete()
+        db.session.commit()
     yield
-    weather_module._cache.clear()
+    with app.app_context():
+        db.session.query(WeatherCache).delete()
+        db.session.commit()
 
 
 def _weather(client, token, trip_id):

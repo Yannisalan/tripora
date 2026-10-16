@@ -1,39 +1,33 @@
 import os
+
+import pytest
 from dotenv import load_dotenv
 from google import genai
 
-# Load .env
-load_dotenv()
 
-# Get API key
-api_key = os.getenv("GEMINI_API_KEY")
+@pytest.mark.integration
+def test_gemini_connection():
+    """Verify that Gemini can generate content using the configured API key."""
+    load_dotenv()
 
-if not api_key:
-    raise ValueError("GEMINI_API_KEY was not found.")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        pytest.skip("GEMINI_API_KEY is not configured.")
 
-# Create Gemini client
-client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
-print("Gemini client created successfully.")
-print("Sending test request...")
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=(
+                "You are Tripora, an AI travel planner. "
+                "Suggest exactly 3 activities for a traveler visiting "
+                "Cotonou, Benin, interested in food and culture. "
+                "Keep the response short."
+            ),
+        )
 
-response = client.models.generate_content(
-    model="gemini-3.6-flash",
-    contents="""
-You are Tripora, an AI travel planner.
-
-Create a very short travel plan for:
-
-Destination: Cotonou, Benin
-Travelers: 1
-Budget: Moderate
-Travel style: Balanced
-Interests: Food and Culture
-
-Give me exactly 3 suggested activities.
-"""
-)
-
-print("\n========== GEMINI RESPONSE ==========\n")
-print(response.text)
-print("\n======================================")
+        assert response.text, "Gemini returned an empty response."
+        print(response.text)
+    finally:
+        client.close()

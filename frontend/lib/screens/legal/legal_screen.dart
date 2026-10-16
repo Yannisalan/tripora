@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/glass/glass_background.dart';
 import '../../core/theme/app_theme.dart';
 import 'legal_content.dart';
 
@@ -20,8 +21,9 @@ class LegalScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = context.triporaColors;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -65,6 +67,7 @@ class LegalScreen extends StatelessWidget {
           ],
           const SizedBox(height: 12),
         ],
+      ),
       ),
     );
   }

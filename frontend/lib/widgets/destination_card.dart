@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/l10n/app_localizations.dart';
+import '../core/design/glass/glass_surface.dart';
+import '../core/design/glass/glass_tokens.dart';
 import '../core/theme/app_theme.dart';
 import 'gradient_button.dart';
 
@@ -43,26 +45,14 @@ class DestinationCard extends StatelessWidget {
   Widget _buildCard(BuildContext context, Color accent) {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
-      child: Container(
+      child: GlassSurface(
+        variant: GlassVariant.card,
+        borderRadius: BorderRadius.circular(GlassRadius.lg),
+        padding: EdgeInsets.zero,
         width: width ?? 300,
         height: height,
-        decoration: BoxDecoration(
-          color: context.triporaColors.surface,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Ink(
-            decoration: BoxDecoration(color: context.triporaColors.surface),
-            child: Column(
+        onTap: onTap,
+        child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -251,8 +241,6 @@ class DestinationCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
     );
   }
 }

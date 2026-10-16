@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../services/admin_service.dart';
@@ -73,8 +76,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -87,15 +91,11 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Container(
+          child: GlassSurface(
             width: double.infinity,
             constraints: const BoxConstraints(maxWidth: 420),
             padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.border),
-            ),
+            borderRadius: BorderRadius.circular(GlassRadius.lg),
             child: Form(
               key: _formKey,
               child: Column(
@@ -202,6 +202,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

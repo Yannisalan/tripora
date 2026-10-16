@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/destinations.dart';
 import '../../models/destination_model.dart';
@@ -90,12 +92,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
         final scheme = Theme.of(sheetContext).colorScheme;
 
         return SafeArea(
-          child: Container(
-            decoration: BoxDecoration(
-              color: colors.backgroundColor,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
+          child: GlassSurface(
+            variant: GlassVariant.sheet,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(GlassRadius.xl),
             ),
             padding: const EdgeInsets.fromLTRB(
               20,
@@ -347,14 +347,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
             : 40.0;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
 
       // ========================================================
       // APP BAR
       // ========================================================
 
       appBar: AppBar(
-        backgroundColor: colors.backgroundColor,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -379,9 +379,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: 24,
+          padding: EdgeInsets.only(
+            left: horizontalPadding,
+            right: horizontalPadding,
+            top: 24,
+            bottom: 24 + 96,
           ),
           children: [
             Center(
@@ -440,21 +442,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     // SEARCH
                     // ==================================================
 
-                    Container(
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        border: Border.all(
-                          color: colors.border,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0A1E1B4B),
-                            blurRadius: 10,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
+                    GlassSurface(
+                      variant: GlassVariant.card,
+                      borderRadius: BorderRadius.circular(GlassRadius.md),
                       padding: const EdgeInsets.all(14),
                       child: TextField(
                         controller: _searchController,
@@ -500,7 +490,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   ),
                                 ),
                           filled: true,
-                          fillColor: colors.backgroundColor,
+                          fillColor: Colors.transparent,
                           contentPadding:
                               const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -748,18 +738,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
     }
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: 24,
         vertical: 42,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border.all(
-          color: colors.border,
-        ),
-        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [

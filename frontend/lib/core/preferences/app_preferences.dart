@@ -64,6 +64,7 @@ class AppPreferences extends ChangeNotifier {
   static const String _languageKey = 'preferred_language';
   static const String _currencyKey = 'preferred_currency';
   static const String _themeModeKey = 'preferred_theme_mode';
+  static const String _aiConsentKey = 'ai_consent_given';
 
   // ============================================================
   // STATE
@@ -72,6 +73,7 @@ class AppPreferences extends ChangeNotifier {
   String _language = 'en';
   String _currency = 'USD';
   ThemeMode _themeMode = ThemeMode.system;
+  bool _aiConsentGiven = false;
 
   Map<String, double> _usdRates = const {};
   bool _ratesLoaded = false;
@@ -91,6 +93,11 @@ class AppPreferences extends ChangeNotifier {
   /// Used to avoid clobbering locally-chosen prefs from backend values.
   bool get loadedFromStorage => _loadedFromStorage;
 
+  /// Whether the user has acknowledged that itinerary generation is powered
+  /// by a third-party AI provider. Persisted locally so the disclosure is
+  /// shown exactly once.
+  bool get aiConsentGiven => _aiConsentGiven;
+
   static String symbolFor(String code) => _symbols[code] ?? '$code ';
 
   // ============================================================
@@ -104,6 +111,8 @@ class AppPreferences extends ChangeNotifier {
     final storedLanguage = prefs.getString(_languageKey);
     final storedCurrency = prefs.getString(_currencyKey);
     final storedThemeMode = prefs.getString(_themeModeKey);
+
+    _aiConsentGiven = prefs.getBool(_aiConsentKey) ?? false;
 
     if (storedLanguage != null && validLanguages.contains(storedLanguage)) {
       _language = storedLanguage;
@@ -150,6 +159,7 @@ class AppPreferences extends ChangeNotifier {
     await prefs.setString(_languageKey, _language);
     await prefs.setString(_currencyKey, _currency);
     await prefs.setString(_themeModeKey, _themeModeToString(_themeMode));
+    await prefs.setBool(_aiConsentKey, _aiConsentGiven);
   }
 
   // ============================================================
@@ -189,6 +199,16 @@ class AppPreferences extends ChangeNotifier {
     if (newMode == _themeMode) return;
 
     _themeMode = newMode;
+    notifyListeners();
+    await _persist();
+  }
+
+  /// Records that the user has seen and accepted the third-party AI
+  /// disclosure. One-time: persisted locally and never re-prompted.
+  Future<void> setAiConsentGiven(bool given) async {
+    if (given == _aiConsentGiven) return;
+
+    _aiConsentGiven = given;
     notifyListeners();
     await _persist();
   }

@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:frontend/screens/main_shell.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/auth/login_gate.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../data/destinations.dart';
@@ -74,7 +77,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openPlanner([String? destination]) {
     HapticFeedback.lightImpact();
 
-    Navigator.pushNamed(context, AppRoutes.planner, arguments: destination);
+    // Requires a signed-in user: guests are sent to Login and continue to
+    // the Planner (with the same prefill) once they sign in.
+    LoginGate.open(
+      context,
+      route: AppRoutes.planner,
+      arguments: destination,
+    );
   }
 
   void _openExplore() {
@@ -102,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: widget.showAppBar ? _buildAppBar() : null,
       body: RefreshIndicator(
         color: scheme.primary,
@@ -125,9 +134,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: isMobile ? 24 : 36,
+              padding: EdgeInsets.only(
+                left: horizontalPadding,
+                right: horizontalPadding,
+                top: isMobile ? 24 : 36,
+                bottom: (isMobile ? 24 : 36) + 96,
               ),
               children: [
                 Center(
@@ -164,12 +175,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
 
   PreferredSizeWidget _buildAppBar() {
-    final colors = context.triporaColors;
-
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
@@ -206,21 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHero(bool isMobile) {
     final colors = context.triporaColors;
 
-    return Container(
-      width: double.infinity,
+    return GlassSurface(
+      variant: GlassVariant.card,
+      borderRadius: BorderRadius.circular(GlassRadius.lg),
       padding: EdgeInsets.all(isMobile ? 24 : 40),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E1B4B),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -430,105 +428,96 @@ class _HomeScreenState extends State<HomeScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: () => _openTrip(trip),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GlassSurface(
+      variant: GlassVariant.card,
+      borderRadius: BorderRadius.circular(GlassRadius.md),
+      padding: const EdgeInsets.all(20),
+      onTap: () => _openTrip(trip),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.flight_takeoff_rounded,
-                      color: scheme.onPrimary,
-                      size: 19,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    Icons.arrow_outward_rounded,
-                    size: 18,
-                    color: colors.textMuted,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 22),
-
-              Text(
-                trip.destination,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.notoSerif(
-                  color: context.headingColor,
-                  fontSize: 22,
-                  height: 1.2,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.flight_takeoff_rounded,
+                  color: scheme.onPrimary,
+                  size: 19,
                 ),
               ),
-
-              const SizedBox(height: 8),
-
-              Text(
-                context.tr(
-                  'home.tripDuration',
-                  params: {
-                    'days': trip.numberOfDays.toString(),
-                    'travelers': trip.travelers.toString(),
-                  },
-                ),
-                style: TextStyle(
-                  color: colors.textMuted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              Container(height: 1, color: colors.border),
-
-              const SizedBox(height: 14),
-
-              Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_outline_rounded,
-                    size: 15,
-                    color: context.appStatus.success,
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    context.tr('home.savedItinerary'),
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.7,
-                    ),
-                  ),
-                ],
+              const Spacer(),
+              Icon(
+                Icons.arrow_outward_rounded,
+                size: 18,
+                color: colors.textMuted,
               ),
             ],
           ),
-        ),
+
+          const SizedBox(height: 22),
+
+          Text(
+            trip.destination,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.notoSerif(
+              color: context.headingColor,
+              fontSize: 22,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            context.tr(
+              'home.tripDuration',
+              params: {
+                'days': trip.numberOfDays.toString(),
+                'travelers': trip.travelers.toString(),
+              },
+            ),
+            style: TextStyle(
+              color: colors.textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          Container(height: 1, color: colors.border),
+
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              Icon(
+                Icons.check_circle_outline_rounded,
+                size: 15,
+                color: context.appStatus.success,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                context.tr('home.savedItinerary'),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -537,14 +526,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.border),
-      ),
       child: Row(
         children: [
           Container(
@@ -629,15 +614,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ? context.tr('home.serverConnectionError')
         : context.tr('home.loadTripsError');
 
-    final colors = context.triporaColors;
-
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: 0.25)),
-      ),
       child: Row(
         children: [
           Container(
@@ -732,18 +711,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _openPlanner(destination.fullName),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.border),
-          ),
-          child: Column(
+    return GlassSurface(
+      variant: GlassVariant.card,
+      borderRadius: BorderRadius.circular(GlassRadius.md),
+      padding: EdgeInsets.zero,
+      onTap: () => _openPlanner(destination.fullName),
+      child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
@@ -875,8 +848,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
@@ -962,19 +933,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: action.onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.border),
-          ),
-          child: Row(
+    return GlassSurface(
+      variant: GlassVariant.card,
+      borderRadius: BorderRadius.circular(GlassRadius.md),
+      padding: const EdgeInsets.all(20),
+      onTap: action.onTap,
+      child: Row(
             children: [
               Container(
                 width: 46,
@@ -1038,8 +1002,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 

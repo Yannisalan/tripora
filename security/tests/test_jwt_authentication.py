@@ -39,7 +39,7 @@ from .helpers import (
 TEST_SECRET = "tripora-security-test-secret-key-not-for-production"
 # Wrong secret (e.g. if the server used a different key, or an attacker
 # signed with another secret entirely).
-WRONG_SECRET = "some-other-attacker-secret"
+WRONG_SECRET = "tripora-wrong-signature-test-secret-key"
 # Raw RSA public-key bytes (base64 body, no PEM framing) used only for the
 # RS256->HS256 algorithm-confusion check. Represents a victim's public key
 # that an attacker would use as the HMAC secret in the confusion attack.

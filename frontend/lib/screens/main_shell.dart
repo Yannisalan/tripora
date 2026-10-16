@@ -1,7 +1,12 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/auth/login_gate.dart';
+import '../core/design/glass/glass_background.dart';
+import '../core/design/glass/glass_nav.dart';
+import '../core/design/glass/glass_surface.dart';
+import '../core/design/glass/glass_tokens.dart';
 import '../core/l10n/app_localizations.dart';
 import '../core/preferences/app_preferences.dart';
 import '../core/theme/app_theme.dart';
@@ -84,6 +89,12 @@ class _MainShellState extends State<MainShell> {
                 return Scaffold(
                   key: _scaffoldKey,
 
+                  // Let the floating glass bottom bar sit over the ambient
+                  // background so it can refract it. The web layout keeps a
+                  // solid header, so body extension is not needed there.
+                  extendBody: !showWebHeader,
+                  backgroundColor: Colors.transparent,
+
                   // Only the compact web layout uses a drawer.
                   drawer: (showWebHeader && isCompactWeb)
                       ? _TriporaWebDrawer(
@@ -92,30 +103,33 @@ class _MainShellState extends State<MainShell> {
                         )
                       : null,
 
-                  body: Column(
-                    children: [
-                      if (showWebHeader)
-                        isCompactWeb
-                            ? _TriporaCompactWebHeader(
-                                onMenuTap: () {
-                                  _scaffoldKey.currentState
-                                      ?.openDrawer();
-                                },
-                              )
-                            : _TriporaWebHeader(
-                                currentIndex: currentIndex,
-                                onSelected: selectTab,
-                              ),
+                  body: GlassBackground(
+                    intensity: 0.9,
+                    child: Column(
+                      children: [
+                        if (showWebHeader)
+                          isCompactWeb
+                              ? _TriporaCompactWebHeader(
+                                  onMenuTap: () {
+                                    _scaffoldKey.currentState
+                                        ?.openDrawer();
+                                  },
+                                )
+                              : _TriporaWebHeader(
+                                  currentIndex: currentIndex,
+                                  onSelected: selectTab,
+                                ),
 
-                      Expanded(
-                        child: IndexedStack(
-                          index: currentIndex,
-                          children: _buildPages(
-                            webChrome: showWebHeader,
+                        Expanded(
+                          child: IndexedStack(
+                            index: currentIndex,
+                            children: _buildPages(
+                              webChrome: showWebHeader,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
                   // Native app navigation only.
@@ -198,20 +212,13 @@ class _TriporaWebHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.triporaColors;
     final items = _navItems(context);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.border,
-            width: 0.8,
-          ),
-        ),
-      ),
+    return GlassSurface(
+      variant: GlassVariant.bar,
+      borderRadius: BorderRadius.zero,
+      padding: EdgeInsets.zero,
+      elevation: 0.6,
       child: SafeArea(
         bottom: false,
         child: LayoutBuilder(
@@ -391,9 +398,9 @@ class _TriporaPlanTripCta extends StatelessWidget {
   Widget build(BuildContext context) {
     return FilledButton.icon(
       onPressed: () {
-        Navigator.pushNamed(
+        LoginGate.open(
           context,
-          AppRoutes.planner,
+          route: AppRoutes.planner,
         );
       },
       style: FilledButton.styleFrom(
@@ -436,19 +443,11 @@ class _TriporaCompactWebHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.triporaColors;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.border,
-            width: 0.8,
-          ),
-        ),
-      ),
+    return GlassSurface(
+      variant: GlassVariant.bar,
+      borderRadius: BorderRadius.zero,
+      padding: EdgeInsets.zero,
+      elevation: 0.6,
       child: SafeArea(
         bottom: false,
         child: SizedBox(
@@ -477,9 +476,9 @@ class _TriporaCompactWebHeader extends StatelessWidget {
 
                 IconButton(
                   onPressed: () {
-                    Navigator.pushNamed(
+                    LoginGate.open(
                       context,
-                      AppRoutes.planner,
+                      route: AppRoutes.planner,
                     );
                   },
                   icon: const Icon(
@@ -517,51 +516,60 @@ class _TriporaWebDrawer extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                8,
-              ),
-              child: _TriporaBrand(),
-            ),
-
-            Divider(
-              color: colors.border,
-              height: 1,
-            ),
-
-            for (var i = 0; i < items.length; i++)
-              ListTile(
-                leading: Icon(
-                  i == currentIndex
-                      ? items[i].selectedIcon
-                      : items[i].icon,
-                  color: i == currentIndex
-                      ? scheme.primary
-                      : colors.textSecondary,
+      backgroundColor: Colors.transparent,
+      child: GlassSurface(
+        variant: GlassVariant.sheet,
+        borderRadius: const BorderRadius.horizontal(
+          right: Radius.circular(GlassRadius.xl),
+        ),
+        padding: EdgeInsets.zero,
+        elevation: 0,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  8,
                 ),
-                title: Text(
-                  items[i].label,
-                  style: GoogleFonts.manrope(
-                    fontWeight: i == currentIndex
-                        ? FontWeight.w700
-                        : FontWeight.w600,
+                child: _TriporaBrand(),
+              ),
+
+              Divider(
+                color: colors.border,
+                height: 1,
+              ),
+
+              for (var i = 0; i < items.length; i++)
+                ListTile(
+                  leading: Icon(
+                    i == currentIndex
+                        ? items[i].selectedIcon
+                        : items[i].icon,
                     color: i == currentIndex
                         ? scheme.primary
-                        : colors.textPrimary,
+                        : colors.textSecondary,
                   ),
+                  title: Text(
+                    items[i].label,
+                    style: GoogleFonts.manrope(
+                      fontWeight: i == currentIndex
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      color: i == currentIndex
+                          ? scheme.primary
+                          : colors.textPrimary,
+                    ),
+                  ),
+                  selected: i == currentIndex,
+                  onTap: () => onSelected(i),
                 ),
-                selected: i == currentIndex,
-                onTap: () => onSelected(i),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -571,14 +579,9 @@ class _TriporaWebDrawer extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Native app bottom navigation
 //
-// FIX: previously used a hardcoded SizedBox height (64 + safe-area inset)
-// wrapped around a Stack/Positioned pill. The pill's actual content
-// (padding + icon + spacing + label) added up to more than 64px, so the
-// Stack clipped it and the bar looked misaligned/squished, especially on
-// iOS where the home-indicator inset ate further into the fixed height.
-//
-// Now the bar sizes itself naturally via SafeArea + Padding, so nothing
-// gets clipped and it stays consistent across Android and iOS.
+// Delegates to the shared Liquid Glass bottom bar. The bar is a floating,
+// capsule-shaped glass surface that refracts the ambient background behind
+// it (see GlassBottomNav / GlassSurface).
 // ---------------------------------------------------------------------------
 
 class _TriporaBottomNav extends StatelessWidget {
@@ -592,185 +595,20 @@ class _TriporaBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.triporaColors;
     final items = _navItems(context);
 
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 8,
+    return GlassBottomNav(
+      currentIndex: currentIndex,
+      onSelected: onSelected,
+      items: [
+        for (final item in items)
+          GlassNavItem(
+            icon: item.icon,
+            selectedIcon: item.selectedIcon,
+            label: item.label,
           ),
-          decoration: BoxDecoration(
-            color: colors.surface.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                blurRadius: 24,
-                spreadRadius: 0,
-                offset: const Offset(0, -4),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-            border: Border.all(
-              color: colors.border.withValues(alpha: 0.5),
-              width: 0.8,
-            ),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(
-                  child: _TriporaNavItem(
-                    item: items[i],
-                    selected: i == currentIndex,
-                    onTap: () => onSelected(i),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+      ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Native navigation item
-// ---------------------------------------------------------------------------
-
-class _TriporaNavItem extends StatelessWidget {
-  const _TriporaNavItem({
-    required this.item,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _NavItem item;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
-
-    final activeColor = scheme.primary;
-    final inactiveColor = colors.textMuted;
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: item.label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius:
-            BorderRadius.circular(22),
-        child: AnimatedContainer(
-          duration:
-              const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          margin:
-              const EdgeInsets.symmetric(
-            horizontal: 2,
-          ),
-          padding:
-              const EdgeInsets.symmetric(
-            vertical: 9,
-            horizontal: 4,
-          ),
-          decoration: BoxDecoration(
-            color: selected
-                ? activeColor.withValues(
-                    alpha: 0.12,
-                  )
-                : Colors.transparent,
-            borderRadius:
-                BorderRadius.circular(22),
-            border: selected
-                ? Border.all(
-                    color:
-                        activeColor.withValues(
-                      alpha: 0.10,
-                    ),
-                    width: 0.8,
-                  )
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSwitcher(
-                duration:
-                    const Duration(milliseconds: 180),
-                transitionBuilder:
-                    (child, animation) {
-                  return ScaleTransition(
-                    scale: Tween<double>(
-                      begin: 0.88,
-                      end: 1,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve:
-                            Curves.easeOutBack,
-                      ),
-                    ),
-                    child: FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    ),
-                  );
-                },
-                child: Icon(
-                  selected
-                      ? item.selectedIcon
-                      : item.icon,
-                  key: ValueKey(selected),
-                  size: 23,
-                  color: selected
-                      ? activeColor
-                      : inactiveColor,
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              AnimatedDefaultTextStyle(
-                duration:
-                    const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall!
-                    .copyWith(
-                      color: selected
-                          ? activeColor
-                          : inactiveColor,
-                      fontWeight: selected
-                          ? FontWeight.w700
-                          : FontWeight.w600,
-                    ),
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow:
-                      TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

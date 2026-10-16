@@ -278,6 +278,25 @@ class TestResetPassword:
         assert user.password_hash is not None
         assert user.reset_token_hash is None
 
+    def test_same_password_rejected_with_400(self, client, monkeypatch):
+        # Regression: the reset endpoint previously raised AttributeError on
+        # the misspelled `passwod_hash` attribute (R1), returning HTTP 500 for
+        # every reset. Same-password must be a clean 400, not a crash.
+        email = "samepw@example.com"
+        old_password = "supersecret1"
+        register(client, name="Pw", email=email, password=old_password)
+
+        reset_token = _setup_token(client, monkeypatch, email, old_password)
+
+        resp = client.post(
+            "/api/auth/reset-password",
+            json={"resetToken": reset_token, "password": old_password},
+        )
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert body["success"] is False
+        assert body["message"] == "New password must be different from your old password."
+
     def test_short_password_rejected(self, client, monkeypatch):
         reset_token = _setup_token(client, monkeypatch, "shortpass@example.com")
         resp = client.post(

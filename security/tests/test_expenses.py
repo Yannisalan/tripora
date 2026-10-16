@@ -122,9 +122,17 @@ class TestExpenseLifecycle:
         assert resp.status_code == 201
         assert resp.get_json()["expense"]["amount"] == 10.5
 
-        # today's date is allowed
-        from datetime import date
-        resp = _create(client, alice, trip_id, amount=5.0, date=date.today().isoformat())
+       # The API validates expense dates against the current UTC date.
+        from datetime import datetime, timezone
+
+        utc_today = datetime.now(timezone.utc).date()
+        resp = _create(
+            client,
+            alice,
+            trip_id,
+            amount=5.0,
+            date=utc_today.isoformat(),
+        )
         assert resp.status_code == 201
 
 

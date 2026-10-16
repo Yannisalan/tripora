@@ -15,7 +15,12 @@ import services.travelpayouts_service as travelpayouts_module
 
 
 def _stub_results(kind):
-    return {"count": 1, kind: [{"id": "x"}], "disclaimer": "d"}
+    return {
+        "count": 1,
+        kind: [{"id": "x"}],
+        "provider": "travelpayouts",
+        "disclaimer": "d",
+    }
 
 
 def _load_app_with_guards(monkeypatch, stays=None,

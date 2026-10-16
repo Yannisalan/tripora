@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/duffel_service.dart';
@@ -147,10 +149,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
-    final colors = context.triporaColors;
-
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -166,9 +166,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                   : 40.0;
 
           return SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-              vertical: isMobile ? 24 : 36,
+            padding: EdgeInsets.only(
+              left: horizontalPadding,
+              right: horizontalPadding,
+              top: isMobile ? 24 : 36,
+              bottom: (isMobile ? 24 : 36) + 96,
             ),
             child: Center(
               child: ConstrainedBox(
@@ -215,12 +217,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   // ---------------------------------------------------------------------------
 
   PreferredSizeWidget _buildAppBar() {
-    final colors = context.triporaColors;
-
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
@@ -242,24 +242,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   Widget _buildIntro(bool isMobile) {
     final colors = context.triporaColors;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
+      borderRadius: BorderRadius.circular(GlassRadius.lg),
       padding: EdgeInsets.all(
         isMobile ? 24 : 32,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: colors.border,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E1B4B),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,24 +326,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
+      borderRadius: BorderRadius.circular(GlassRadius.md),
       padding: EdgeInsets.all(
         isMobile ? 20 : 28,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.border,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E1B4B),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -616,7 +592,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         color: colors.textMuted,
       ),
       filled: true,
-      fillColor: colors.backgroundColor,
+      fillColor: colors.surface.withValues(alpha: 0.35),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
         vertical: 15,
@@ -805,17 +781,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         vertical: 32,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.border,
-        ),
       ),
       child: Column(
         children: [
@@ -892,15 +862,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
         if (_disclaimer != null) ...[
           const SizedBox(height: 16),
-          Container(
+          GlassSurface(
+            variant: GlassVariant.card,
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: colors.surfaceSecondary,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colors.border,
-              ),
-            ),
+            borderRadius: BorderRadius.circular(GlassRadius.sm),
+            elevation: 0,
             child: Text(
               _disclaimer!,
               style: TextStyle(
@@ -1093,27 +1059,14 @@ class _FlightCard extends StatelessWidget {
           : 0;
     }
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       margin: const EdgeInsets.only(
         bottom: 16,
       ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.border,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E1B4B),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      borderRadius: BorderRadius.circular(GlassRadius.md),
+      padding: const EdgeInsets.all(20),
+      child: Column(
           crossAxisAlignment:
               CrossAxisAlignment.start,
           children: [
@@ -1199,9 +1152,11 @@ class _FlightCard extends StatelessWidget {
 
             Row(
               children: [
-                _TimeColumn(
-                  code: originCode,
-                  time: depart,
+                Flexible(
+                  child: _TimeColumn(
+                    code: originCode,
+                    time: depart,
+                  ),
                 ),
 
                 Expanded(
@@ -1280,16 +1235,17 @@ class _FlightCard extends StatelessWidget {
                   ),
                 ),
 
-                _TimeColumn(
-                  code: destCode,
-                  time: arrive,
-                  alignEnd: true,
+                Flexible(
+                  child: _TimeColumn(
+                    code: destCode,
+                    time: arrive,
+                    alignEnd: true,
+                  ),
                 ),
               ],
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -1327,6 +1283,8 @@ class _TimeColumn extends StatelessWidget {
       children: [
         Text(
           code.isEmpty ? '\u2014' : code,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.manrope(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -1338,6 +1296,8 @@ class _TimeColumn extends StatelessWidget {
 
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 11,
             color: colors.textMuted,
@@ -1361,16 +1321,10 @@ class _EmptyState extends StatelessWidget {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
       padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.border,
-        ),
-      ),
       child: Column(
         children: [
           Container(
@@ -1431,18 +1385,10 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.triporaColors;
-
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.25),
-        ),
-      ),
       child: Row(
         children: [
           Container(

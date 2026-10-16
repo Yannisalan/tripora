@@ -131,31 +131,41 @@ class PrivacyContent {
       'features. We do not share it for advertising purposes.',
     ),
     LegalSection(
-      '4. Data Retention and Security',
+      '4. Third-Party AI Processing',
+      'To generate your itineraries, we send your trip details (destination, '
+      'dates, number of travelers, and selected interests) to a third-party AI '
+      'provider, which processes that information solely to produce your '
+      'itinerary. This processing is not used for advertising or to build '
+      'profiles about you. AI-generated content may occasionally be '
+      'inaccurate, so please verify reservations, opening hours, and other '
+      'trip details yourself before relying on them.',
+    ),
+    LegalSection(
+      '5. Data Retention and Security',
       'We keep your data for as long as your account is active or as needed '
       'for legitimate business and legal purposes. We use reasonable security '
       'measures to protect your data, though no method of transmission or '
       'storage is completely secure.',
     ),
     LegalSection(
-      '5. Your Rights',
+      '6. Your Rights',
       'Depending on where you live, you may have rights to access, correct, '
       'delete, or export your data, and to object to or restrict certain '
       'processing. You can request account deletion through the app or by '
       'contacting us.',
     ),
     LegalSection(
-      '6. Children',
+      '7. Children',
       'The Service is not directed at children below the age of digital '
       'consent, and we do not knowingly collect their data.',
     ),
     LegalSection(
-      '7. Changes to This Policy',
+      '8. Changes to This Policy',
       'We may update this Privacy Policy from time to time. We will notify '
       'you of material changes through the Service.',
     ),
     LegalSection(
-      '8. Contact',
+      '9. Contact',
       'If you have questions about this Privacy Policy or wish to exercise '
       'your rights, contact us at {{LEGAL_CONTACT_EMAIL}}.',
     ),

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/auth/login_gate.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/utils/logger.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
@@ -409,10 +412,8 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
-    final colors = context.triporaColors;
-
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(context),
       body: _buildBody(context),
     );
@@ -421,12 +422,10 @@ class _TripsScreenState extends State<TripsScreen> {
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
   ) {
-    final colors = context.triporaColors;
-
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       titleSpacing: 20,
       title: Text(
@@ -480,9 +479,11 @@ class _TripsScreenState extends State<TripsScreen> {
           return ListView(
             physics:
                 const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-              vertical: isMobile ? 24 : 36,
+            padding: EdgeInsets.only(
+              left: horizontalPadding,
+              right: horizontalPadding,
+              top: isMobile ? 24 : 36,
+              bottom: (isMobile ? 24 : 36) + 96,
             ),
             children: [
               Center(
@@ -531,18 +532,13 @@ class _TripsScreenState extends State<TripsScreen> {
   ) {
     final colors = context.triporaColors;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
+      borderRadius: BorderRadius.circular(GlassRadius.md),
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 14,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.border,
-        ),
       ),
       child: Row(
         children: [
@@ -604,24 +600,12 @@ class _TripsScreenState extends State<TripsScreen> {
             },
           );
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
+      borderRadius: BorderRadius.circular(GlassRadius.lg),
       padding: EdgeInsets.all(
         isMobile ? 24 : 32,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: colors.border,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E1B4B),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment:
@@ -827,14 +811,12 @@ class _TripsScreenState extends State<TripsScreen> {
                             : Icons.refresh_outlined,
                         onPressed: authError
                             ? () {
-                                Navigator.pushNamed(
+                                // Send guests to Login and return them to
+                                // the My Trips tab afterwards.
+                                LoginGate.openTab(
                                   context,
-                                  '/login',
-                                ).then((_) {
-                                  if (mounted) {
-                                    _loadTrips();
-                                  }
-                                });
+                                  tabIndex: LoginGate.tripsTab,
+                                );
                               }
                             : _loadTrips,
                       ),
@@ -879,24 +861,12 @@ class _TripsScreenState extends State<TripsScreen> {
                       const BoxConstraints(
                     maxWidth: 560,
                   ),
-                  child: Container(
+                  child: GlassSurface(
+                    variant: GlassVariant.card,
+                    borderRadius:
+                        BorderRadius.circular(GlassRadius.lg),
                     padding:
                         const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius:
-                          BorderRadius.circular(24),
-                      border: Border.all(
-                        color: colors.border,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0A1E1B4B),
-                          blurRadius: 10,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
                     child: Column(
                       mainAxisAlignment:
                           MainAxisAlignment.center,
@@ -988,34 +958,16 @@ class _TripsScreenState extends State<TripsScreen> {
     final isDeleting =
         _deletingTripId == trip.id;
 
-    return Material(
-      color: colors.surface,
+    return GlassSurface(
+      variant: GlassVariant.card,
       borderRadius:
-          BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius:
-            BorderRadius.circular(16),
-        onTap: isDeleting
-            ? null
-            : () => _openTrip(trip),
-        child: Container(
-          padding:
-              const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(16),
-            border: Border.all(
-              color: colors.border,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0A1E1B4B),
-                blurRadius: 10,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
+          BorderRadius.circular(GlassRadius.md),
+      padding:
+          const EdgeInsets.all(20),
+      onTap: isDeleting
+          ? null
+          : () => _openTrip(trip),
+      child: Column(
             crossAxisAlignment:
                 CrossAxisAlignment.start,
             children: [
@@ -1275,8 +1227,6 @@ class _TripsScreenState extends State<TripsScreen> {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 

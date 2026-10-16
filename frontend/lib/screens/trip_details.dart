@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_background.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/utils/logger.dart';
 import '../../core/theme/app_theme.dart';
@@ -232,12 +233,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
-    final colors = context.triporaColors;
-
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: colors.backgroundColor,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 8,
@@ -280,6 +280,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         ],
       ),
       body: _buildBody(),
+      ),
     );
   }
 
@@ -1982,7 +1983,7 @@ style: TextStyle(
           shrinkWrap: true,
           physics:
               const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.0,
+          childAspectRatio: 0.9,
           children: items
               .map(
                 (item) => _deckTile(item),
@@ -2034,6 +2035,8 @@ style: TextStyle(
               const Spacer(),
               Text(
                 item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

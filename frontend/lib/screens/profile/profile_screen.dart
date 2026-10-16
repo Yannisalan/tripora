@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/auth/login_gate.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/social_auth_service.dart';
 import '../../widgets/shimmer_loader.dart';
@@ -89,6 +93,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             error.toString().replaceFirst('Exception: ', '').trim();
       });
     }
+  }
+
+  /// True when the profile could not load because the user is not signed in
+  /// (no token / expired session) rather than a network/server problem.
+  bool get _isAuthError {
+    final message = _errorMessage?.toLowerCase() ?? '';
+
+    return message.contains('not authenticated') ||
+        message.contains('not logged in') ||
+        message.contains('session') ||
+        message.contains('log in');
   }
 
   Future<void> _saveProfile() async {
@@ -182,10 +197,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await SocialAuthService.instance.signOutGoogle();
     await _authService.logout();
 
+    LoginGate.clear();
+
     if (!mounted) return;
 
+    // Guests land back on Home, never on a login wall.
     Navigator.of(context).pushNamedAndRemoveUntil(
-      '/login',
+      AppRoutes.home,
       (route) => false,
     );
   }
@@ -251,10 +269,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _authService.deleteAccount();
 
+      LoginGate.clear();
+
       if (!mounted) return;
 
+      // Account removed: return to Home as a guest, not to a login wall.
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/login',
+        AppRoutes.home,
         (route) => false,
       );
     } catch (error) {
@@ -273,13 +294,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListenableBuilder(
       listenable: AppPreferences.instance,
       builder: (context, _) {
-        final colors = context.triporaColors;
         final scheme = Theme.of(context).colorScheme;
 
         return Scaffold(
-          backgroundColor: colors.backgroundColor,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
-            backgroundColor: colors.backgroundColor,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             scrolledUnderElevation: 0,
             titleSpacing: 20,
@@ -293,20 +313,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             actions: [
-              IconButton(
-                onPressed: _logout,
-                tooltip: context.tr('profile.logout'),
-                icon: Icon(
-                  Icons.logout_outlined,
-                  color: scheme.primary,
+              // Nothing to sign out of for a guest.
+              if (!_isAuthError) ...[
+                IconButton(
+                  onPressed: _logout,
+                  tooltip: context.tr('profile.logout'),
+                  icon: Icon(
+                    Icons.logout_outlined,
+                    color: scheme.primary,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
             ],
           ),
           body: _isLoading
               ? const ProfileScreenShimmer()
-              : LayoutBuilder(
+              : _isAuthError
+                  ? _buildGuestState()
+                  : LayoutBuilder(
                   builder: (context, constraints) {
                     final isDesktop = constraints.maxWidth > 900;
 
@@ -321,7 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         horizontalPadding,
                         12,
                         horizontalPadding,
-                        48,
+                        48 + 96,
                       ),
                       child: Center(
                         child: ConstrainedBox(
@@ -720,6 +745,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Shown to guests instead of the (empty) profile form: a clear sign-in
+  /// prompt that returns them to this tab after they sign in.
+  Widget _buildGuestState() {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: GlassSurface(
+            variant: GlassVariant.card,
+            borderRadius: BorderRadius.circular(GlassRadius.lg),
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.person_outline,
+                    size: 30,
+                    color: scheme.primary,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Text(
+                  context.tr('profile.signInRequired'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Noto Serif',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: context.headingColor,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      LoginGate.openTab(
+                        context,
+                        tabIndex: LoginGate.profileTab,
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.login_outlined, size: 19),
+                    label: Text(
+                      context.tr('home.signIn'),
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfileHeader() {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
@@ -730,21 +837,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final email = _emailController.text.trim();
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
+      borderRadius: BorderRadius.circular(GlassRadius.lg),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A1E1B4B),
-            blurRadius: 14,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 460;
@@ -975,7 +1072,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           size: 21,
         ),
         filled: true,
-        fillColor: colors.surface,
+        fillColor: colors.surface.withValues(alpha: 0.35),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
@@ -1041,7 +1138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           size: 21,
         ),
         filled: true,
-        fillColor: colors.surface,
+        fillColor: colors.surface.withValues(alpha: 0.35),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
@@ -1072,15 +1169,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
+      borderRadius: BorderRadius.circular(GlassRadius.sm),
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 13,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1135,56 +1229,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 14),
 
-          SegmentedButton<ThemeMode>(
-            key: ValueKey(
-              'appearance-${AppPreferences.instance.themeMode}',
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: SegmentedButton<ThemeMode>(
+              key: ValueKey(
+                'appearance-${AppPreferences.instance.themeMode}',
+              ),
+              segments: [
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  icon: const Icon(Icons.light_mode_outlined),
+                  label: Text(
+                    context.tr('profile.light'),
+                  ),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  icon: const Icon(
+                    Icons.brightness_auto_outlined,
+                  ),
+                  label: Text(
+                    context.tr('profile.system'),
+                  ),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  icon: const Icon(
+                    Icons.dark_mode_outlined,
+                  ),
+                  label: Text(
+                    context.tr('profile.dark'),
+                  ),
+                ),
+              ],
+              selected: {
+                AppPreferences.instance.themeMode,
+              },
+              showSelectedIcon: false,
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                textStyle: WidgetStateProperty.all(
+                  const TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              onSelectionChanged: (selection) {
+                AppPreferences.instance.setThemeMode(
+                  selection.first,
+                );
+              },
             ),
-            segments: [
-              ButtonSegment(
-                value: ThemeMode.light,
-                icon: const Icon(Icons.light_mode_outlined),
-                label: Text(
-                  context.tr('profile.light'),
-                ),
-              ),
-              ButtonSegment(
-                value: ThemeMode.system,
-                icon: const Icon(
-                  Icons.brightness_auto_outlined,
-                ),
-                label: Text(
-                  context.tr('profile.system'),
-                ),
-              ),
-              ButtonSegment(
-                value: ThemeMode.dark,
-                icon: const Icon(
-                  Icons.dark_mode_outlined,
-                ),
-                label: Text(
-                  context.tr('profile.dark'),
-                ),
-              ),
-            ],
-            selected: {
-              AppPreferences.instance.themeMode,
-            },
-            showSelectedIcon: false,
-            style: ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              textStyle: WidgetStateProperty.all(
-                const TextStyle(
-                  fontFamily: 'Manrope',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            onSelectionChanged: (selection) {
-              AppPreferences.instance.setThemeMode(
-                selection.first,
-              );
-            },
           ),
         ],
       ),
@@ -1195,15 +1293,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
+      borderRadius: BorderRadius.circular(GlassRadius.sm),
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 13,
-      ),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -1325,16 +1420,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colors = context.triporaColors;
     final errorColor = Theme.of(context).colorScheme.error;
 
-    return Container(
+    return GlassSurface(
+      variant: GlassVariant.card,
       width: double.infinity,
+      borderRadius: BorderRadius.circular(GlassRadius.md),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: errorColor.withValues(alpha: 0.20),
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

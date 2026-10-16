@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../design/glass/glass_tokens.dart';
+
 /// ---------------------------------------------------------------------
 /// Tripora / Nocturne Voyage Design System
 ///
@@ -25,6 +27,15 @@ class AppColors {
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFBA1A1A);
   static const Color info = Color(0xFF3B82F6);
+
+  // ------------------------------------------------------------
+  // Liquid Glass accents (from the redesign brief). Additive only -
+  // no existing token is renamed.
+  // ------------------------------------------------------------
+
+  static const Color glassSky = GlassAccents.sky;
+  static const Color glassIndigo = GlassAccents.indigo;
+  static const Color glassNight = GlassAccents.night;
 
   // ------------------------------------------------------------
   // Light surfaces
@@ -1245,6 +1256,7 @@ class AppTheme {
       extensions: <ThemeExtension<dynamic>>[
         bg,
         bg.appStatus,
+        bg.isDarkBg ? GlassTheme.dark : GlassTheme.light,
       ],
     );
   }

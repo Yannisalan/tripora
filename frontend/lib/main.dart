@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../services/auth_service.dart';
 import 'core/auth/auth_guard.dart';
+import 'core/auth/login_gate.dart';
 import '../services/notification_service.dart';
 import 'core/preferences/app_preferences.dart';
 import 'core/theme/app_theme.dart';
@@ -24,7 +26,8 @@ Future<void> main() async {
 
   await NotificationService.instance.init();
 
-  // Determine the initial screen without displaying a splash screen.
+  // Guest-first: the app always opens on Home. The stored session is only
+  // read so the UI can decide what to show — never to force a login wall.
   var isLoggedIn = false;
 
   try {
@@ -33,9 +36,21 @@ Future<void> main() async {
     isLoggedIn = false;
   }
 
-  runApp(
-    TriporaApp(initialRoute: isLoggedIn ? AppRoutes.home : AppRoutes.login),
-  );
+  // Deep link / page refresh: if a guest lands directly on a protected route
+  // (e.g. /planner, /trips, /profile), route them through Login and remember
+  // the destination so they continue there after signing in.
+  var initialRoute = AppRoutes.home;
+
+  if (!isLoggedIn) {
+    final requested = PlatformDispatcher.instance.defaultRouteName;
+
+    if (LoginGate.isProtected(requested)) {
+      LoginGate.setReturnTo(requested);
+      initialRoute = AppRoutes.login;
+    }
+  }
+
+  runApp(TriporaApp(initialRoute: initialRoute));
 }
 
 class TriporaApp extends StatefulWidget {

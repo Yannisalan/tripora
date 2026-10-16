@@ -23,6 +23,7 @@ from models.user import (
 
 from models.activity_log import ActivityLog
 from models.trip import Trip
+from models.weather_cache import WeatherCache
 
 from services.social_auth_service import (
     SocialAuthError,
@@ -226,10 +227,10 @@ def register():
             "message": "Email cannot be empty.",
         }), 400
 
-    if len(password) < 6:
+    if len(password) < 8:
         return jsonify({
             "success": False,
-            "message": "Password must be at least 6 characters.",
+            "message": "Password must be at least 8 characters.",
         }), 400
 
     if preferred_language not in VALID_LANGUAGES:
@@ -976,11 +977,11 @@ def reset_password():
                 "message": INVALID_RESET_TOKEN_MESSAGE,
             }), 400
         
-        if check_password_hash(user.passwod_hash, password):
+        if check_password_hash(user.password_hash, password):
             return jsonify({
-                "succes": False,
+                "success": False,
                 "message": "New password must be different from your old password."
-            })
+            }), 400
 
         user.password_hash = generate_password_hash(password)
         _clear_reset_fields(user)
@@ -1295,6 +1296,21 @@ def delete_current_user():
         ActivityLog.query.filter_by(user_id=user.id).delete(
             synchronize_session=False
         )
+
+        trip_ids = [
+            trip_id
+            for (trip_id,) in db.session.query(Trip.id)
+            .filter_by(user_id=user.id)
+            .all()
+        ]
+
+        # Weather cache rows are keyed by trip id (no FK), so they must be
+        # removed explicitly too or they'd orphan the deleted trips.
+        if trip_ids:
+            WeatherCache.query.filter(
+                WeatherCache.trip_id.in_(trip_ids)
+            ).delete(synchronize_session=False)
+
         Trip.query.filter_by(user_id=user.id).delete(
             synchronize_session=False
         )

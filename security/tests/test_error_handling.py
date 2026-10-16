@@ -156,7 +156,7 @@ class TestJWTFailureDisclosure:
 
     def test_forged_token_not_echoed(self, client):
         # A signed-but-not-valid token must not be reflected back wholesale.
-        forged = forge_valid_access_token("1", "dummy-secret-for-forging")
+        forged = forge_valid_access_token("1", "tripora-test-forged-token-secret-key")
         resp = client.get("/api/trips", headers=auth_headers(forged))
         text = _get_text(resp)
         flags = _flags_for(text)

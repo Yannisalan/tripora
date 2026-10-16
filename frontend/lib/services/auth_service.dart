@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
+import 'trip_service.dart';
 
 class AuthService {
   static const String baseUrl = AppConfig.apiBaseUrl;
@@ -418,6 +419,9 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.remove(_tokenKey);
+
+    // Never leave another user's offline trip data behind after signing out.
+    await TripService.clearOfflineCache();
   }
 
   // ============================================================
@@ -447,6 +451,10 @@ class AuthService {
     // The account is gone; drop the local session.
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+
+    // The account (and its trips) no longer exist server-side, so the
+    // locally cached copies must not survive either.
+    await TripService.clearOfflineCache();
   }
 
   // ============================================================

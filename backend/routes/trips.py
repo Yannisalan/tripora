@@ -74,8 +74,22 @@ def _parse_trip_payload(data):
     if not isinstance(travelers, int) or travelers <= 0:
         raise ValueError("Travelers must be a positive number.")
 
+    if travelers > 50:
+        raise ValueError("Travelers cannot exceed 50.")
+
     if not isinstance(interests, list):
         raise ValueError("Interests must be a list.")
+
+    if len(interests) > 20:
+        raise ValueError("Too many interests.")
+
+    for interest in interests:
+        if (
+            not isinstance(interest, str)
+            or not interest.strip()
+            or len(interest) > 60
+        ):
+            raise ValueError("Invalid interest value.")
 
     if budget is not None and not isinstance(budget, str):
         raise ValueError("Budget must be a text value.")

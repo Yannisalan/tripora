@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/trip_service.dart';
+
 /// Global auth guard.
 ///
 /// Services like [TripService] have no [BuildContext] of their own, so
@@ -39,6 +41,9 @@ class AuthGuard {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('access_token');
 
+      // The old session's trips must not survive the forced logout.
+      await TripService.clearOfflineCache();
+
       final navigator = navigatorKey.currentState;
 
       if (navigator == null) {
@@ -51,7 +56,7 @@ class AuthGuard {
 
       final context = navigatorKey.currentContext;
 
-      if (context != null) {
+      if (context != null && context.mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(

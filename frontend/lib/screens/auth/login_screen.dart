@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/auth/login_gate.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_surface.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/logger.dart';
 import '../../routes/app_routes.dart';
@@ -56,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      _goToHome();
+      _continueAfterLogin();
     } catch (error) {
       appLog('LOGIN ERROR: $error');
 
@@ -90,19 +94,19 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _goToHome() {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.home,
-      (route) => false,
-    );
+  /// Lands the user on the shell (and the tab/route they originally wanted)
+  /// after a successful login. Falls back to Home when nothing was pending.
+  void _continueAfterLogin() {
+    LoginGate.apply(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundColor,
+    return GlassBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -124,7 +128,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: Form(
               key: _formKey,
-              child: Column(
+              child: GlassSurface(
+                padding: const EdgeInsets.all(24),
+                borderRadius:
+                    BorderRadius.circular(GlassRadius.lg),
+                child: Column(
                 crossAxisAlignment:
                     CrossAxisAlignment.stretch,
                 children: [
@@ -205,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SocialSignInSection(
                       onSuccess: () {
                         if (!mounted) return;
-                        _goToHome();
+                        _continueAfterLogin();
                       },
                     ),
 
@@ -229,6 +237,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           context.tr('login.email'),
                       hintText:
                           context.tr('login.emailHint'),
+                      filled: true,
+                      fillColor:
+                          colors.surface.withValues(alpha: 0.35),
                       prefixIcon: const Icon(
                         Icons.email_outlined,
                       ),
@@ -270,6 +281,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           context.tr('login.password'),
                       hintText:
                           context.tr('login.passwordHint'),
+                      filled: true,
+                      fillColor:
+                          colors.surface.withValues(alpha: 0.35),
                       prefixIcon: const Icon(
                         Icons.lock_outline,
                       ),
@@ -390,8 +404,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+              ),
             ),
           ),
+        ),
         ),
       ),
     );

@@ -88,7 +88,7 @@ class Config:
     # EMAIL / SMTP
     # ============================================================
     MAIL_HOST=os.getenv("MAIL_HOST", "smtp.gmail.com")
-    MAIL_PORT=int(os.getenv("MAIL_PORT", "4665"))
+    MAIL_PORT=int(os.getenv("MAIL_PORT", "4665") or "4665")
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "false").lower() in (
         "1", "true", "yes", "on"
     )

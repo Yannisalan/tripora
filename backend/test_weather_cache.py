@@ -94,6 +94,10 @@ def _build_app(monkeypatch, uri):
     # bound to the view on every test.
     sys.modules.pop("routes.weather", None)
     import routes.weather as weather_module
+    monkeypatch.setattr(
+        weather_module, "_utc_today",
+        lambda: date(2026, 9, 20),
+        )
 
     # Stub the trip lookup (would need the real ORM + RLS context) and the
     # geocoder (no network in tests).

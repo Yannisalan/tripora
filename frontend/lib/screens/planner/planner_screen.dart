@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/preferences/app_preferences.dart';
+import '../../core/design/glass/glass_background.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../data/destinations.dart';
@@ -102,23 +102,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
   }
 
-  String _localizedBudget(
-    BuildContext context,
-    String value,
-  ) {
-    switch (value) {
-      case 'Moderate':
-        return context.tr('planner.moderate');
-      case 'High':
-        return context.tr('planner.high');
-      case 'Luxury':
-        return context.tr('planner.luxury');
-      case 'Budget':
-        return context.tr('planner.budget');
-      default:
-        return value;
-    }
-  }
+  // ============================================================
+  // PLANNER STATE HELPERS
 
   String _localizedTravelStyle(
     BuildContext context,
@@ -523,6 +508,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
       return;
     }
 
+    if (!AppPreferences.instance.aiConsentGiven) {
+      final consented = await _askAiConsent();
+
+      if (consented != true || !mounted) {
+        return;
+      }
+    }
+
     final TripModel trip = TripModel(
       destination: destination,
       startDate: startDate!,
@@ -570,13 +563,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
         return;
       }
 
-      if (kDebugMode) {
-        debugPrint('====================================');
-        debugPrint('GENERATE TRIP RESPONSE');
-        debugPrint(response.toString());
-        debugPrint('====================================');
-      }
-
       if (response['success'] != true) {
         _showMessage(
           response['message']?.toString() ??
@@ -598,30 +584,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
       final Map<String, dynamic> tripMap =
           Map<String, dynamic>.from(tripData);
-
-      if (kDebugMode) {
-        debugPrint('====================================');
-        debugPrint('GENERATED TRIP');
-        debugPrint('TRIP ID: ${tripMap['id']}');
-        debugPrint(
-          'DESTINATION: ${tripMap['destination']}',
-        );
-        debugPrint(
-          'START DATE: ${tripMap['startDate']}',
-        );
-        debugPrint(
-          'END DATE: ${tripMap['endDate']}',
-        );
-        debugPrint(
-          'ITINERARY TYPE: '
-          '${tripMap['itinerary']?.runtimeType}',
-        );
-        debugPrint(
-          'ITINERARY LENGTH: '
-          '${tripMap['itinerary'] is List ? (tripMap['itinerary'] as List).length : 0}',
-        );
-        debugPrint('====================================');
-      }
 
       if (!mounted) {
         return;
@@ -674,19 +636,53 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
   }
 
+  /// Shows the one-time third-party AI disclosure before the first itinerary
+  /// is generated. The user's acceptance is persisted so the dialog only
+  /// appears once per install.
+  Future<bool> _askAiConsent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.tr('planner.aiDisclosureTitle')),
+          content: Text(
+            dialogContext.tr('planner.aiDisclosureBody'),
+            style: const TextStyle(height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(dialogContext.tr('planner.aiDisclosureDecline')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(dialogContext.tr('planner.aiDisclosureConfirm')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await AppPreferences.instance.setAiConsentGiven(true);
+    }
+
+    return confirmed == true;
+  }
+
   // ============================================================
   // BUILD
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.triporaColors;
-
     return ListenableBuilder(
       listenable: AppPreferences.instance,
       builder: (context, _) {
-        return Scaffold(
-          backgroundColor: colors.backgroundColor,
+        return GlassBackground(
+          child: Scaffold(
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: Column(
               children: [
@@ -768,6 +764,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -813,15 +810,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
           const Spacer(),
 
-          Text(
-            '${(_completionProgress * 100).round()}% '
-            '${context.tr('planner.complete').toUpperCase()}',
-            style: TextStyle(
-              fontFamily: 'Manrope',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: context.appStatus.info,
+          Flexible(
+            fit: FlexFit.loose,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${(_completionProgress * 100).round()}% '
+                '${context.tr('planner.complete').toUpperCase()}',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: context.appStatus.info,
+                ),
+              ),
             ),
           ),
 
@@ -1479,7 +1482,7 @@ errorBuilder: (_, _, _) =>
                 const NeverScrollableScrollPhysics(),
             childAspectRatio:
                 columns == 2
-                    ? 1.7
+                    ? 1.45
                     : 3.0,
             children: cards,
           );
@@ -1541,20 +1544,25 @@ errorBuilder: (_, _, _) =>
 
                   const Spacer(),
 
-                  Text(
-                    rangeLabel,
-                    style: TextStyle(
-                      fontFamily:
-                          'Manrope',
-                      fontSize: 11,
-                      fontWeight:
-                          FontWeight.w700,
-                      color: isSelected
-                          ? scheme.onPrimary
-                              .withValues(
-                              alpha: 0.7,
-                            )
-                          : colors.textMuted,
+                  Flexible(
+                    child: Text(
+                      rangeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        fontFamily:
+                            'Manrope',
+                        fontSize: 11,
+                        fontWeight:
+                            FontWeight.w700,
+                        color: isSelected
+                            ? scheme.onPrimary
+                                .withValues(
+                                alpha: 0.7,
+                              )
+                            : colors.textMuted,
+                      ),
                     ),
                   ),
                 ],
@@ -1583,6 +1591,8 @@ errorBuilder: (_, _, _) =>
 
               Text(
                 subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily:
                       'Manrope',
@@ -1694,40 +1704,49 @@ errorBuilder: (_, _, _) =>
 
           Row(
             children: [
-              Text(
-                context
-                    .tr(
-                      'planner.highlightsPriority',
-                    )
-                    .toUpperCase(),
-                style:
-                    TextStyle(
-                  fontFamily:
-                      'Manrope',
-                  fontSize: 10,
-                  fontWeight:
-                      FontWeight.w700,
-                  letterSpacing: 1,
-                  color:
-                      colors.textMuted,
+              Expanded(
+                child: Text(
+                  context
+                      .tr(
+                        'planner.highlightsPriority',
+                      )
+                      .toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      TextStyle(
+                    fontFamily:
+                        'Manrope',
+                    fontSize: 10,
+                    fontWeight:
+                        FontWeight.w700,
+                    letterSpacing: 1,
+                    color:
+                        colors.textMuted,
+                  ),
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(width: 12),
 
-              Text(
-                context.tr(
-                  'planner.selectAsMany',
-                ),
-                style:
-                    TextStyle(
-                  fontFamily:
-                      'Manrope',
-                  fontSize: 10,
-                  fontWeight:
-                      FontWeight.w600,
-                  color:
-                      context.appStatus.info,
+              Expanded(
+                child: Text(
+                  context.tr(
+                    'planner.selectAsMany',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style:
+                      TextStyle(
+                    fontFamily:
+                        'Manrope',
+                    fontSize: 10,
+                    fontWeight:
+                        FontWeight.w600,
+                    color:
+                        context.appStatus.info,
+                  ),
                 ),
               ),
             ],
