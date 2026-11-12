@@ -7,6 +7,11 @@ from config.database import db
 # USER MODEL
 # ============================================================
 
+ROLE_USER = "user"
+ROLE_ADMIN = "admin"
+VALID_ROLES = (ROLE_USER, ROLE_ADMIN)
+
+
 class User(db.Model):
     __tablename__ = "users"
 
@@ -29,7 +34,10 @@ class User(db.Model):
         kwargs.setdefault("preferred_language", "en")
         kwargs.setdefault("preferred_currency", "USD")
 
-        kwargs.setdefault("email_verified", True)
+        # Secure default: an account is unverified until its owner proves
+        # control of the address (email code) or a provider asserts it.
+        kwargs.setdefault("email_verified", False)
+        kwargs.setdefault("role", ROLE_USER)
 
         super().__init__(**kwargs)
 
@@ -84,6 +92,43 @@ class User(db.Model):
         nullable=True,
     )
 
+    # 6-digit email-verification code (hash only), its expiry, failed attempt
+    # counter and when it was last sent (resend cooldown). Cleared on success.
+    email_verification_code_hash = db.Column(
+        db.String(255),
+        nullable=True,
+    )
+
+    email_verification_expires_at = db.Column(
+        db.DateTime,
+        nullable=True,
+    )
+
+    email_verification_attempts = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+
+    email_verification_sent_at = db.Column(
+        db.DateTime,
+        nullable=True,
+    )
+
+    # ========================================================
+    # AUTHORIZATION ROLE
+    # ========================================================
+    # Server-side only. No API endpoint writes this column; administrators
+    # are granted with the `flask admin grant` CLI command.
+    # ========================================================
+
+    role = db.Column(
+        db.String(20),
+        nullable=False,
+        default=ROLE_USER,
+        server_default=ROLE_USER,
+    )
+
     # ========================================================
     # SOCIAL AUTH
     # ========================================================
@@ -97,6 +142,21 @@ class User(db.Model):
         db.String(255),
         nullable=True,
         index=True,
+    )
+
+    # ========================================================
+    # TOKEN VERSION (ACCESS-TOKEN REVOCATION)
+    # ========================================================
+    # ``token_version`` is copied into every issued access token as the
+    # ``ver`` claim. Bumping it invalidates every access token that was
+    # minted before the bump, so a password change / password reset can
+    # kick out sessions that are still inside their (short) expiry window.
+    # ========================================================
+
+    token_version = db.Column(
+        db.Integer,
+        nullable=False,
+        default=1,
     )
 
     # ========================================================

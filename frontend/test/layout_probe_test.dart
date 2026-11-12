@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/core/auth/token_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend/main.dart';
@@ -15,6 +16,18 @@ Future<void> pumpThroughSplash(WidgetTester tester) async {
 }
 
 void main() {
+  // Widget tests run in a fake-async zone where the secure-storage plugin's
+  // real platform I/O never completes; use the token store's memory-only
+  // test mode so screens waiting on a session read do not spin forever.
+  setUp(() {
+    TokenStore.debugForceSecureStorage = false;
+    TokenStore.instance.resetForTesting();
+  });
+  tearDown(() {
+    TokenStore.debugForceSecureStorage = null;
+    TokenStore.instance.resetForTesting();
+  });
+
   const widths = <double>[320, 360, 400, 480, 560, 720, 900, 1200];
 
   for (final width in widths) {

@@ -5,33 +5,68 @@ import time
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager, decode_token
+from flask_jwt_extended import (
+    JWTManager,
+    decode_token,
+    get_jwt_identity,
+    verify_jwt_in_request,
+)
 from sqlalchemy import text
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config.database import db
 from config.settings import Config
 from models.activity_log import ActivityLog
+from models.user import User
 from routes.auth import auth_bp
 from routes.trips import trips_bp
 from routes.travel import travel_bp
 from routes.admin import admin_bp
+from routes.admin_auth import admin_auth_bp
+from routes.auth import email_unverified_response
 from routes.expenses import expenses_bp
 from routes.rates import rates_bp
+from routes.turnstile import turnstile_bp
 from routes.weather import weather_bp
-from services.rate_limiter import limiter, RateLimitExceeded
+from services import db_context, turnstile
+from services.cli import register_cli
+from services.client_ip import client_ip, rate_limit_ip_key
+from services.rate_limiter import (
+    UNLIMITED_ENDPOINTS,
+    RateLimitExceeded,
+    RateLimitUnavailable,
+    RedisRateLimitStorage,
+    limiter,
+)
 logger = logging.getLogger(__name__)
 
 
 
-# Diagnostic: confirm whether the Travelpayouts token reached the process,
-# without ever logging the secret itself. The key name and length are enough
-# to tell us if Render's env var is being read.
-_tp = os.getenv("TRAVELPAYOUTS_API_KEY", "") or ""
+# Diagnostic: confirm whether the Travelpayouts token reached the process.
+# Only presence is logged -- never the value or its length.
 logger.info(
-    "TRAVELPAYOUTS_API_KEY present=%s len=%d",
-    bool(_tp),
-    len(_tp),
+    "TRAVELPAYOUTS_API_KEY present=%s",
+    bool(os.getenv("TRAVELPAYOUTS_API_KEY")),
 )
+
+# Minimum length for HMAC/shared secrets. Shorter values are reported at
+# startup but not rejected, so an existing deployment is never bricked by an
+# upgrade; rotate them to long random values (e.g. `secrets.token_urlsafe(48)`).
+MIN_SECRET_LENGTH = 32
+
+
+def _warn_weak_secrets():
+    if len(Config.JWT_SECRET_KEY or "") < MIN_SECRET_LENGTH:
+        logger.warning(
+            "JWT_SECRET_KEY is shorter than %d characters; rotate it.",
+            MIN_SECRET_LENGTH,
+        )
+    admin = Config.ADMIN_API_TOKEN or ""
+    if admin and len(admin) < MIN_SECRET_LENGTH:
+        logger.warning(
+            "ADMIN_API_TOKEN is shorter than %d characters; rotate it.",
+            MIN_SECRET_LENGTH,
+        )
 
 
 def _configure_logging():
@@ -63,6 +98,10 @@ def _jwt_sub():
         if token:
             try:
                 payload = decode_token(token)
+                # Only an access token identifies a user for rate limiting
+                # and Row-Level Security; any other token type is ignored.
+                if payload.get("type") != "access":
+                    return None
                 identity = payload.get("sub")
                 if identity is not None:
                     return str(identity)
@@ -78,35 +117,94 @@ def _rate_limit_key():
     account gets its own budget; when no valid token is present (e.g. the
     public authentication endpoints), fall back to the client IP. Unknown
     tokens never error here -- they are simply treated as unauthenticated.
+
+    ``request.remote_addr`` is the real client address: ProxyFix rewrites it
+    from X-Forwarded-For only for the configured number of trusted proxy
+    hops, so a client-supplied header cannot choose its own bucket.
     """
     identity = _jwt_sub()
     if identity is not None:
         return "user:{}".format(identity)
-    return "ip:{}".format(request.remote_addr or "unknown")
+    return "ip:{}".format(rate_limit_ip_key())
 
 
-def _set_rls_context():
-    """Expose the authenticated user id to Postgres Row-Level Security.
+# Endpoints that must read/write ``users`` before a user JWT exists (lookup
+# by email or by token). Only these get ``app.auth_flow`` for RLS.
+AUTH_FLOW_ENDPOINTS = frozenset({
+    "auth.register",
+    "auth.login",
+    "auth.social_login",
+    "auth.google_login",
+    "auth.refresh",
+    "auth.logout",
+    "auth.forgot_password",
+    "auth.verify_reset_code",
+    "auth.reset_password",
+    # e-mail uniqueness check looks at other rows
+    "auth.update_current_user",
+    "admin_auth.admin_login",
+    "admin_auth.admin_mfa_setup",
+    "admin_auth.admin_mfa_activate",
+    "admin_auth.admin_mfa_verify",
+    "admin_auth.admin_me",
+    "admin_auth.admin_logout",
+    "admin_auth.admin_regenerate_recovery_codes",
+    # admin data endpoints resolve the admin session before enabling reads
+    "admin.login_status",
+    "admin.stats",
+    "admin.users_list",
+    "admin.trips_list",
+    "admin.logs",
+})
 
-    Sets the ``request.jwt.claims.sub`` GUC for the current transaction to the
-    JWT user id (see ``migrations/versions/f0e9d8c7b6a5_*.py``). ``SET LOCAL``
-    is scoped to the current transaction, so each request gets its own context
-    and no value leaks into the next request. Unauthenticated requests leave the
-    GUC unset and RLS policies fail closed.
-    """
-    identity = _jwt_sub()
-    if identity is None:
+# Blueprints whose features require a verified email address.
+VERIFIED_EMAIL_BLUEPRINTS = frozenset({"trips", "expenses", "travel", "weather"})
+
+# Endpoints that call Gemini; also counted against the platform-wide budget.
+AI_ENDPOINTS = frozenset({
+    "trips.generate_trip",
+    "trips.regenerate_trip_itinerary",
+    "trips.swap_activity",
+    "trips.update_trip",
+})
+
+
+def _configure_rate_limit_storage():
+    """Use Redis when REDIS_URL is set; otherwise per-process memory."""
+    if not Config.REDIS_URL:
+        if os.getenv("RENDER", "").lower() == "true":
+            logger.error(
+                "REDIS_URL is not set: rate limits are per-process and reset "
+                "on every deploy. Configure Render Key Value."
+            )
         return
     try:
-        db.session.execute(
-            # ``SET LOCAL`` cannot take bind parameters on PostgreSQL, so use
-            # ``set_config(..., is_local=true)`` which is transaction-scoped in
-            # the same way as ``SET LOCAL``.
-            text("SELECT set_config('request.jwt.claims.sub', :sub, true)"),
-            {"sub": str(identity)},
+        import redis
+        from redis.backoff import NoBackoff
+        from redis.retry import Retry
+
+        # Short timeouts and no client-side retries: a slow/dead Redis must
+        # not stall requests; the limiter's own fallback handles outages.
+        client = redis.Redis.from_url(
+            Config.REDIS_URL,
+            socket_connect_timeout=0.5,
+            socket_timeout=0.5,
+            health_check_interval=30,
+            retry=Retry(NoBackoff(), 0),
         )
     except Exception:
-        logger.exception("Failed to set RLS context")
+        logger.exception("Invalid REDIS_URL; using in-memory rate limits.")
+        return
+    limiter.use_storage(
+        RedisRateLimitStorage(client),
+        failure_mode=Config.RATE_LIMIT_FAILURE_MODE,
+        sensitive_buckets=Config.SENSITIVE_RATE_LIMIT_BUCKETS,
+        retry_seconds=Config._rate_int(Config.REDIS_RETRY_SECONDS, 30),
+    )
+    logger.info(
+        "Rate limits use Redis (failure mode: %s).",
+        limiter.failure_mode,
+    )
 
 
 # ============================================================
@@ -130,6 +228,46 @@ def create_app():
     # ========================================================
 
     app.config.from_object(Config)
+    MAX_CONTENT_LENGTH = 1024 * 1024
+    app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+
+    _warn_weak_secrets()
+    turnstile.log_startup_status()
+
+    # Trust X-Forwarded-For / -Proto only from the configured number of
+    # reverse-proxy hops (see Config.TRUSTED_PROXY_HOPS). With 0 hops the
+    # headers are ignored entirely.
+    if Config.TRUSTED_PROXY_HOPS > 0:
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=Config.TRUSTED_PROXY_HOPS,
+            x_proto=Config.TRUSTED_PROXY_HOPS,
+        )
+
+    @app.after_request
+    def set_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['X-XSS-Protection'] = '0'
+        response.headers['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
+        # HSTS only when served over TLS (request.is_secure honours
+        # X-Forwarded-Proto through ProxyFix for trusted hops only).
+        if request.is_secure:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        # Responses that carry tokens or personal data must never be stored
+        # by browsers, proxies or CDNs.
+        if request.path.startswith('/api/') and (
+            request.path.startswith('/api/auth/')
+            or request.headers.get('Authorization')
+        ):
+            response.headers['Cache-Control'] = 'no-store'
+            response.headers['Pragma'] = 'no-cache'
+        # A route may set a stricter, page-specific policy (the Turnstile
+        # challenge page uses a per-request nonce); keep it in that case.
+        if 'Content-Security-Policy' not in response.headers:
+            response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        return response
 
 
 
@@ -184,6 +322,70 @@ def create_app():
             "message": "Your session has expired. Please log in again.",
         }), 401
 
+    @jwt.revoked_token_loader
+    def handle_revoked_token(jwt_header, jwt_payload):
+        return jsonify({
+            "success": False,
+            "message": "Your session is no longer valid. Please log in again.",
+        }), 401
+
+    # ========================================================
+    # ACCESS TOKEN REVOCATION
+    # ========================================================
+    #
+    # Access tokens are short-lived (15 minutes by default), but a token
+    # that is still inside that window must stop working the moment the
+    # account's credentials change or the account is deleted.
+    #
+    # Every issued access token carries the account's ``token_version`` in
+    # the ``ver`` claim. Bumping ``users.token_version`` therefore
+    # invalidates every token minted before the bump, without needing a
+    # per-token blocklist table.
+    #
+    # The check also rejects tokens whose ``sub`` claim is not a positive
+    # integer or points at a row that no longer exists. Those tokens used
+    # to reach the route handlers, where the identity conversion raised an
+    # unhandled ValueError and surfaced as HTTP 500.
+    # --------------------------------------------------------
+
+    @jwt.token_in_blocklist_loader
+    def is_access_token_revoked(jwt_header, jwt_payload):
+
+        identity = jwt_payload.get("sub")
+
+        try:
+            user_id = int(identity)
+        except (TypeError, ValueError):
+            return True
+
+        if user_id <= 0:
+            return True
+
+        try:
+            user = db.session.get(User, user_id)
+        except Exception:
+            logger.exception(
+                "Failed to read the user for access-token revocation"
+            )
+            # Fail closed: a token that cannot be verified is not honoured.
+            return True
+
+        if user is None:
+            # The account was deleted; the token must not work any more.
+            return True
+
+        version = jwt_payload.get("ver")
+
+        if version is None:
+            # Token minted before the token-version rollout. It is honoured
+            # until it expires (at most the access-token lifetime).
+            return False
+
+        try:
+            return int(version) != int(user.token_version)
+        except (TypeError, ValueError):
+            return True
+
     # ========================================================
     # DATABASE MIGRATIONS
     # ========================================================
@@ -198,9 +400,11 @@ def create_app():
     app.register_blueprint(trips_bp)
     app.register_blueprint(travel_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_auth_bp)
     app.register_blueprint(expenses_bp)
     app.register_blueprint(rates_bp)
     app.register_blueprint(weather_bp)
+    app.register_blueprint(turnstile_bp)
 
     # ========================================================
     # RATE LIMITING
@@ -213,6 +417,8 @@ def create_app():
     # Retry-After. Normal read endpoints fall back to the read bucket; the
     # home/health routes are never throttled.
     # --------------------------------------------------------
+
+    _configure_rate_limit_storage()
 
     for name, settings in Config.rate_limit_buckets().items():
         limiter.configure_bucket(
@@ -228,13 +434,31 @@ def create_app():
             return None
 
         endpoint = request.endpoint
-        bucket = limiter.bucket_for(endpoint) if endpoint else None
-        if bucket is None:
+        if endpoint is None or endpoint in UNLIMITED_ENDPOINTS:
             return None
+        bucket = limiter.bucket_for(endpoint)
+        if bucket is None:
+            # Fail closed: an endpoint without its own bucket still gets the
+            # default read/write budget instead of being unlimited.
+            bucket = (
+                "DEFAULT_READ"
+                if request.method in ("GET", "HEAD")
+                else "DEFAULT_WRITE"
+            )
 
         key = _rate_limit_key()
         try:
+            if endpoint in AI_ENDPOINTS and request.method != "GET":
+                limiter.check("AI_GLOBAL", "global")
             result = limiter.check(bucket, key)
+        except RateLimitUnavailable:
+            resp = jsonify({
+                "success": False,
+                "message": "Service temporarily unavailable. Please try again.",
+            })
+            resp.status_code = 503
+            resp.headers["Retry-After"] = "30"
+            return resp
         except RateLimitExceeded as exc:
 
             resp = jsonify({
@@ -258,14 +482,55 @@ def create_app():
             }
         return None
 
+    @app.teardown_request
+    def clear_rls_context(_exc=None):
+        # The RLS settings themselves are transaction-local (gone at commit /
+        # rollback). This also clears the per-thread context so a worker
+        # thread never carries one request's identity into the next.
+        db_context.reset()
+
     @app.before_request
     def set_rls_context():
-        # Establish the Row-Level Security context for authenticated requests.
-        # Runs for every request (including ones the rate limiter skips) before
-        # the route handler executes any query.
+        # Row-Level Security context for this request, re-applied by
+        # services/db_context at the start of every DB transaction. Values
+        # come from the verified JWT and the endpoint name only.
+        db_context.reset()
         if request.method == "OPTIONS":
             return None
-        _set_rls_context()
+        identity = _jwt_sub()
+        if identity is not None:
+            try:
+                db_context.set_subject(int(identity))
+            except (TypeError, ValueError):
+                pass
+        if request.endpoint in AUTH_FLOW_ENDPOINTS:
+            db_context.enable_auth_flow()
+        # (db_context re-applies every change to an already-open transaction.)
+        return None
+
+    @app.before_request
+    def require_verified_email():
+        # Trips, AI, expenses, travel search and weather need a verified
+        # address. The status is read from the database on every request;
+        # nothing the client sends can claim it.
+        if request.method == "OPTIONS":
+            return None
+        if request.blueprint not in VERIFIED_EMAIL_BLUEPRINTS:
+            return None
+        try:
+            verify_jwt_in_request(optional=True)
+            identity = get_jwt_identity()
+        except Exception:
+            # Let the route's own @jwt_required() produce the 401.
+            return None
+        if identity is None:
+            return None
+        try:
+            user = db.session.get(User, int(identity))
+        except (TypeError, ValueError):
+            return None
+        if user is not None and not user.email_verified:
+            return email_unverified_response()
         return None
 
     @app.after_request
@@ -306,10 +571,7 @@ def create_app():
                 method=request.method,
                 status_code=response.status_code,
                 user_id=_jwt_sub(),
-                ip_address=request.headers.get(
-                    "X-Forwarded-For",
-                    request.remote_addr or "",
-                ).split(",")[0].strip()[:64] or None,
+                ip_address=client_ip(),
             )
             db.session.add(row)
             db.session.commit()
@@ -332,6 +594,52 @@ def create_app():
             "message": "Tripora API is running!",
             "service": "Tripora Backend",
         }), 200
+
+    # ========================================================
+    # CSP VIOLATION REPORTS (public, from browsers)
+    # POST /api/csp-report
+    # ========================================================
+    #
+    # Collects Content-Security-Policy(-Report-Only) violation reports from
+    # the web app so the policy can be tightened from real data. Only a few
+    # non-sensitive fields are logged (directive, blocked origin, page path);
+    # bodies are size-capped and rate-limited.
+
+    @app.route("/api/csp-report", methods=["POST"], endpoint="csp_report")
+    def csp_report():
+        if (request.content_length or 0) > 16 * 1024:
+            return "", 413
+        payload = request.get_json(force=True, silent=True)
+        reports = []
+        if isinstance(payload, dict) and isinstance(
+            payload.get("csp-report"), dict
+        ):
+            reports = [payload["csp-report"]]
+        elif isinstance(payload, list):
+            reports = [
+                item.get("body") for item in payload[:20]
+                if isinstance(item, dict) and isinstance(item.get("body"), dict)
+            ]
+        for report in reports[:20]:
+            directive = str(
+                report.get("effective-directive")
+                or report.get("effectiveDirective")
+                or report.get("violated-directive")
+                or ""
+            )[:80]
+            blocked = str(
+                report.get("blocked-uri") or report.get("blockedURL") or ""
+            )
+            blocked = blocked.split("?")[0][:200]
+            page = str(
+                report.get("document-uri") or report.get("documentURL") or ""
+            )
+            page = page.split("?")[0].split("#")[0][:200]
+            logger.warning(
+                "CSP violation: directive=%s blocked=%s page=%s",
+                directive, blocked, page,
+            )
+        return "", 204
 
     # ========================================================
     # HEALTH CHECK
@@ -364,6 +672,8 @@ def create_app():
                 "error": "Internal server error.",
             }), 500
 
+    register_cli(app)
+
     return app
 
 
@@ -380,8 +690,11 @@ app = create_app()
 
 if __name__ == "__main__":
 
+    # Local development only. Production runs `gunicorn wsgi:app`. The
+    # Werkzeug debugger allows code execution, so it is opt-in and the dev
+    # server binds to loopback unless told otherwise.
     app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=True,
+        host=os.getenv("FLASK_RUN_HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000")),
+        debug=os.getenv("FLASK_DEBUG", "0") == "1",
     )

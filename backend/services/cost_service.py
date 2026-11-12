@@ -57,7 +57,8 @@ def calculate_trip_cost(
             "End date must be after start date."
         )
 
-    budget_key = budget.lower()
+    # ``budget`` is optional in the API; unknown/missing -> moderate.
+    budget_key = str(budget or "moderate").lower()
 
     destination_key = destination.lower().strip()
 

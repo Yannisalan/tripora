@@ -15,8 +15,14 @@ depends_on = None
 
 
 def upgrade():
-    """Remove the obsolete geocoding-cache table."""
-    op.drop_table("place_coordinates")
+    """Remove the obsolete geocoding-cache table.
+
+    IF EXISTS: no earlier migration in this chain creates the table (it was
+    created outside Alembic), so a fresh database built from migrations alone
+    -- disaster recovery, CI, staging -- would otherwise fail here. Databases
+    that already ran this revision are unaffected.
+    """
+    op.execute("DROP TABLE IF EXISTS place_coordinates")
 
 
 def downgrade():

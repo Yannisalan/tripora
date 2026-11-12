@@ -4,7 +4,11 @@ Provider strategy:
 
 1. Resend (HTTP API) when RESEND_API_KEY is set.
 2. SMTP when MAIL_HOST + MAIL_USER + MAIL_PASSWORD are set.
-3. Log-only fallback otherwise (local development / tests).
+3. A safe development-only delivery simulation otherwise.
+
+Production never falls back to logging email content.  When no provider is
+configured, delivery fails so callers can avoid activating recovery material
+that the recipient cannot receive.
 
 For the current Tripora setup, Gmail SMTP is used:
 
@@ -18,7 +22,8 @@ For the current Tripora setup, Gmail SMTP is used:
 
 Gmail SMTP requires a Google App Password, not the normal Gmail password.
 
-This module never logs passwords, reset codes, or reset tokens.
+This module never logs email bodies, recipients, passwords, reset codes, or
+reset tokens.
 """
 
 import logging
@@ -27,11 +32,11 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 
-from dotenv import load_dotenv
+from config import local_safety
 
 logger = logging.getLogger(__name__)
 
-load_dotenv()
+local_safety.load_environment()
 
 DEFAULT_FROM_ADDRESS = "gotripora@gmail.com"
 DEFAULT_FROM_NAME = "Tripora"
@@ -51,6 +56,17 @@ def _smtp_configured():
     password = _env("MAIL_PASSWORD").strip()
 
     return bool(host and user and password)
+
+
+def _development_delivery_simulation_enabled():
+    """Return whether a provider-less delivery simulation is explicitly safe.
+
+    Production is the default.  Keeping the simulation behind an explicit
+    development/test environment avoids silently treating an undeliverable
+    password-reset email as successful in a deployed service.
+    """
+    environment = _env("TRIPORA_ENV", "production").strip().lower()
+    return environment in {"development", "dev", "test", "testing"}
 
 
 def _smtp_use_ssl():
@@ -111,15 +127,7 @@ def _send_via_smtp(to_email, subject, text_body, html_body):
 
     use_ssl = _smtp_use_ssl()
 
-    # Safe diagnostic information.
-    # Password and reset code are never logged.
-    logger.info(
-        "SMTP configuration: host=%s port=%s user=%s ssl=%s",
-        host,
-        port,
-        user,
-        use_ssl,
-    )
+    logger.info("SMTP delivery attempt started.")
 
     message = EmailMessage()
 
@@ -244,9 +252,8 @@ def _send_via_resend(to_email, subject, text_body, html_body):
 
     if response.status_code < 200 or response.status_code >= 300:
         logger.error(
-            "Resend email delivery failed (status=%s): %s",
+            "Resend email delivery failed (status=%s).",
             response.status_code,
-            response.text[:500],
         )
         return False
 
@@ -275,6 +282,13 @@ def send_email(
 
     to_email = str(to_email).strip()
 
+    # Local-only safety mode never sends real e-mail, whatever is configured.
+    if local_safety.local_only():
+        logger.warning(
+            "Email delivery simulated (TRIPORA_LOCAL_ONLY); nothing was sent."
+        )
+        return True
+
     # ------------------------------------------------------------
     # SMTP
     # ------------------------------------------------------------
@@ -293,17 +307,12 @@ def send_email(
                 html_body,
             )
 
-            logger.info(
-                "SMTP send result: %s",
-                result,
-            )
+            logger.info("SMTP delivery completed: success=%s", bool(result))
 
             return result
 
         except Exception:
-            logger.exception(
-                "SMTP email delivery failed."
-            )
+            logger.error("SMTP email delivery failed.")
 
             return False
 
@@ -325,35 +334,27 @@ def send_email(
                 html_body,
             )
 
-            logger.info(
-                "Resend send result: %s",
-                result,
-            )
+            logger.info("Resend delivery completed: success=%s", bool(result))
 
             return result
 
         except Exception:
-            logger.exception(
-                "Resend email delivery failed."
-            )
+            logger.error("Resend email delivery failed.")
 
             return False
 
     # ------------------------------------------------------------
-    # Log-only mode
+    # Provider-less mode
     # ------------------------------------------------------------
 
-    logger.warning(
-        "EMAIL (log-only mode, no mail backend configured):\n"
-        "To: %s\n"
-        "Subject: %s\n\n"
-        "%s",
-        to_email,
-        subject,
-        text_body,
-    )
+    if _development_delivery_simulation_enabled():
+        logger.warning(
+            "Email delivery simulated in development; no provider configured."
+        )
+        return True
 
-    return True
+    logger.error("Email delivery unavailable; no provider configured.")
+    return False
 
 
 def send_password_reset_code(to_email, code):
@@ -376,3 +377,44 @@ def send_password_reset_code(to_email, code):
         subject,
         text_body,
     )
+
+
+def send_verification_code(to_email, code):
+    """Send the one-time email-verification code."""
+
+    subject = "Your Tripora verification code"
+
+    text_body = (
+        "Welcome to Tripora!\n\n"
+        "Your email verification code is: {code}\n\n"
+        "Enter it in the app to finish creating your account. "
+        "It expires in 30 minutes and can only be used once.\n\n"
+        "If you did not create a Tripora account, ignore this email; "
+        "the account will stay unverified.\n\n"
+        "— Tripora"
+    ).format(code=code)
+
+    return send_email(to_email, subject, text_body)
+
+
+def send_existing_account_notice(to_email):
+    """Tell an existing account owner that someone tried to register.
+
+    Sent instead of a verification code so the register endpoint behaves the
+    same for new and existing addresses (no account enumeration).
+    """
+
+    subject = "Someone tried to create a Tripora account with your email"
+
+    text_body = (
+        "Hello,\n\n"
+        "Someone tried to create a new Tripora account with this email "
+        "address, but you already have one.\n\n"
+        "If this was you, sign in instead, or use \"Forgot password\" to "
+        "reset your password.\n\n"
+        "If it was not you, no action is needed; your account was not "
+        "changed.\n\n"
+        "— Tripora"
+    )
+
+    return send_email(to_email, subject, text_body)

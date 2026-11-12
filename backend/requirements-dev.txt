@@ -1,0 +1,10 @@
+# Development / test dependencies for the Tripora backend.
+#
+# Include the pinned production dependency set so tests run against the same
+# library versions as the application, then add test-only tooling below.
+-r requirements.txt
+
+# Test runner. Pinned for reproducible local and CI runs; pytest 9.1.1
+# declares Requires-Python >=3.10, so it is compatible with the Python 3.12
+# CI runtime and the project's supported interpreters.
+pytest==9.1.1

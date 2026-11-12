@@ -1,39 +1,14 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/auth/auth_guard.dart';
 import '../core/config/app_config.dart';
+import '../core/network/api_client.dart';
 import '../models/expense_model.dart';
 
 /// Talks to the `expenses` blueprint on the backend.
 class ExpenseService {
   static const String baseUrl = AppConfig.apiBaseUrl;
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    return prefs.getString('access_token');
-  }
-
-  Future<Map<String, String>> _headers() async {
-    final token = await _getToken();
-
-    if (token == null || token.isEmpty) {
-      await AuthGuard.handleUnauthorized(
-        message: 'Please log in to continue.',
-      );
-
-      throw Exception('You are not logged in.');
-    }
-
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
 
   dynamic _decodeResponse(http.Response response) {
     if (response.body.isEmpty) {
@@ -55,17 +30,13 @@ class ExpenseService {
   Future<Map<String, dynamic>> listExpenses(
     int tripId,
   ) async {
-    final headers = await _headers();
-
-    final response = await http.get(
+    final response = await ApiClient.instance.get(
       Uri.parse('$baseUrl/api/trips/$tripId/expenses'),
-      headers: headers,
     );
 
     final decoded = _decodeResponse(response);
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -88,18 +59,14 @@ class ExpenseService {
     required int tripId,
     required ExpenseModel expense,
   }) async {
-    final headers = await _headers();
-
-    final response = await http.post(
+    final response = await ApiClient.instance.post(
       Uri.parse('$baseUrl/api/trips/$tripId/expenses'),
-      headers: headers,
       body: jsonEncode(expense.toJson()),
     );
 
     final decoded = _decodeResponse(response);
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -126,18 +93,14 @@ class ExpenseService {
     required int expenseId,
     required ExpenseModel expense,
   }) async {
-    final headers = await _headers();
-
-    final response = await http.patch(
+    final response = await ApiClient.instance.patch(
       Uri.parse('$baseUrl/api/expenses/$expenseId'),
-      headers: headers,
       body: jsonEncode(expense.toJson()),
     );
 
     final decoded = _decodeResponse(response);
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -161,17 +124,13 @@ class ExpenseService {
   // ============================================================
 
   Future<void> deleteExpense(int expenseId) async {
-    final headers = await _headers();
-
-    final response = await http.delete(
+    final response = await ApiClient.instance.delete(
       Uri.parse('$baseUrl/api/expenses/$expenseId'),
-      headers: headers,
     );
 
     final decoded = _decodeResponse(response);
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
       throw Exception('Your session has expired. Please log in again.');
     }
 

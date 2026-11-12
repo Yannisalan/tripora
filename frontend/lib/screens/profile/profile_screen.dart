@@ -26,6 +26,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isDeleting = false;
+
+  /// Sign-in provider of a social-only account (`google` / `apple`), or
+  /// null for an email/password account. Comes from GET /api/auth/me.
+  String? _authProvider;
   bool _showPasswordFields = false;
 
   String? _errorMessage;
@@ -70,6 +74,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       _nameController.text = (user['name'] ?? '').toString();
       _emailController.text = (user['email'] ?? '').toString();
+      final provider = user['authProvider']?.toString().trim();
+      _authProvider =
+          (provider == null || provider.isEmpty) ? null : provider;
 
       if (!AppPreferences.instance.loadedFromStorage) {
         final language =
@@ -208,10 +215,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Account deletion: (1) consequences + identity confirmation,
+  /// (2) final "delete permanently" confirmation, (3) server-side delete.
+  ///
+  /// The backend re-authenticates: password for email accounts, a fresh
+  /// provider sign-in for Google/Apple-only accounts. The dialogs are only
+  /// a UX layer on top of that check.
   Future<void> _confirmDeleteAccount() async {
     final colors = context.triporaColors;
+    final isSocial = _authProvider == 'google' || _authProvider == 'apple';
+    final passwordController = TextEditingController();
+    final dialogFormKey = GlobalKey<FormState>();
 
-    final confirmed = await showDialog<bool>(
+    final proceed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -227,8 +243,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: colors.textPrimary,
             ),
           ),
+          content: Form(
+            key: dialogFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.tr('delete.consequences'),
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    height: 1.5,
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (isSocial)
+                  Text(
+                    context.tr('delete.socialUnavailable'),
+                    style: TextStyle(
+                      fontFamily: 'Manrope',
+                      color: colors.textSecondary,
+                    ),
+                  )
+                else
+                  TextFormField(
+                    key: const Key('deleteAccountPassword'),
+                    controller: passwordController,
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.password],
+                    decoration: InputDecoration(
+                      labelText: context.tr('delete.passwordLabel'),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                    ),
+                    validator: (value) => (value == null || value.isEmpty)
+                        ? context.tr('delete.passwordRequired')
+                        : null,
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(context.tr('common.cancel')),
+            ),
+            FilledButton(
+              key: const Key('deleteAccountContinue'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () {
+                if (isSocial || dialogFormKey.currentState!.validate()) {
+                  Navigator.pop(dialogContext, true);
+                }
+              },
+              child: Text(
+                isSocial
+                    ? context.tr('delete.googleReauth')
+                    : context.tr('delete.continue'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    final password = passwordController.text;
+    passwordController.dispose();
+
+    if (proceed != true || !mounted) return;
+
+    // Fresh provider sign-in for social-only accounts (before the final
+    // confirmation, so a cancelled sheet aborts cleanly).
+    String? idToken;
+    String? nonce;
+    if (isSocial) {
+      try {
+        final result = _authProvider == 'apple'
+            ? await SocialAuthService.instance.signInWithApple()
+            : await SocialAuthService.instance.signInWithGoogle();
+        idToken = result.idToken;
+        nonce = result.nonce;
+      } on SocialSignInCancelled {
+        return;
+      } catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage =
+              error.toString().replaceFirst('Exception: ', '').trim();
+        });
+        return;
+      }
+      if (!mounted) return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            context.tr('delete.finalTitle'),
+            style: TextStyle(
+              fontFamily: 'Noto Serif',
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
           content: Text(
-            context.tr('profile.deleteAccountWarning'),
+            context.tr('delete.finalBody'),
             style: TextStyle(
               fontFamily: 'Manrope',
               height: 1.5,
@@ -238,20 +366,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(
-                context.tr('common.cancel'),
-              ),
+              child: Text(context.tr('common.cancel')),
             ),
             FilledButton(
+              key: const Key('deleteAccountConfirm'),
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor:
-                    Theme.of(context).colorScheme.onError,
+                foregroundColor: Theme.of(context).colorScheme.onError,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(
-                context.tr('common.delete'),
-              ),
+              child: Text(context.tr('common.delete')),
             ),
           ],
         );
@@ -267,7 +391,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      await _authService.deleteAccount();
+      await _authService.deleteAccount(
+        currentPassword: isSocial ? null : password,
+        idToken: idToken,
+        nonce: nonce,
+      );
+
+      if (isSocial) {
+        await SocialAuthService.instance.signOutGoogle();
+      }
 
       LoginGate.clear();
 
@@ -680,7 +812,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           (value ?? '')
                                               .trim()
                                               .length <
-                                              6) {
+                                              8) {
                                         return context.tr(
                                           'profile.passwordTooShort',
                                         );

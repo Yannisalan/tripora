@@ -17,4 +17,11 @@ Vercel serverless functions.
 from app import app
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    import os
+
+    # Fallback runner only; production uses Gunicorn. Bind to loopback unless
+    # the operator opts in (e.g. HOST=0.0.0.0 inside a container).
+    app.run(
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000")),
+    )

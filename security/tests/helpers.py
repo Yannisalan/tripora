@@ -77,7 +77,38 @@ def create_logged_in_user(
     assert reg.status_code == 201, reg.get_json()
     resp = login(client, email, password)
     assert resp.status_code == 200, resp.get_json()
-    return resp.get_json()["accessToken"]
+    token = resp.get_json()["accessToken"]
+    verify_email(client, token, email)
+    return token
+
+
+def last_verification_code(email):
+    """Most recent verification code 'emailed' to ``email`` in this test."""
+    from .conftest import SENT_VERIFICATION_CODES
+
+    codes = SENT_VERIFICATION_CODES.get(email.strip().lower()) or []
+    assert codes, "no verification email captured for {}".format(email)
+    return codes[-1]
+
+
+def verify_email(client, token, email):
+    """Complete email verification through the real API."""
+    resp = client.post(
+        "/api/auth/verify-email",
+        json={"code": last_verification_code(email)},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200, resp.get_json()
+    return resp
+
+
+def delete_account(client, token, password="supersecret1"):
+    """DELETE /api/auth/account with password re-authentication."""
+    return client.delete(
+        "/api/auth/account",
+        json={"currentPassword": password},
+        headers=auth_headers(token),
+    )
 
 
 # ----------------------------------------------------------------------

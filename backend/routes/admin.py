@@ -1,33 +1,42 @@
 """
 Admin / analytics API.
 
-Everything under ``/api/admin`` is gated by a single shared secret
-(``ADMIN_API_TOKEN``) presented as ``Authorization: Bearer <token>``. The
-endpoints expose read-only analytics over users, trips and the activity log so
-the product owner can see how the site is being used.
+Authorization (checked server-side on EVERY ``/api/admin/*`` data endpoint):
+
+1. An *active admin session* (``Authorization: Bearer <session token>``)
+   obtained through ``/api/admin/auth`` with password + TOTP by a user whose
+   ``role`` is ``admin``. See ``routes/admin_auth.py``.
+2. Legacy, transitional: the shared ``ADMIN_API_TOKEN``, only while
+   ``ADMIN_LEGACY_TOKEN_ENABLED`` is true. Every legacy use is audited and
+   logged as a warning. Disable it once an MFA admin exists.
+
+Every authorized request is written to ``admin_audit_log``.
 
 Row-Level Security
 ------------------
-``trips`` has RLS FORCED on. This backend connects as the owning role (e.g.
-``neondb_owner``), and the owner is subject to forced RLS, so a plain SELECT
-would only ever surface the requesting user's own rows. The admin view is meant
-to be cross-user, so each admin request runs inside a transaction where we
-``SET LOCAL row_security = off``. The flag is scoped to the current transaction
-(per request) and never leaks elsewhere. ``users`` is RLS-enabled but not
-forced, so the owning role can already read all rows there.
+Admin views are cross-user. After authorization the request enables the
+``app.admin_read`` setting (``services/db_context``), which the
+``trips_admin_select`` / ``users_auth_flow_select`` policies honour. This works
+for both the owner role and the least-privilege runtime role (which cannot use
+``SET row_security = off``).
 """
 
+import hmac
 import logging
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
 from sqlalchemy import func, text
 
 from config.database import db
 from config.settings import Config
 from models.activity_log import ActivityLog
+from models.admin_security import ADMIN_SESSION_ACTIVE
 from models.trip import Trip
 from models.user import User
+from services import admin_auth, db_context
+from services.client_ip import client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -39,29 +48,54 @@ admin_bp = Blueprint(
 )
 
 
-def _authorize():
-    """Return True if the request carries the configured admin token."""
-    token = Config.ADMIN_API_TOKEN
-    if not token:
-        return False
+_PRINCIPAL_KEY = "tripora.admin_principal"
+
+
+def _provided_bearer():
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
+        return None
+    return auth[len("Bearer "):].strip() or None
+
+
+def _legacy_token_matches(provided):
+    token = Config.ADMIN_API_TOKEN
+    if not token or not Config.ADMIN_LEGACY_TOKEN_ENABLED or not provided:
         return False
-    provided = auth[len("Bearer "):].strip()
-    if not provided:
-        return False
-    # Constant-time comparison to avoid trivial timing oracle.
-    return len(provided) == len(token) and all(
-        ord(a) == ord(b) for a, b in zip(provided, token)
+    # Constant-time comparison (no early exit on length or first mismatch).
+    return hmac.compare_digest(
+        provided.encode("utf-8"),
+        token.encode("utf-8"),
     )
 
 
-def _require_admin():
-    """Return a (json_response_or_None) helper.
+def _authorize():
+    """Resolve the admin principal for this request.
 
-    When the request is not authorized, this returns a Flask response to send
-    back; otherwise it returns None so the route can proceed.
+    Returns ``("session", user_id)``, ``("legacy", None)`` or None.
+    The result is cached in the WSGI environ (strictly per request).
     """
+    if _PRINCIPAL_KEY in request.environ:
+        return request.environ[_PRINCIPAL_KEY]
+
+    principal = None
+    provided = _provided_bearer()
+
+    if provided:
+        session, user = admin_auth.find_session(provided, ADMIN_SESSION_ACTIVE)
+        if session is not None:
+            admin_auth.touch(session)
+            db.session.commit()
+            principal = ("session", user.id)
+        elif _legacy_token_matches(provided):
+            principal = ("legacy", None)
+
+    request.environ[_PRINCIPAL_KEY] = principal
+    return principal
+
+
+def _require_admin():
+    """Return None when authorized, else a 401 response."""
     if _authorize():
         return None
     return jsonify({
@@ -71,15 +105,12 @@ def _require_admin():
 
 
 def _bypass_rls():
-    """Disable RLS for the current transaction (scoped to this request).
-
-    Postgres-only: ``SET LOCAL row_security`` has no meaning on other
-    backends (e.g. the SQLite test DB), which have no RLS to begin with.
-    """
-    if db.engine.dialect.name != "postgresql":
-        return
-    with db.session.connection() as conn:
-        conn.execute(text("SET LOCAL row_security = off"))
+    """Allow cross-user reads for this (already authorized) request."""
+    if not _authorize():
+        raise PermissionError("admin read without authorization")
+    # enable_admin_read() also applies to the transaction already open from
+    # the admin-session lookup.
+    db_context.enable_admin_read()
 
 
 @admin_bp.before_request
@@ -95,15 +126,37 @@ def _guard():
     ):
         response = _require_admin()
         if response is not None:
+            admin_auth.audit(
+                "access_denied", None, request, 401, ip_address=client_ip(),
+            )
             return response
     return None
 
 
 @admin_bp.after_request
 def _set_admin_headers(response):
-    """Prevent the admin API from being cached by any intermediary."""
-    if _authorize():
-        response.headers["Cache-Control"] = "no-store"
+    """No caching anywhere; audit every authorized admin request."""
+    if request.endpoint == "admin.track_page_view":
+        return response
+
+    response.headers["Cache-Control"] = "no-store"
+
+    principal = request.environ.get(_PRINCIPAL_KEY)
+    if principal and request.endpoint != "admin.login_status":
+        kind, user_id = principal
+        if kind == "legacy":
+            logger.warning(
+                "Admin API used with the legacy shared token; migrate to "
+                "MFA admin accounts and set ADMIN_LEGACY_TOKEN_ENABLED=false."
+            )
+        admin_auth.audit(
+            "legacy_token_access" if kind == "legacy" else "access",
+            user_id,
+            request,
+            response.status_code,
+            detail={"query": dict(request.args)} if request.args else None,
+            ip_address=client_ip(),
+        )
     return response
 
 
@@ -115,9 +168,11 @@ def _set_admin_headers(response):
 @admin_bp.route("/login-status", methods=["GET"])
 def login_status():
     """Return whether the supplied admin token is valid."""
+    principal = _authorize()
     return jsonify({
         "success": True,
-        "authenticated": _authorize(),
+        "authenticated": bool(principal),
+        "method": principal[0] if principal else None,
     }), 200
 
 
@@ -336,20 +391,28 @@ def track_page_view():
             "message": "path is required.",
         }), 400
 
-    user_id = data.get("userId")
+    # Attribution comes only from a verified access token. A ``userId`` in
+    # the body is ignored: this endpoint is public, so trusting it would let
+    # anyone write events in another user's name.
+    user_id = _optional_jwt_user_id()
     try:
         row = ActivityLog(
             event_type="page_view",
             path=str(path_value).strip()[:255],
-            user_id=int(user_id) if user_id else None,
+            user_id=user_id,
             detail={"screen": str(path_value).strip()[:255]},
             ip_address=_client_ip(),
         )
         db.session.add(row)
+        # Read the id before committing: after commit the row would be
+        # reloaded with a SELECT, which Row-Level Security reserves for
+        # admins (activity logs hold IP addresses).
+        db.session.flush()
+        log_id = row.id
         db.session.commit()
         return jsonify({
             "success": True,
-            "logId": row.id,
+            "logId": log_id,
         }), 201
     except Exception as error:
         db.session.rollback()
@@ -361,11 +424,28 @@ def track_page_view():
         }), 500
 
 
+def _optional_jwt_user_id():
+    """Return the user id from a valid access token, or None.
+
+    Missing, expired, revoked or malformed tokens are treated as anonymous;
+    the beacon never fails because of them.
+    """
+    try:
+        verify_jwt_in_request(optional=True)
+        identity = get_jwt_identity()
+    except Exception:
+        return None
+    try:
+        user_id = int(identity)
+    except (TypeError, ValueError):
+        return None
+    return user_id if user_id > 0 else None
+
+
 def _client_ip():
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return str(forwarded).split(",")[0].strip()[:64]
-    return (request.remote_addr or "")[:64] or None
+    # Validated address from the trusted proxy chain (services/client_ip).
+    # Reading X-Forwarded-For directly would store whatever the caller sent.
+    return client_ip()
 
 
 def _as_int(value, default, min_value, max_value):

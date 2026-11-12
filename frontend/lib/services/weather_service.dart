@@ -3,9 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
+import '../core/network/api_client.dart';
 
 /// Fetches the weather forecast for a trip from the Tripora backend
 /// (``GET /api/trips/<id>/weather``) with a lightweight 30-minute in-memory
@@ -33,15 +33,6 @@ class WeatherService {
   /// pending, further calls for that trip await the same future instead of
   /// issuing a parallel backend request.
   static final Map<int, Future<Map<String, dynamic>>> _inflight = {};
-
-  // ----------------------------------------------------------
-  // AUTH
-  // ----------------------------------------------------------
-
-  static Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
-  }
 
   // ----------------------------------------------------------
   // PUBLIC API
@@ -81,21 +72,12 @@ class WeatherService {
 
   static Future<Map<String, dynamic>> _fetchFromBackend(int tripId) async {
     final now = DateTime.now();
-    final token = await _getToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('You are not logged in.');
-    }
 
     final uri = Uri.parse('$baseUrl/api/trips/$tripId/weather');
 
     final http.Response response;
     try {
-      response = await http
-          .get(uri, headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          })
-          .timeout(requestTimeout);
+      response = await ApiClient.instance.get(uri).timeout(requestTimeout);
     } on TimeoutException {
       debugPrint(
         'WEATHER FETCH ERROR: timeout after '

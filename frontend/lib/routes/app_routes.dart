@@ -20,8 +20,7 @@ import '../screens/auth/forgot_password_screen.dart';
 import '../screens/legal/legal_screen.dart';
 import '../screens/legal/legal_content.dart';
 
-import '../screens/admin/admin_login_screen.dart';
-import '../screens/admin/admin_screen.dart';
+import '../screens/auth/verify_email_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -35,6 +34,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
+  static const String verifyEmail = '/verify-email';
 
   static const String terms = '/terms';
   static const String privacy = '/privacy';
@@ -50,12 +50,9 @@ class AppRoutes {
   // Open flight price check for all logged-in users.
   static const String checkFlightPrices = '/check-flights';
 
-  // ============================================================
-  // ADMIN
-  // ============================================================
-
-  static const String adminLogin = '/admin/login';
-  static const String adminDashboard = '/admin';
+  // Administration is backend-only (MFA admin API + `flask admin` CLI).
+  // The app has no admin routes; old links such as /admin fall through to
+  // [unknownRoute].
 
   // ============================================================
   // ROUTES
@@ -77,6 +74,13 @@ class AppRoutes {
       register: (_) => const RegisterScreen(),
 
       forgotPassword: (_) => const ForgotPasswordScreen(),
+
+      verifyEmail: (context) {
+        final arguments = ModalRoute.of(context)?.settings.arguments;
+        return VerifyEmailScreen(
+          email: arguments is String ? arguments : null,
+        );
+      },
 
       // ========================================================
       // LEGAL
@@ -155,16 +159,22 @@ class AppRoutes {
 
         return FlightSearchScreen(prefill: prefill);
       },
-
-      // ========================================================
-      // ADMIN
-      // ========================================================
-      adminLogin: (_) => const AdminLoginScreen(),
-
-      adminDashboard: (_) => const AdminScreen(),
     };
 
     return result;
+  }
+
+  // ============================================================
+  // UNKNOWN ROUTES
+  // ============================================================
+
+  /// Any path without a route (e.g. a bookmarked /admin from the removed
+  /// admin UI) opens Home instead of throwing.
+  static Route<dynamic> unknownRoute(RouteSettings settings) {
+    return MaterialPageRoute<void>(
+      builder: routes[home]!,
+      settings: const RouteSettings(name: home),
+    );
   }
 
   // ============================================================

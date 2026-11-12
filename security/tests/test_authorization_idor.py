@@ -213,14 +213,17 @@ class TestAccountDeletion:
 
         resp = client.delete(
             "/api/auth/account",
+            json={"currentPassword": "supersecret1"},
             headers=auth_headers(token_a),
         )
         assert resp.status_code == 200
         assert resp.get_json()["success"] is True
 
-        # The account is gone: the (still-valid) token now resolves to nobody.
+        # The account is gone, so the access token it was issued for is
+        # revoked together with it: the session is rejected instead of
+        # resolving to a user.
         gone = client.get("/api/auth/me", headers=auth_headers(token_a))
-        assert gone.status_code == 404
+        assert gone.status_code == 401
 
     def test_delete_does_not_affect_other_user(self, client):
         token_a = create_logged_in_user(
@@ -232,6 +235,7 @@ class TestAccountDeletion:
 
         resp = client.delete(
             "/api/auth/account",
+            json={"currentPassword": "supersecret1"},
             headers=auth_headers(token_b),
         )
         assert resp.status_code == 200

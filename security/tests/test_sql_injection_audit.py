@@ -127,7 +127,7 @@ class TestRegisterQueries:
         for payload in EMAIL_PAYLOADS[:2]:
             resp = register(client, name="Sqli", email=payload)
             if resp.status_code == 201:
-                stored = get_user_by_email(resp.get_json()["user"]["email"])
+                stored = get_user_by_email(payload.strip().lower())
                 assert stored is not None
 
     def test_name_payloads_do_not_alias_other_rows(self, client):
@@ -158,13 +158,14 @@ class TestLoginQueries:
             assert "sql" not in text_.lower()
 
 
-class TestVerifyEmailQueriesRemoved:
-    """The verify-email/resend endpoints were removed with the email flow."""
+class TestVerifyEmailQueries:
+    """verify-email exists again (TRP-15) but only for a signed-in user, and
+    it never looks anything up from client-supplied identifiers."""
 
-    def test_verify_email_endpoint_gone(self, client):
+    def test_verify_email_requires_authentication(self, client):
         assert client.post(
             "/api/auth/verify-email", json={"token": "anything"}
-        ).status_code in (404, 405)
+        ).status_code == 401
 
     def test_resend_verification_endpoint_gone(self, client):
         assert client.post(
@@ -182,9 +183,14 @@ class TestMeUpdateQueries:
         # A tautology must not make User B's uniqueness check claim the email
         # is free when User A already owns it — and must never error.
         create_trip = client.post  # noqa: F841 (placeholder guard against drift)
+        # Email changes require the current password (TRP-05); supply it so
+        # the request reaches the uniqueness query under test.
         resp = client.patch(
             "/api/auth/me",
-            json={"email": "Sqli-ME-A@example.com"},
+            json={
+                "email": "Sqli-ME-A@example.com",
+                "currentPassword": "supersecret1",
+            },
             headers=auth_headers(token_b),
         )
         assert resp.status_code == 409, resp.get_json()  # conflict preserved
@@ -194,7 +200,7 @@ class TestMeUpdateQueries:
         for payload in EMAIL_PAYLOADS:
             resp = client.patch(
                 "/api/auth/me",
-                json={"email": payload},
+                json={"email": payload, "currentPassword": "supersecret1"},
                 headers=auth_headers(token_b),
             )
             assert resp.status_code in (200, 400, 409), (payload, resp.get_json())

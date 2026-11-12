@@ -3,6 +3,7 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/design/glass/glass_background.dart';
 import '../../core/design/glass/glass_surface.dart';
 import '../../core/design/glass/glass_tokens.dart';
+import '../../core/security/turnstile/turnstile_field.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/logger.dart';
 import '../../routes/app_routes.dart';
@@ -32,6 +33,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
 
+  final TurnstileController _turnstile =
+      TurnstileController(action: 'forgot_password');
+
   _ResetStep _step = _ResetStep.requestCode;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -44,6 +48,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     _codeController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    _turnstile.dispose();
     super.dispose();
   }
 
@@ -65,11 +70,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
+    if (!_turnstile.readyToSubmit) {
+      _showMessage(context.tr('turnstile.required'), isError: true);
+      return;
+    }
+
     setState(() => _isLoading = true);
+
+    final turnstileToken = _turnstile.token;
+    final honeypot = _turnstile.honeypotValue;
+    // Tokens are single use: whatever happens next, get a fresh one.
+    _turnstile.reset();
 
     try {
       await _authService.forgotPassword(
         email: _emailController.text.trim(),
+        turnstileToken: turnstileToken,
+        honeypot: honeypot,
       );
 
       if (!mounted) return;
@@ -303,6 +320,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   const SizedBox(height: 28),
 
                   _buildStepFields(colors),
+
+                  // BOT PROTECTION: only the code request is protected.
+                  if (_step == _ResetStep.requestCode) ...[
+                    const SizedBox(height: 16),
+                    TurnstileField(controller: _turnstile),
+                  ],
 
                   const SizedBox(height: 24),
 

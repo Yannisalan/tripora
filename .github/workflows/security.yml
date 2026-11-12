@@ -1,0 +1,180 @@
+﻿name: Security Checks
+
+# Runs on every push/PR to main and weekly (new CVEs appear without code
+# changes). Render and Vercel deploy independently of this workflow, so a
+# failing check blocks merges (via branch protection), never a deployment.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-tests:
+    name: Security regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+      - name: Run security tests (authn, authz/IDOR, JWT, rate limits, SQLi, input validation)
+        run: python -m pytest security/tests -q -m "not integration"
+
+  integration-postgres-redis:
+    name: Postgres runtime role + Redis limiter (integration)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tripora_owner
+          POSTGRES_PASSWORD: ci-only-owner-password
+          POSTGRES_DB: tripora_security_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tripora_owner"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: ci-only-owner-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+      - name: Migrate as owner (full chain from an empty database)
+        working-directory: backend
+        env:
+          DB_USER: tripora_owner
+          DB_PASSWORD: ci-only-owner-password
+          DB_HOST: 127.0.0.1
+          DB_PORT: "5432"
+          DB_NAME: tripora_security_test
+          JWT_SECRET_KEY: ci-only-jwt-secret-0123456789abcdefghij
+          GEMINI_API_KEY: ci-dummy
+        run: python -m flask --app wsgi db upgrade
+      - name: Create runtime role and apply grants
+        run: |
+          psql -h 127.0.0.1 -U tripora_owner -d tripora_security_test             -c "CREATE ROLE tripora_runtime LOGIN PASSWORD 'ci-only-runtime-password';"
+          psql -h 127.0.0.1 -U tripora_owner -d tripora_security_test             -v migrator=tripora_owner -f backend/db/roles.sql
+      - name: Run integration suites
+        env:
+          TRIPORA_PG_RUNTIME_URL: postgresql+psycopg://tripora_runtime:ci-only-runtime-password@127.0.0.1:5432/tripora_security_test
+          TRIPORA_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+        run: |
+          python -m pytest -q             security/tests/test_postgres_runtime_role.py             security/tests/test_redis_rate_limiter.py             security/tests/test_rls_runtime_role.py
+
+  backend-tests:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+      - name: Run backend tests
+        run: python -m pytest backend -q -m "not integration"
+
+  dependency-audit:
+    name: pip-audit (known CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip pip-audit
+      - name: Audit pinned backend requirements
+        run: pip-audit -r backend/requirements.txt --strict
+
+  bandit:
+    name: Bandit (Python SAST)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Bandit
+        run: python -m pip install --upgrade pip bandit
+      # Fails on medium and high severity findings. Migrations and one-off
+      # developer scripts are excluded; tests live outside backend/.
+      - name: Run Bandit
+        run: bandit -r backend -x backend/migrations,backend/dev_scripts,backend/venv -ll
+
+  semgrep:
+    name: Semgrep (SAST)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    # Reporting-only until the first baseline is triaged: findings are
+    # uploaded as an artifact instead of failing the build. Switch
+    # `continue-on-error` to false once the baseline is clean.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config p/python --config p/flask --config p/secrets \
+            --config p/jwt --config p/owasp-top-ten \
+            --exclude backend/migrations --exclude frontend/build \
+            --sarif --output semgrep.sarif --error
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+
+  flutter:
+    name: Flutter analyze + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Static analysis
+        run: flutter analyze
+      - name: Flutter tests (full suite)
+        run: flutter test
+      - name: Report outdated packages (informational)
+        run: flutter pub outdated || true

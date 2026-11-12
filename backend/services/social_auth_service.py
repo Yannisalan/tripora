@@ -11,8 +11,9 @@ Apple identity tokens are verified with ``PyJWT`` against Apple's public
 keys published at ``appleid.apple.com/auth/keys``.
 """
 
-import json
 import hashlib
+import hmac
+import json
 import logging
 
 import jwt as pyjwt
@@ -102,8 +103,10 @@ def _normalise_google_claims(claims, audience):
         "provider_id": str(claims.get("sub", "")),
         "email": email,
         "name": str(claims.get("name") or "").strip(),
-        "email_verified": bool(claims.get("email_verified")),
+        # Google sends a JSON boolean; anything else is not "verified".
+        "email_verified": claims.get("email_verified") is True,
         "aud": audience,
+        "iat": claims.get("iat"),
     }
 
 
@@ -145,10 +148,13 @@ def verify_apple(identity_token, nonce=None):
     except pyjwt.exceptions.InvalidTokenError as error:
         raise SocialAuthError(f"Invalid Apple identity token. {error}") from error
 
-    if nonce:
-        expected = hashlib.sha256(str(nonce).encode("utf-8")).hexdigest()
-        if claims.get("nonce") != expected:
-            raise SocialAuthError("Apple identity token nonce mismatch.")
+    # The nonce binds the identity token to this sign-in attempt; without it
+    # a token captured in transit could be replayed until it expires.
+    if not nonce:
+        raise SocialAuthError("Apple sign-in requires a nonce.")
+    expected = hashlib.sha256(str(nonce).encode("utf-8")).hexdigest()
+    if not hmac.compare_digest(str(claims.get("nonce") or ""), expected):
+        raise SocialAuthError("Apple identity token nonce mismatch.")
 
     return _normalise_apple_claims(claims)
 
@@ -183,6 +189,7 @@ def _normalise_apple_claims(claims):
         ).strip(),
         "email_verified": True,
         "nonce": claims.get("nonce"),
+        "iat": claims.get("iat"),
     }
 
 

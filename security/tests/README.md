@@ -21,6 +21,16 @@ pytest security/tests -v
 
 A `pytest.ini` at the repo root sets `testpaths = security/tests`.
 
+CI runs the security suite from the repository root with:
+
+```bash
+python -m pytest security/tests -q -m "not integration"
+```
+
+The `not integration` marker filter keeps tests that need live credentials or
+external services out of CI; the security suite itself uses stubs and
+in-memory databases.
+
 ## What's covered
 
 | Module | Category |
@@ -44,18 +54,47 @@ A `pytest.ini` at the repo root sets `testpaths = security/tests`.
   a deterministic fixture, so tests never reach a third-party API and incur
   no cost.
 
-### Pointing at a real MySQL *test* database (optional)
+## Test database configuration
 
-If you want to exercise MySQL itself (still on a dedicated, throwaway test
-database — never the production DB), set `TRIPORA_TEST_DB_URI` before running:
+### Default: in-memory SQLite
+
+Every test uses a fresh **in-memory SQLite** database (`sqlite:///:memory:`)
+by default. It is created empty per test and dropped afterwards, so no
+database credentials, external database, or network connection are required.
+
+### External test database (opt-in only)
+
+`conftest.py` fails closed for any non-memory database. It refuses to run
+unless **all** of the following are true:
+
+1. `TRIPORA_TEST_DB_URI` contains a valid SQLAlchemy URL.
+2. `TRIPORA_ALLOW_EXTERNAL_TEST_DB` is set to exactly
+   `I_UNDERSTAND_THIS_IS_A_DISPOSABLE_TEST_DATABASE`
+   (vague values such as `true` or `1` are rejected).
+3. The database name contains a disposable marker: `test`, `ci`, `temp`,
+   `tmp`, `disposable`, `scratch`, or `sandbox`.
+
+The database name must also **not** contain any unsafe marker: `prod`,
+`production`, `live`, `stage`, `staging`, `shared`, `primary`, or `master`.
+Any unsafe marker vetoes the target even when the opt-in is present.
+
+Example (PowerShell), using a dedicated throwaway database on a local host:
 
 ```powershell
+$env:TRIPORA_ALLOW_EXTERNAL_TEST_DB = "I_UNDERSTAND_THIS_IS_A_DISPOSABLE_TEST_DATABASE"
 $env:TRIPORA_TEST_DB_URI = "mysql+pymysql://<test_user>:<test_pass>@127.0.0.1:3306/tripora_security_test"
 & .\backend\venv\Scripts\python.exe -m pytest security/tests -v
 ```
 
-> The database referenced by `TRIPORA_TEST_DB_URI` is treated as disposable:
-> tests run `create_all()` and `drop_all()` against it.
+> **Warning:** the opt-in only confirms that you intentionally enabled an
+> external target. It does **not** independently establish that the remote
+> database is disposable. Verify the host and database ownership yourself.
+> The suite runs `create_all()` and `drop_all()`, so never point it at
+> production, staging, shared, or otherwise important data. Use only a
+> dedicated, throwaway database that you own.
+
+Invalid URLs and rejected targets raise an error that names the policy
+without echoing the URI or credentials.
 
 ## Notes / conventions
 

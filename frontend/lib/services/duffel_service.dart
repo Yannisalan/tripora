@@ -1,32 +1,15 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
+import '../core/network/api_client.dart';
 
 /// Talks to the live travel-search endpoints.
 ///
 /// All results are display-only search data -- no booking or checkout.
 class DuffelService {
   static const String baseUrl = AppConfig.apiBaseUrl;
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
-  }
-
-  Future<Map<String, String>> _headers() async {
-    final token = await _getToken();
-    if (token == null || token.trim().isEmpty) {
-      throw Exception('You are not logged in.');
-    }
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
 
   Map<String, dynamic> _decode(http.Response response) {
     if (response.body.trim().isEmpty) {
@@ -47,9 +30,8 @@ class DuffelService {
     String path,
     Map<String, dynamic> payload,
   ) async {
-    final response = await http.post(
+    final response = await ApiClient.instance.post(
       Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
       body: jsonEncode(payload),
     );
     final decoded = _decode(response);

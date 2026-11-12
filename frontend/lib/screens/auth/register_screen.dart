@@ -5,6 +5,7 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/design/glass/glass_background.dart';
 import '../../core/design/glass/glass_surface.dart';
 import '../../core/design/glass/glass_tokens.dart';
+import '../../core/security/turnstile/turnstile_field.dart';
 import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
@@ -31,6 +32,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController =
       TextEditingController();
 
+  final TurnstileController _turnstile =
+      TurnstileController(action: 'register');
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _acceptedTerms = false;
@@ -42,6 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _turnstile.dispose();
     super.dispose();
   }
 
@@ -72,40 +77,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (!_turnstile.readyToSubmit) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(context.tr('turnstile.required')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _statusMessage = null;
     });
 
     try {
-      final response = await _authService.register(
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      final turnstileToken = _turnstile.token;
+      final honeypot = _turnstile.honeypotValue;
+      // Tokens are single use: whatever happens next, get a fresh one.
+      _turnstile.reset();
+
+      await _authService.register(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        email: email,
+        password: password,
+        turnstileToken: turnstileToken,
+        honeypot: honeypot,
       );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              response['message']?.toString() ??
-                  context.tr('register.accountCreated'),
+      // The backend answers the same way for new and already-registered
+      // addresses (no account enumeration). Signing in with the password
+      // just chosen tells the two apart for the person who owns it.
+      Map<String, dynamic>? session;
+      try {
+        session = await _authService.login(email: email, password: password);
+      } catch (_) {
+        session = null;
+      }
+
+      if (!mounted) return;
+
+      if (session == null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(context.tr('register.checkEmail')),
+              behavior: SnackBarBehavior.floating,
             ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor:
-                Theme.of(context)
-                        .extension<AppStatusColors>()
-                        ?.success ??
-                    AppColors.success,
-          ),
+          );
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (route) => false,
         );
+        return;
+      }
+
+      final user = session['user'];
+      if (user is Map && user['emailVerified'] == true) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.home,
+          (route) => false,
+        );
+        return;
+      }
 
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.login,
+        AppRoutes.verifyEmail,
         (route) => false,
+        arguments: email,
       );
     } catch (error) {
       if (!mounted) return;
@@ -439,6 +487,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   const SizedBox(height: 8),
+
+                  // BOT PROTECTION (Cloudflare Turnstile + web honeypot)
+                  TurnstileField(controller: _turnstile),
+
+                  const SizedBox(height: 12),
 
                   // CREATE ACCOUNT BUTTON
                   SizedBox(

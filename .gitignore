@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.local.example
 
 # Python
 __pycache__/
@@ -38,3 +39,10 @@ build/
 audit_findings.md
 frontend_audit.patch
 cleanup_quarantine/
+
+# Vendored local JDK used for Android builds (not application source)
+frontend/web/oracleJdk-27/
+
+# Generated root-level pip-audit artifacts
+/pip_audit.json
+/pip_audit_summary.txt

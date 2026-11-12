@@ -49,20 +49,21 @@ class TestRegistrationValidation:
         assert user is not None
         assert user.email == "alice@example.com"
 
-    def test_duplicate_email_rejected(self, client):
-        register(client, name="Alice", email="dup@example.com")
+    def test_duplicate_email_is_not_revealed_and_not_duplicated(self, client):
+        first = register(client, name="Alice", email="dup@example.com")
         resp = register(client, name="Alice2", email="dup@example.com")
-        assert resp.status_code == 409
+        # Same answer as for a new address, so registration cannot be used
+        # to discover accounts -- and still only one row.
+        assert resp.status_code == first.status_code == 201
+        assert resp.get_json() == first.get_json()
+        from models.user import User
+        assert User.query.filter_by(email="dup@example.com").count() == 1
 
-    def test_unknown_formatted_email_is_accepted_gap(self, client):
-        """CONFIRMED GAP: no email format validation.
-
-        The backend does not validate the email form, so a malformed address
-        is stored. This documents the gap rather than asserting stronger
-        (non-existent) behaviour.
-        """
+    def test_malformed_email_is_rejected(self, client):
+        """Formerly a documented gap; registration now checks the format
+        (ownership is proven separately by the emailed code)."""
         resp = register(client, name="Alice", email="not-an-email")
-        assert resp.status_code == 201
+        assert resp.status_code == 400
 
 
 class TestUpdateMeValidation:

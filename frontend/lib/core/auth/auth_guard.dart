@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/trip_service.dart';
+import 'token_store.dart';
 
 /// Global auth guard.
 ///
@@ -20,6 +20,31 @@ class AuthGuard {
   GlobalKey<NavigatorState>();
 
   static bool _isHandlingUnauthorized = false;
+  static bool _isHandlingUnverified = false;
+
+  /// Route of the "verify your email" screen.
+  static const String verifyEmailRoute = '/verify-email';
+
+  /// Sends the user to the verification screen when the backend answers
+  /// `403 {"error": "email_unverified"}`. The session is kept: the user is
+  /// signed in, only the features that need a verified address are locked.
+  static Future<void> handleEmailUnverified() async {
+    if (_isHandlingUnverified) {
+      return;
+    }
+    _isHandlingUnverified = true;
+    try {
+      final navigator = navigatorKey.currentState;
+      if (navigator == null) {
+        return;
+      }
+      navigator.pushNamedAndRemoveUntil(verifyEmailRoute, (route) => false);
+    } finally {
+      Future.delayed(const Duration(seconds: 2), () {
+        _isHandlingUnverified = false;
+      });
+    }
+  }
 
   /// Clears the stored token and force-navigates to `/login`, wiping the
   /// existing navigation stack so the user can never go "back" into a
@@ -38,8 +63,9 @@ class AuthGuard {
     _isHandlingUnauthorized = true;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('access_token');
+      // Drop the whole session — access *and* refresh token — so a dead
+      // session cannot be silently renewed later.
+      await TokenStore.instance.clear();
 
       // The old session's trips must not survive the forced logout.
       await TripService.clearOfflineCache();

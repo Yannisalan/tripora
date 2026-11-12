@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend/core/auth/login_gate.dart';
+import 'package:frontend/core/auth/token_store.dart';
 import 'package:frontend/routes/app_routes.dart';
 import 'package:frontend/screens/main_shell.dart';
 
@@ -10,6 +11,17 @@ void main() {
   setUp(() {
     LoginGate.clear();
     MainShell.currentIndex.value = 0;
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    // Widget tests run in a fake-async zone where the secure-storage
+    // plugin's real platform I/O never completes; use the store's
+    // memory-only test mode so the gate logic itself is what is tested.
+    TokenStore.debugForceSecureStorage = false;
+    TokenStore.instance.resetForTesting();
+  });
+
+  tearDown(() {
+    TokenStore.debugForceSecureStorage = null;
+    TokenStore.instance.resetForTesting();
   });
 
   test('isProtected flags only guarded routes', () {
@@ -28,6 +40,7 @@ void main() {
     'guest is sent to Login and continues to the requested route after login',
     (tester) async {
       SharedPreferences.setMockInitialValues({}); // no token -> guest
+      await TokenStore.instance.clear();
 
       await tester.pumpWidget(_harness(onLogin: LoginGate.apply));
 
@@ -51,7 +64,10 @@ void main() {
   testWidgets(
     'signed-in user opens the requested route without seeing Login',
     (tester) async {
-      SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+      await TokenStore.instance.saveSession(
+        accessToken: 'test-token',
+        refreshToken: 'r1',
+      );
 
       await tester.pumpWidget(_harness(onLogin: LoginGate.apply));
 
@@ -67,6 +83,7 @@ void main() {
     'guest guarding a tab is returned to that tab after login',
     (tester) async {
       SharedPreferences.setMockInitialValues({}); // no token -> guest
+      await TokenStore.instance.clear();
 
       await tester.pumpWidget(
         _harness(

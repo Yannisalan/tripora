@@ -61,6 +61,32 @@ def _parse_trip_payload(data):
     if not destination or not str(destination).strip():
         raise ValueError("Destination is required.")
 
+    destination_str = str(destination).strip()
+    if len(destination_str) > 200:
+        raise ValueError("Destination must be 200 characters or less.")
+
+    if budget is not None and not isinstance(budget, str):
+        raise ValueError("Budget must be a text value.")
+    if budget is not None:
+        budget_str = str(budget).strip()
+        if len(budget_str) > 100:
+            raise ValueError("Budget must be 100 characters or less.")
+        budget = budget_str
+
+    if travel_style is not None:
+        if isinstance(travel_style, str):
+            travel_style_str = travel_style.strip()
+        else:
+            travel_style_str = str(travel_style).strip()
+        if not travel_style_str:
+            travel_style = None
+        else:
+            if len(travel_style_str) > 100:
+                raise ValueError("Travel style must be 100 characters or less.")
+            travel_style = travel_style_str
+    else:
+        travel_style = None
+
     if not start_date or not end_date:
         raise ValueError("Start date and end date are required.")
 
@@ -91,9 +117,6 @@ def _parse_trip_payload(data):
         ):
             raise ValueError("Invalid interest value.")
 
-    if budget is not None and not isinstance(budget, str):
-        raise ValueError("Budget must be a text value.")
-
     if budget_amount is not None:
         try:
             budget_amount = Decimal(str(budget_amount))
@@ -114,8 +137,12 @@ def _parse_trip_payload(data):
     if end_date_obj < start_date_obj:
         raise ValueError("End date cannot be before start date.")
 
+    trip_duration_days = (end_date_obj - start_date_obj).days + 1
+    if trip_duration_days > 365:
+        raise ValueError("Trip duration cannot exceed 365 days.")
+
     return {
-        "destination": str(destination).strip(),
+        "destination": destination_str,
         "start_date": start_date,
         "end_date": end_date,
         "start_date_obj": start_date_obj,
@@ -124,7 +151,7 @@ def _parse_trip_payload(data):
         "budget": budget,
         "budget_amount": budget_amount,
         "travel_style": travel_style,
-        "interests": interests,
+        "interests": [str(i).strip() for i in interests],
     }
 
 
@@ -1005,7 +1032,7 @@ def swap_activity(trip_id):
         logger.error("Activity swap generation failed: %s", error)
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": "Failed to swap activity.",
             "error": "Internal server error.",
         }), 500
 

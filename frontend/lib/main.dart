@@ -9,6 +9,7 @@ import 'core/auth/auth_guard.dart';
 import 'core/auth/login_gate.dart';
 import '../services/notification_service.dart';
 import 'core/preferences/app_preferences.dart';
+import 'core/security/legacy_storage_cleanup.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/route_tracker.dart';
 import 'routes/app_routes.dart';
@@ -24,6 +25,10 @@ Future<void> main() async {
 
   await prefs.load();
   unawaited(prefs.ensureRates());
+
+  // Delete the shared admin token that the removed admin UI stored in
+  // plain storage (localStorage on the web).
+  await LegacyStorageCleanup.run();
 
   // Make the system status bar transparent so the app's own header shows
   // through (Android otherwise draws its opaque theme bar as a black gap
@@ -47,11 +52,19 @@ Future<void> main() async {
   // Guest-first: the app always opens on Home. The stored session is only
   // read so the UI can decide what to show — never to force a login wall.
   var isLoggedIn = false;
+  final authService = AuthService();
 
   try {
-    isLoggedIn = await AuthService().isLoggedIn();
+    isLoggedIn = await authService.hasStoredSession();
   } catch (_) {
     isLoggedIn = false;
+  }
+
+  // Restore the session in the background so launch is never blocked on the
+  // network. If the short-lived access token has already expired it is
+  // renewed silently; a transient failure keeps the user signed in.
+  if (isLoggedIn) {
+    unawaited(authService.ensureFreshSession());
   }
 
   // Deep link / page refresh: if a guest lands directly on a protected route
@@ -123,6 +136,7 @@ class _TriporaAppState extends State<TriporaApp> {
 
           initialRoute: widget.initialRoute,
           routes: AppRoutes.routes,
+          onUnknownRoute: AppRoutes.unknownRoute,
           navigatorObservers: [_routeTracker],
           navigatorKey: AuthGuard.navigatorKey,
           locale: AppPreferences.instance.locale,

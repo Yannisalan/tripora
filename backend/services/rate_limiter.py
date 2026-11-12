@@ -1,4 +1,31 @@
-"""Lightweight, dependency-free in-process rate limiter for Tripora.
+"""Fixed-window rate limiter for Tripora with a shared (Redis) backend.
+
+Storage backends
+----------------
+- ``RedisRateLimitStorage``: production backend. Counters are shared by every
+  Gunicorn worker and instance and survive app restarts (subject to the Redis
+  instance's own persistence). Each request is ONE atomic MULTI/EXEC:
+  ``SET key 0 EX window NX`` + ``INCR key``.
+- ``InMemoryRateLimitStorage``: per-process backend for local development,
+  tests, and as the controlled fallback when Redis is unreachable.
+
+Redis failure strategy (``RATE_LIMIT_FAILURE_MODE``)
+-----------------------------------------------------
+- ``fallback`` (default): when Redis errors, the request is counted in the
+  per-process in-memory store instead. Limits stay enforced (per worker, so
+  up to N-workers times looser) and an ERROR is logged. Login, reset and AI
+  endpoints therefore never become unlimited, and a Redis outage does not take
+  authentication down with it.
+- ``closed``: for security-sensitive buckets (authentication, password reset,
+  email verification, admin, AI) a Redis error rejects the request with 503
+  instead; other buckets still use the in-memory fallback.
+
+After a Redis error the backend is skipped for a short cool-down
+(``REDIS_RETRY_SECONDS``) so a dead Redis does not add a timeout to every
+request.
+
+Original design notes
+---------------------
 
 Design
 ------
@@ -46,6 +73,9 @@ DEFAULT_BUCKETS = {
     "travel.search_flights_route": {"limit": None, "window": 600},
     "travel.search_stays_route": {"limit": None, "window": 600},
     "travel.search_cars_route": {"limit": None, "window": 600},
+    "travel.flight_prices_route": {"limit": None, "window": 600},
+    "rates.get_rates": {"limit": None, "window": 60},
+    "rates.get_single_rate": {"limit": None, "window": 60},
     "expenses.get_trip_expenses": {"limit": None, "window": 60},
     "expenses.get_expense": {"limit": None, "window": 60},
     "expenses.create_expense": {"limit": None, "window": 600},
@@ -73,6 +103,18 @@ class RateLimitExceeded(Exception):
         self.bucket = bucket
         self.limit = limit
         self.reset_at = reset_at
+
+
+class RateLimitUnavailable(Exception):
+    """Raised in ``closed`` failure mode when the shared store is down."""
+
+    def __init__(self, bucket):
+        super().__init__(bucket)
+        self.bucket = bucket
+
+
+class StorageError(Exception):
+    """A storage backend could not complete an operation."""
 
 
 class RateLimitStorage(ABC):
@@ -135,6 +177,47 @@ class InMemoryRateLimitStorage(RateLimitStorage):
             self._data.clear()
 
 
+class RedisRateLimitStorage(RateLimitStorage):
+    """Shared fixed-window counters in Redis (atomic per request)."""
+
+    def __init__(self, client, prefix="tripora:rl:"):
+        self._client = client
+        self._prefix = prefix
+
+    def _key(self, bucket, key, window_start):
+        return "{}{}:{}:{}".format(self._prefix, bucket, key, window_start)
+
+    def get(self, bucket, key, window_start):
+        try:
+            value = self._client.get(self._key(bucket, key, window_start))
+        except Exception as error:  # redis.RedisError, OSError, ...
+            raise StorageError(str(error)) from error
+        return int(value or 0)
+
+    def increment(self, bucket, key, window_start, window):
+        redis_key = self._key(bucket, key, window_start)
+        try:
+            pipe = self._client.pipeline(transaction=True)
+            # Create the counter with its TTL only if it does not exist yet,
+            # then increment -- both inside one MULTI/EXEC.
+            pipe.set(redis_key, 0, ex=int(window) + 1, nx=True)
+            pipe.incr(redis_key)
+            _, count = pipe.execute()
+        except Exception as error:
+            raise StorageError(str(error)) from error
+        return int(count)
+
+    def reset_time(self, bucket, key, window_start, window):
+        return window_start + window
+
+    def clear(self):
+        try:
+            for redis_key in self._client.scan_iter(self._prefix + "*"):
+                self._client.delete(redis_key)
+        except Exception as error:
+            raise StorageError(str(error)) from error
+
+
 class RateLimiter:
     """Applies per-bucket fixed-window limits.
 
@@ -148,6 +231,54 @@ class RateLimiter:
     def __init__(self, storage=None, buckets=None):
         self.storage = storage or InMemoryRateLimitStorage()
         self._buckets = dict(buckets or DEFAULT_BUCKETS)
+        # Controlled fallback used when a shared backend fails.
+        self.fallback_storage = InMemoryRateLimitStorage()
+        self.failure_mode = "fallback"
+        self.sensitive_buckets = set()
+        self.retry_seconds = 30
+        self._primary_down_until = 0.0
+        self._lock = threading.Lock()
+
+    def use_storage(self, storage, failure_mode="fallback",
+                    sensitive_buckets=(), retry_seconds=30):
+        """Install a (shared) primary backend and its failure policy."""
+        if failure_mode not in ("fallback", "closed"):
+            failure_mode = "fallback"
+        self.storage = storage
+        self.failure_mode = failure_mode
+        self.sensitive_buckets = set(sensitive_buckets)
+        self.retry_seconds = retry_seconds
+        self._primary_down_until = 0.0
+
+    def _count(self, bucket_name, key, window_start, window):
+        """Atomically record one request and return the window count."""
+        primary_is_local = isinstance(self.storage, InMemoryRateLimitStorage)
+
+        if primary_is_local or time.time() >= self._primary_down_until:
+            try:
+                return self.storage.increment(
+                    bucket_name, key, window_start, window
+                )
+            except StorageError:
+                with self._lock:
+                    self._primary_down_until = (
+                        time.time() + self.retry_seconds
+                    )
+                logger.error(
+                    "Rate-limit store unavailable; using %s mode for %ss.",
+                    self.failure_mode,
+                    self.retry_seconds,
+                )
+
+        if (
+            self.failure_mode == "closed"
+            and bucket_name in self.sensitive_buckets
+        ):
+            raise RateLimitUnavailable(bucket_name)
+
+        return self.fallback_storage.increment(
+            bucket_name, key, window_start, window
+        )
 
     # ------------------------------------------------------------------
     # Bucket resolution
@@ -197,15 +328,16 @@ class RateLimiter:
 
         now = int(time.time())
         window_start = (now // window) * window
+        reset_at = window_start + window
 
-        count = self.storage.get(bucket_name, key, window_start)
-        if count >= limit:
-            reset_at = self.storage.reset_time(bucket_name, key, window_start, window)
+        # Increment first, then compare: a single atomic operation, so
+        # concurrent requests (across workers, with Redis) can never all
+        # observe "one left" and overshoot the limit.
+        new_count = self._count(bucket_name, key, window_start, window)
+        if new_count > limit:
             raise RateLimitExceeded(bucket_name, limit, reset_at)
 
-        new_count = self.storage.increment(bucket_name, key, window_start, window)
         remaining = max(0, limit - new_count)
-        reset_at = self.storage.reset_time(bucket_name, key, window_start, window)
 
         return {
             "allowed": True,
@@ -217,6 +349,8 @@ class RateLimiter:
     def reset(self):
         """Drop all stored counters (used to isolate test budgets)."""
         self.storage.clear()
+        self.fallback_storage.clear()
+        self._primary_down_until = 0.0
 
 
 # Module-level singleton for the application (constructed at app setup).

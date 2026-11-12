@@ -120,8 +120,10 @@ class TestNewGoogleUser:
             json={"email": "socialonly@gmail.com", "password": "whatever-pass"},
         )
 
+        # Same response as an unknown email / wrong password, so the login
+        # endpoint does not reveal social-only accounts (TRP-11).
         assert resp.status_code == 401
-        assert "social sign-in" in resp.get_json()["message"].lower()
+        assert resp.get_json()["message"] == "Invalid email or password."
 
 
 # ----------------------------------------------------------------------
@@ -150,8 +152,10 @@ class TestReturningGoogleUser:
 # ----------------------------------------------------------------------
 
 class TestAccountLinking:
-    def test_links_existing_password_account_to_google(self, client, stub_google):
-        # The user first registers with email/password...
+    def test_does_not_auto_link_existing_password_account(self, client, stub_google):
+        # Registration does not prove ownership of the email, so a password
+        # account with the same address must NOT be silently merged with a
+        # Google identity (pre-account-takeover, TRP-06).
         reg = client.post("/api/auth/register", json={
             "name": "Pat",
             "email": "pat@gmail.com",
@@ -159,18 +163,18 @@ class TestAccountLinking:
         })
         assert reg.status_code == 201
 
-        # ...then signs in with Google using the same verified email.
         stub_google(_google_claims(email="pat@gmail.com", sub="sub-pat"))
 
         resp = google_login(client)
 
-        assert resp.status_code == 200
+        assert resp.status_code == 409
+        assert "accessToken" not in resp.get_json()
         users = User.query.filter_by(email="pat@gmail.com").all()
         assert len(users) == 1  # no duplicate account created
         pat = users[0]
-        assert pat.auth_provider == "google"
-        assert pat.provider_id == "sub-pat"
-        assert pat.password_hash is not None  # password is kept
+        assert pat.auth_provider is None
+        assert pat.provider_id is None
+        assert pat.password_hash is not None
 
         # The password login still works on the same account.
         login = client.post(
@@ -214,13 +218,14 @@ class TestAccountLinking:
         assert resp.status_code == 409
         assert "different" in resp.get_json()["message"].lower()
 
-    def test_unverified_email_is_not_marked_verified(self, client, stub_google):
+    def test_unverified_provider_email_is_rejected(self, client, stub_google):
         stub_google(_google_claims(email="unverified@gmail.com", email_verified=False))
 
         resp = google_login(client)
 
-        assert resp.status_code == 200
-        assert get_user_by_email("unverified@gmail.com").email_verified is False
+        assert resp.status_code == 403
+        assert "accessToken" not in resp.get_json()
+        assert get_user_by_email("unverified@gmail.com") is None
 
 
 # ----------------------------------------------------------------------
@@ -247,7 +252,7 @@ class TestRejectedInputs:
         resp = google_login(client, id_token="forged-token")
 
         assert resp.status_code == 401
-        assert "invalid" in resp.get_json()["message"].lower()
+        assert "could not verify" in resp.get_json()["message"].lower()
 
     def test_unexpected_verification_failure_is_401(self, client, reject_google):
         reject_google(RuntimeError("boom"))

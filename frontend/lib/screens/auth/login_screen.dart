@@ -53,12 +53,24 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _authService.login(
+      final result = await _authService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       if (!mounted) return;
+
+      // The server's answer decides; unverified accounts finish
+      // verification before reaching the app.
+      final user = result['user'];
+      if (user is Map && user['emailVerified'] == false) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.verifyEmail,
+          (route) => false,
+          arguments: user['email']?.toString(),
+        );
+        return;
+      }
 
       _continueAfterLogin();
     } catch (error) {

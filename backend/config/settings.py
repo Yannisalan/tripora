@@ -1,10 +1,12 @@
 import os
+from datetime import timedelta
 from urllib.parse import quote_plus
 
-from dotenv import load_dotenv
+from config import local_safety
 
-
-load_dotenv()
+# Normal runs load backend/.env as before. TRIPORA_LOCAL_ONLY=1 never loads it
+# (it may hold production settings); see config/local_safety.py.
+local_safety.load_environment()
 
 
 class Config:
@@ -48,6 +50,10 @@ class Config:
             "DB_NAME is not configured."
         )
 
+    # Local-only mode: refuse any non-loopback host (e.g. Neon) before an
+    # engine or connection exists. No-op in deployed environments.
+    local_safety.check_database_host(DB_HOST)
+
     # ------------------------------------------------------------
     # Encode password
     # ------------------------------------------------------------
@@ -68,10 +74,52 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # ------------------------------------------------------------
+    # Transport security for the database connection.
+    #
+    # DB_SSLMODE is passed to libpq as ``sslmode``. When it is unset, remote
+    # hosts default to "require" so credentials and data never cross the
+    # network in plaintext; local hosts (developer machines, CI service
+    # containers) default to libpq's own behaviour. Set "verify-full" in
+    # production when the provider's CA bundle is available.
+    # ------------------------------------------------------------
+
+    _LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+    DB_SSLMODE = (os.getenv("DB_SSLMODE", "") or "").strip() or (
+        None if DB_HOST in _LOCAL_DB_HOSTS else "require"
+    )
+
     SQLALCHEMY_ENGINE_OPTIONS = {
-    "pool_pre_ping": True,
-    "pool_recycle": 300,
-}
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
+
+    if DB_SSLMODE:
+        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"sslmode": DB_SSLMODE}
+
+    # ============================================================
+    # REVERSE PROXY
+    # ============================================================
+    #
+    # Number of reverse proxies in front of the app that append to
+    # X-Forwarded-For / X-Forwarded-Proto. Render terminates TLS in one proxy
+    # hop and sets RENDER=true, so the default there is 1. Elsewhere the
+    # default is 0: forwarded headers are ignored, so a client can never spoof
+    # its address into the rate limiter or the audit log.
+    # ------------------------------------------------------------
+
+    @staticmethod
+    def _trusted_proxy_hops():
+        raw = os.getenv("TRUSTED_PROXY_HOPS", "")
+        if raw.strip():
+            try:
+                return max(0, int(raw))
+            except ValueError:
+                return 0
+        return 1 if os.getenv("RENDER", "").lower() == "true" else 0
+
+    TRUSTED_PROXY_HOPS = _trusted_proxy_hops.__func__()
 
     # ============================================================
     # JWT AUTHENTICATION
@@ -84,11 +132,30 @@ class Config:
             "JWT_SECRET_KEY is not configured."
         )
 
+    # ------------------------------------------------------------
+    # Token lifetimes
+    # ------------------------------------------------------------
+    # Access tokens are short-lived (default 15 minutes) and are renewed
+    # silently with a long-lived, rotating refresh token (default 30 days)
+    # so users stay signed in across app restarts until they log out or the
+    # refresh token is revoked/expires.
+    # ------------------------------------------------------------
+
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(
+        minutes=int(
+            os.getenv("JWT_ACCESS_TOKEN_MINUTES", "15") or "15"
+        )
+    )
+
+    REFRESH_TOKEN_LIFETIME_DAYS = int(
+        os.getenv("REFRESH_TOKEN_DAYS", "30") or "30"
+    )
+
     # ============================================================
     # EMAIL / SMTP
     # ============================================================
     MAIL_HOST=os.getenv("MAIL_HOST", "smtp.gmail.com")
-    MAIL_PORT=int(os.getenv("MAIL_PORT", "4665") or "4665")
+    MAIL_PORT=int(os.getenv("MAIL_PORT", "465") or "465")
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "false").lower() in (
         "1", "true", "yes", "on"
     )
@@ -158,12 +225,19 @@ class Config:
     # ADMIN / ANALYTICS
     # ============================================================
     #
-    # A single shared secret that gates every `/api/admin/*` endpoint. The
-    # Flutter admin UI presents this to whoever runs the product; it is never
-    # returned to normal app users. Leave unset to disable the admin API.
+    # Legacy shared secret accepted on `/api/admin/*` data endpoints next to
+    # MFA admin sessions. Server-side only: the Flutter app has no admin UI
+    # and never sees it. Leave unset to disable the shared-token path.
     # ------------------------------------------------------------
 
     ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "")
+
+    # Transitional: accept the shared ADMIN_API_TOKEN alongside MFA admin
+    # sessions. Set to false once an MFA administrator has signed in
+    # successfully; then also unset ADMIN_API_TOKEN.
+    ADMIN_LEGACY_TOKEN_ENABLED = os.getenv(
+        "ADMIN_LEGACY_TOKEN_ENABLED", "true"
+    ).lower() in ("1", "true", "yes", "on")
 
     # When true, the backend records each request into the activity log
     # (the `api_request` event type). Turn it off to reduce write load.
@@ -210,6 +284,34 @@ class Config:
         "1", "true", "yes", "on"
     )
 
+    # Shared rate-limit store. Use the Render Key Value *internal* URL
+    # (redis://...) or a TLS URL (rediss://...). Unset = per-process memory
+    # (fine for local development; logged as an error on Render).
+    REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+    # What to do when Redis is unreachable: "fallback" (count in per-process
+    # memory, default) or "closed" (reject security-sensitive buckets with
+    # 503). See services/rate_limiter.py.
+    RATE_LIMIT_FAILURE_MODE = (
+        os.getenv("RATE_LIMIT_FAILURE_MODE", "fallback").strip().lower()
+        or "fallback"
+    )
+    REDIS_RETRY_SECONDS = os.getenv("REDIS_RETRY_SECONDS", "30")
+
+    # Email verification (signed-in): code attempts and resends.
+    RATE_LIMIT_VERIFY_LIMIT = os.getenv("RATE_LIMIT_VERIFY_LIMIT", "10")
+    RATE_LIMIT_VERIFY_WINDOW = os.getenv("RATE_LIMIT_VERIFY_WINDOW", "900")
+    RATE_LIMIT_VERIFY_RESEND_LIMIT = os.getenv(
+        "RATE_LIMIT_VERIFY_RESEND_LIMIT", "5")
+    RATE_LIMIT_VERIFY_RESEND_WINDOW = os.getenv(
+        "RATE_LIMIT_VERIFY_RESEND_WINDOW", "3600")
+
+    # Platform-wide ceiling on AI (Gemini) calls across ALL users, so many
+    # accounts together cannot run up unbounded spend.
+    RATE_LIMIT_AI_GLOBAL_LIMIT = os.getenv("RATE_LIMIT_AI_GLOBAL_LIMIT", "300")
+    RATE_LIMIT_AI_GLOBAL_WINDOW = os.getenv(
+        "RATE_LIMIT_AI_GLOBAL_WINDOW", "3600")
+
     # POST /api/trips/generate  (LLM-triggering, most expensive)
     RATE_LIMIT_GENERATE_LIMIT = os.getenv("RATE_LIMIT_GENERATE_LIMIT", "5")
     RATE_LIMIT_GENERATE_WINDOW = os.getenv("RATE_LIMIT_GENERATE_WINDOW", "600")
@@ -223,6 +325,15 @@ class Config:
     RATE_LIMIT_RESET_LIMIT = os.getenv("RATE_LIMIT_RESET_LIMIT", "5")
     RATE_LIMIT_RESET_WINDOW = os.getenv("RATE_LIMIT_RESET_WINDOW", "900")
 
+    # AI activity swap (one Gemini call chain per request)
+    RATE_LIMIT_AI_SWAP_LIMIT = os.getenv("RATE_LIMIT_AI_SWAP_LIMIT", "20")
+    RATE_LIMIT_AI_SWAP_WINDOW = os.getenv("RATE_LIMIT_AI_SWAP_WINDOW", "600")
+
+    # Admin API (shared-secret auth; keyed by client IP) -- prevents online
+    # guessing of ADMIN_API_TOKEN.
+    RATE_LIMIT_ADMIN_LIMIT = os.getenv("RATE_LIMIT_ADMIN_LIMIT", "60")
+    RATE_LIMIT_ADMIN_WINDOW = os.getenv("RATE_LIMIT_ADMIN_WINDOW", "600")
+
     # Other write/mutation endpoints
     RATE_LIMIT_WRITE_LIMIT = os.getenv("RATE_LIMIT_WRITE_LIMIT", "30")
     RATE_LIMIT_WRITE_WINDOW = os.getenv("RATE_LIMIT_WRITE_WINDOW", "600")
@@ -230,6 +341,31 @@ class Config:
     # Normal GET/read endpoints
     RATE_LIMIT_READ_LIMIT = os.getenv("RATE_LIMIT_READ_LIMIT", "60")
     RATE_LIMIT_READ_WINDOW = os.getenv("RATE_LIMIT_READ_WINDOW", "60")
+
+    # Buckets that reject with 503 instead of falling back when Redis is down
+    # and RATE_LIMIT_FAILURE_MODE=closed.
+    SENSITIVE_RATE_LIMIT_BUCKETS = (
+        "auth.login",
+        "auth.register",
+        "auth.social_login",
+        "auth.google_login",
+        "auth.refresh",
+        "auth.forgot_password",
+        "auth.verify_reset_code",
+        "auth.reset_password",
+        "auth.verify_email",
+        "auth.resend_verification_email",
+        "auth.delete_current_user",
+        "admin.login_status",
+        "admin_auth.admin_login",
+        "admin_auth.admin_mfa_setup",
+        "admin_auth.admin_mfa_activate",
+        "admin_auth.admin_mfa_verify",
+        "trips.generate_trip",
+        "trips.regenerate_trip_itinerary",
+        "trips.swap_activity",
+        "AI_GLOBAL",
+    )
 
     @staticmethod
     def _rate_int(value, default):
@@ -285,6 +421,16 @@ class Config:
         W_W = cls.RATE_LIMIT_WRITE_WINDOW
         R = cls.RATE_LIMIT_READ_LIMIT
         R_W = cls.RATE_LIMIT_READ_WINDOW
+        SW = cls.RATE_LIMIT_AI_SWAP_LIMIT
+        SW_W = cls.RATE_LIMIT_AI_SWAP_WINDOW
+        AD = cls.RATE_LIMIT_ADMIN_LIMIT
+        AD_W = cls.RATE_LIMIT_ADMIN_WINDOW
+        V = cls.RATE_LIMIT_VERIFY_LIMIT
+        V_W = cls.RATE_LIMIT_VERIFY_WINDOW
+        VR = cls.RATE_LIMIT_VERIFY_RESEND_LIMIT
+        VR_W = cls.RATE_LIMIT_VERIFY_RESEND_WINDOW
+        AIG = cls.RATE_LIMIT_AI_GLOBAL_LIMIT
+        AIG_W = cls.RATE_LIMIT_AI_GLOBAL_WINDOW
 
         return {
             # ---- expensive / LLM-triggering: POST /api/trips/generate ----
@@ -292,21 +438,34 @@ class Config:
             "trips.regenerate_trip_itinerary": cls._bucket(W, W_W, 30, 600),
             "trips.update_trip": cls._bucket(W, W_W, 30, 600),
             "trips.delete_trip": cls._bucket(W, W_W, 30, 600),
+            "trips.swap_activity": cls._bucket(SW, SW_W, 20, 600),
             # ---- authentication endpoints ----
             "auth.login": cls._bucket(A, A_W, 10, 600),
             "auth.register": cls._bucket(A, A_W, 10, 600),
             "auth.social_login": cls._bucket(A, A_W, 10, 600),
             "auth.google_login": cls._bucket(A, A_W, 10, 600),
+            "auth.refresh": cls._bucket(A, A_W, 10, 600),
+            "auth.logout": cls._bucket(A, A_W, 10, 600),
             "auth.update_current_user": cls._bucket(W, W_W, 30, 600),
             "auth.delete_current_user": cls._bucket(A, A_W, 5, 600),
+            # ---- email verification (per signed-in user) ----
+            "auth.verify_email": cls._bucket(V, V_W, 10, 900),
+            "auth.resend_verification_email": cls._bucket(VR, VR_W, 5, 3600),
             # ---- password reset (tight; brute-force target) ----
             "auth.forgot_password": cls._bucket(RESET, RESET_W, 5, 900),
-            "auth.forgot_password_verify": cls._bucket(RESET, RESET_W, 5, 900),
+            "auth.verify_reset_code": cls._bucket(RESET, RESET_W, 5, 900),
             "auth.reset_password": cls._bucket(RESET, RESET_W, 5, 900),
             # ---- travel search (Duffel-backed, third-party cost) ----
             "travel.search_flights_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_stays_route": cls._bucket(A, A_W, 10, 600),
             "travel.search_cars_route": cls._bucket(A, A_W, 10, 600),
+            "travel.flight_prices_route": cls._bucket(A, A_W, 10, 600),
+            # ---- currency rates (cached upstream; public) ----
+            "rates.get_rates": cls._bucket(R, R_W, 60, 60),
+            "rates.get_single_rate": cls._bucket(R, R_W, 60, 60),
+            # ---- Turnstile config + Android challenge page (no DB) ----
+            "turnstile.turnstile_config": cls._bucket(R, R_W, 60, 60),
+            "turnstile.turnstile_challenge": cls._bucket(R, R_W, 60, 60),
             # ---- smart trip expense tracker ----
             "expenses.get_trip_expenses": cls._bucket(R, R_W, 60, 60),
             "expenses.get_expense": cls._bucket(R, R_W, 60, 60),
@@ -314,9 +473,32 @@ class Config:
             "expenses.update_expense": cls._bucket(W, W_W, 30, 600),
             "expenses.delete_expense": cls._bucket(W, W_W, 30, 600),
             # ---- public page-view beacon ----
-            "admin.track_page_view": cls._bucket(A, A_W, 10, 600),
+            # One event per screen visit, so it needs a read-sized budget.
+            "admin.track_page_view": cls._bucket(R, R_W, 60, 60),
+            # ---- admin API (shared secret; per-IP guessing budget) ----
+            "admin.login_status": cls._bucket(A, A_W, 10, 600),
+            "admin.stats": cls._bucket(AD, AD_W, 60, 600),
+            "admin.users_list": cls._bucket(AD, AD_W, 60, 600),
+            "admin.trips_list": cls._bucket(AD, AD_W, 60, 600),
+            "admin.logs": cls._bucket(AD, AD_W, 60, 600),
+            # ---- admin sign-in (password + TOTP; per IP) ----
+            "admin_auth.admin_login": cls._bucket(A, A_W, 10, 600),
+            "admin_auth.admin_mfa_setup": cls._bucket(A, A_W, 10, 600),
+            "admin_auth.admin_mfa_activate": cls._bucket(A, A_W, 10, 600),
+            "admin_auth.admin_mfa_verify": cls._bucket(A, A_W, 10, 600),
+            "admin_auth.admin_regenerate_recovery_codes": cls._bucket(
+                A, A_W, 10, 600),
+            "admin_auth.admin_me": cls._bucket(AD, AD_W, 60, 600),
+            "admin_auth.admin_logout": cls._bucket(AD, AD_W, 60, 600),
+            # ---- browser CSP violation reports (public) ----
+            "csp_report": cls._bucket(R, R_W, 60, 60),
+            # ---- platform-wide AI ceiling (key: "global") ----
+            "AI_GLOBAL": cls._bucket(AIG, AIG_W, 300, 3600),
             # ---- weather forecast (Open-Meteo, read-heavy) ----
             "weather.get_trip_weather": cls._bucket(R, R_W, 60, 60),
-            # ---- default read bucket ----
+            # ---- default buckets ----
+            # Applied by app.enforce_rate_limits to any endpoint that has no
+            # bucket of its own, so a newly added route is never unlimited.
             "DEFAULT_READ": cls._bucket(R, R_W, 60, 60),
+            "DEFAULT_WRITE": cls._bucket(W, W_W, 30, 600),
         }

@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/auth/auth_guard.dart';
 import '../core/config/app_config.dart';
+import '../core/network/api_client.dart';
 import '../trip_reminder.dart';
 import '../core/preferences/app_preferences.dart';
 import '../models/trip_model.dart';
@@ -240,40 +240,6 @@ class TripService {
   }
 
   // ============================================================
-  // GET AUTH TOKEN
-  // ============================================================
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    return prefs.getString('access_token');
-  }
-
-  // ============================================================
-  // AUTHORIZATION HEADERS
-  // ============================================================
-
-  Future<Map<String, String>> _headers() async {
-    final token = await _getToken();
-
-    if (token == null || token.isEmpty) {
-      // No token at all simply means "not signed in". Do NOT force a
-      // redirect to /login here — that made the app bounce straight to
-      // the login page on launch. Instead surface a clean "not logged
-      // in" error so screens can render their guest state (e.g. the
-      // home screen's "Sign in to see your saved trips" card). Expired
-      // sessions are handled separately by the 401 branch in each call.
-      throw Exception('You are not logged in.');
-    }
-
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
-
-  // ============================================================
   // DECODE RESPONSE
   // ============================================================
 
@@ -295,8 +261,6 @@ class TripService {
   // ============================================================
 
   Future<Map<String, dynamic>> generateTrip(TripModel trip) async {
-    final headers = await _headers();
-
     final body = Map<String, dynamic>.from(trip.toJson())
       ..['preferredLanguage'] = AppPreferences.instance.language
       ..['preferredCurrency'] = AppPreferences.instance.currency;
@@ -304,10 +268,9 @@ class TripService {
     final http.Response response;
 
     try {
-      response = await http
+      response = await ApiClient.instance
           .post(
             Uri.parse('$baseUrl/api/trips/generate'),
-            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(generateRequestTimeout);
@@ -333,7 +296,8 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -392,11 +356,8 @@ class TripService {
     required int tripId,
     required TripModel trip,
   }) async {
-    final headers = await _headers();
-
-    final response = await http.patch(
+    final response = await ApiClient.instance.patch(
       Uri.parse('$baseUrl/api/trips/$tripId'),
-      headers: headers,
       body: jsonEncode(trip.toJson()),
     );
 
@@ -410,7 +371,8 @@ class TripService {
     _debugLog('====================================');
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -458,11 +420,8 @@ class TripService {
   // ============================================================
 
   Future<TripModel> regenerateItinerary(int tripId) async {
-    final headers = await _headers();
-
-    final response = await http.post(
+    final response = await ApiClient.instance.post(
       Uri.parse('$baseUrl/api/trips/$tripId/regenerate'),
-      headers: headers,
     );
 
     final decoded = _decodeResponse(response);
@@ -475,7 +434,8 @@ class TripService {
     _debugLog('====================================');
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -526,11 +486,8 @@ class TripService {
     required int day,
     required String time,
   }) async {
-    final headers = await _headers();
-
-    final response = await http.post(
+    final response = await ApiClient.instance.post(
       Uri.parse('$baseUrl/api/trips/$tripId/swap-activity'),
-      headers: headers,
       body: jsonEncode({'day': day, 'time': time}),
     );
 
@@ -544,7 +501,8 @@ class TripService {
     _debugLog('====================================');
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -623,11 +581,8 @@ class TripService {
   }
 
   Future<List<TripModel>> _fetchTripsFromNetwork() async {
-    final headers = await _headers();
-
-    final response = await http.get(
+    final response = await ApiClient.instance.get(
       Uri.parse('$baseUrl/api/trips'),
-      headers: headers,
     );
 
     _debugLog('====================================');
@@ -644,7 +599,8 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -755,11 +711,8 @@ class TripService {
   }
 
   Future<TripModel> _fetchTripFromNetwork(int tripId) async {
-    final headers = await _headers();
-
-    final response = await http.get(
+    final response = await ApiClient.instance.get(
       Uri.parse('$baseUrl/api/trips/$tripId'),
-      headers: headers,
     );
 
     _debugLog('====================================');
@@ -776,7 +729,8 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 
@@ -896,11 +850,8 @@ class TripService {
   // ============================================================
 
   Future<void> deleteTrip(int tripId) async {
-    final headers = await _headers();
-
-    final response = await http.delete(
+    final response = await ApiClient.instance.delete(
       Uri.parse('$baseUrl/api/trips/$tripId'),
-      headers: headers,
     );
 
     final decoded = _decodeResponse(response);
@@ -917,7 +868,8 @@ class TripService {
     // ----------------------------------------------------------
 
     if (response.statusCode == 401) {
-      await AuthGuard.handleUnauthorized();
+      // ApiClient already tried to renew the session; reaching here means
+      // it could not, so just surface a retryable auth error.
       throw Exception('Your session has expired. Please log in again.');
     }
 

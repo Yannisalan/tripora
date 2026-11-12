@@ -22,6 +22,12 @@ class ActivityLog(db.Model):
 
     __tablename__ = "activity_logs"
 
+    # No INSERT ... RETURNING: the id comes from nextval() first. With
+    # RETURNING, Row-Level Security would require a SELECT policy covering
+    # the writer's own (often anonymous) rows, which would expose other
+    # anonymous rows (IP addresses). Reads stay admin-only.
+    __table_args__ = {"implicit_returning": False}
+
     # ============================================================
     # PRIMARY KEY
     # ============================================================
