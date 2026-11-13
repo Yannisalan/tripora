@@ -1,5 +1,7 @@
 from datetime import date
 
+from services.client_errors import ClientValidationError
+
 
 # Approximate daily costs per person in USD.
 # These are planning estimates, not live prices.
@@ -53,7 +55,7 @@ def calculate_trip_cost(
     nights = (end - start).days
 
     if nights <= 0:
-        raise ValueError(
+        raise ClientValidationError(
             "End date must be after start date."
         )
 

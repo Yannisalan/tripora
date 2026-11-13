@@ -1055,3 +1055,810 @@ The procedure is in SECURITY_TESTING_GUIDE §1e.
   - analyze clean; VM tests 102 passed;
   - browser tests 6/6 (two random orders, CanvasKit workaround);
   - web release build OK; Android debug APK built with temporary low-memory Gradle overrides (no file changes).
+
+---
+
+# P9. F3: per-account login throttle (2026-11-13, uncommitted)
+
+Closes finding **F3** (P5.3): login throttling was per client IP only (10 / 10 min),
+with no per-account budget, so distributed credential stuffing spread across many
+IPs was not slowed for the targeted account. This adds a second, independent
+rate-limit bucket keyed on the **account** (the normalized e-mail), bounding login
+attempts for one account across every source IP. The per-IP limit is unchanged and
+still applies in parallel.
+
+> **Correction (2026-11-13, final review M1, see P13).** As implemented in this
+> phase the per-account bucket was enforced **only on `POST /api/auth/login`**. The
+> admin password step `POST /api/admin/auth/login` verifies the same password but
+> was limited per IP only, so for admin accounts the "across every source IP" bound
+> above did **not** hold. P13 applies the same shared counter to that endpoint.
+
+Nothing is committed, pushed, or deployed; no Render/Neon/production access.
+
+This section records the implementation **as it stands after the adversarial
+self-review in P9.7** — the first cut used a read-then-count gate, which the review
+found could be bypassed by a simultaneous burst; it was replaced by an atomic gate
+before anything was committed.
+
+## P9.1 Design
+
+- **Second bucket, not a replacement.** The per-IP `auth.login` bucket stays in
+  the `before_request` hook. The new bucket `auth.login_account` is applied
+  **inside the login route**, because only the route sees the submitted e-mail and
+  the outcome.
+- **Atomic gate.** Enforced with `limiter.check()` — one atomic
+  increment-and-compare per attempt, the same primitive the per-IP limiter uses. At
+  most `limit` attempts per window are admitted no matter how many source IPs fire
+  at once; the rest are refused **before** any password hash.
+- **Checked before verification**, so a tripped account refuses even a correct
+  password (stops a stuffing run from winning on the attempt that finally guesses
+  right).
+- **Reset on success.** A successful login clears the counter
+  (`limiter.reset_key`), so legitimate use is never penalised; the effective metric
+  is *consecutive* failed attempts, also bounded by the fixed window.
+- **Keyed HMAC, never plaintext.** Key =
+  `HMAC-SHA256(secret, "login-throttle:v1:" + normalized_email)` as hex. The raw
+  address never appears in a key or a log. Secret is a dedicated
+  `LOGIN_RATE_LIMIT_HMAC_KEY` if set, else the already-required `JWT_SECRET_KEY`
+  (domain-separated by the label).
+- **Normalization matches registration** (`str(email).strip().lower()`), so casing
+  and whitespace cannot split one account across buckets.
+- **Enumeration-safe.** Keyed on the submitted e-mail **whether or not an account
+  exists**; a blocked attempt returns the same generic 429 as the global limiter,
+  with no DB/hash work. Registered and unknown addresses are indistinguishable.
+- **Fail-closed on the unexpected, fallback where safe.** An unexpected limiter
+  error at the gate returns 503 (rejects) rather than silently admitting an
+  unthrottled attempt. The *designed* Redis-outage path still counts in the
+  per-process fallback store (default `fallback` mode) so login stays up; under the
+  opt-in `closed` mode the bucket (now listed in `SENSITIVE_RATE_LIMIT_BUCKETS`)
+  returns 503, consistent with `auth.login`.
+
+Default: **20 failed attempts / account / hour**
+(`RATE_LIMIT_LOGIN_ACCOUNT_LIMIT` / `RATE_LIMIT_LOGIN_ACCOUNT_WINDOW`).
+
+## P9.2 Files
+
+| File | Change |
+|---|---|
+| `backend/services/rate_limiter.py` | New `peek()` (read-only state, for tests/observability), `reset_key()` (clear one key in primary+fallback, for reset-on-success), `_peek_count()` helper, and `clear_key()` on both storage backends. Existing methods untouched. |
+| `backend/config/settings.py` | New `RATE_LIMIT_LOGIN_ACCOUNT_LIMIT/WINDOW` (20 / 3600), `login_rate_limit_hmac_key()`, the `auth.login_account` bucket, and that bucket added to `SENSITIVE_RATE_LIMIT_BUCKETS`. |
+| `backend/routes/auth.py` | Login route: `_account_login_key()`, the generic 429 builder, the 503 fail-closed builder, the atomic `check()` gate (RateLimitExceeded→429, RateLimitUnavailable/unexpected→503), and `reset_key()` on the success path. New imports: `hmac`, `time`, limiter symbols. |
+| `security/tests/test_login_account_throttle.py` | New: 19 tests (A–G of the brief, Config default, unit checks, concurrency at both limiter and HTTP level, and storage-failure / fail-closed). |
+| `security/tests/test_audit_remediation.py` | Extended the "every configured bucket names a real endpoint" guard to allow `auth.login_account` as a deliberate non-endpoint bucket (same exemption as `AI_GLOBAL`). |
+
+## P9.3 Vulnerability addressed
+
+- **Distributed credential stuffing (F3).** Before: rotating source IPs faced only
+  the 10 / 10 min per-IP cap. After: the targeted account has a hard 20 / hour
+  budget that no amount of IP rotation — simultaneous or sequential — can exceed,
+  and once tripped even a correct password is refused for the rest of the window.
+
+## P9.4 Reproducible tests (`security/tests/test_login_account_throttle.py`, 19)
+
+- **A — same account, many IPs:** 5 failures (tightened limit) from 5 distinct IPs
+  are 401; a 6th from a fresh IP is 429. A companion test proves a correct password
+  from a fresh IP is also 429 once tripped.
+- **B — many accounts, one IP:** 10 failures for distinct e-mails from one IP are
+  401, the 11th is 429 — the per-IP protection still fires, independently.
+- **C — normalization:** five casing/whitespace variants of one address share one
+  bucket; a unit test asserts the key is deterministic, a 64-char hex digest, and
+  contains neither `@` nor the local-part.
+- **D — success not penalised:** a login below the limit succeeds; a success resets
+  the counter to zero and the account gets a fresh budget.
+- **E — no enumeration:** the blocked 429 for a real account and for an unknown
+  address are byte-identical (status, JSON, headers), as are the sub-limit 401s.
+- **F — expiry + boundary:** with a 1-second window the bucket resets on roll-over;
+  a second test characterises the fixed-window boundary bound (≤ 2×limit across one
+  roll-over, never more).
+- **G — concurrency (atomic gate):** 300 threads behind a barrier call the gate;
+  **exactly `limit` are admitted** and the rest atomically blocked. A second test
+  fires 40 simultaneous HTTP login POSTs (distinct IPs, limit 1) and asserts exactly
+  one is admitted (401) and the other 39 are 429.
+- **Storage failure:** fallback mode still enforces via the per-process store when
+  the primary is down; closed mode raises `RateLimitUnavailable` for a sensitive
+  bucket; an unexpected gate error and a `RateLimitUnavailable` both make the login
+  endpoint return **503 (fail-closed)**, never a silent unthrottled success.
+
+## P9.5 Test results (2026-11-13, local, all actually run)
+
+- Focused F3 module: **19 passed**.
+- Full backend security suite: **547 passed, 45 skipped** (skips = the opt-in
+  Postgres/Redis suites). No regressions. One pre-existing invariant test
+  (`test_every_configured_bucket_names_a_real_endpoint`) was updated for the new
+  non-endpoint bucket (P9.2).
+
+## P9.6 Remaining limitations / risks
+
+- **Targeted account-lockout DoS (accepted).** An attacker who can send ≥ `limit`
+  failed logins for a victim's e-mail (needs ≥ 2 IPs to clear the 10/IP cap) locks
+  that account — correct password included — until the window expires (≤ 1 hour) or
+  a successful login resets it (which the victim cannot do while locked).
+  *(Update 2026-11-13, P13 / L1: a completed password reset now also clears the
+  counter; before P13 a reset did not.)* This is
+  the inherent availability/brute-force trade-off of any account throttle. It is
+  **temporary and self-recovering**, not a permanent lock, and the threshold stays
+  at the agreed 20 (not silently changed). Future softening, if the trade-off is
+  judged wrong: a step-up challenge (CAPTCHA) on throttle instead of a hard block,
+  owner notification on repeated lockouts, and/or IP-reputation weighting.
+- **Fixed-window boundary (≤ 2×limit).** Across one window roll-over an account can
+  see up to 2×limit attempts in a short span (characterised in F). Accepted for a
+  20/hour budget; a sliding window would remove it but diverge from the shared
+  fixed-window infrastructure. Not implemented.
+- **Per-worker budget without Redis.** With `REDIS_URL` unset the counter is
+  per-process and resets on restart, so the effective budget is multiplied by the
+  Gunicorn worker count — the same caveat as every other bucket (F4). Atomic,
+  cross-worker enforcement requires Redis (its `INCR` is the shared atomic op);
+  setting `REDIS_URL` (owner action) provides it.
+- **No lockout notification.** F3 slows stuffing; it does not notify the account
+  owner. Out of scope here.
+- Scope note: F6, F7 and F9 were explicitly **not** started in this phase.
+
+## P9.7 Adversarial self-review (2026-11-13)
+
+A focused review of the first F3 cut was run against six areas. Findings and resolutions:
+
+1. **Concurrency — real bug, fixed.** The first cut gated with a read
+   (`peek()`) and counted failures separately (`register_failure()`). A
+   simultaneous burst — exactly the distributed stuffing F3 targets — would all read
+   the counter below the limit and all be admitted before any increment landed; the
+   **cold-start burst bypassed the limit entirely**. Replaced with the atomic
+   `limiter.check()` gate (increment-and-compare), which admits at most `limit`
+   under any contention. Proven by a 300-thread limiter test and a 40-request HTTP
+   test (both assert *exactly* `limit` admitted). Cross-worker atomicity holds with
+   Redis `INCR`; without Redis it is per-worker (documented above).
+2. **Storage failure — fail-open path closed.** The first cut caught every
+   exception at the gate and then *continued* (fail-open). Now an unexpected gate
+   error returns 503; the designed Redis-outage fallback (per-worker counting) is
+   preserved for the default mode, and `closed` mode returns 503. Tests simulate a
+   failing primary store and an unexpected gate error.
+3. **Window boundaries.** Fixed-window allows ≤ 2×limit across a roll-over
+   (characterised and tested). Judged acceptable for 20/hour; sliding window not
+   adopted, to preserve compatibility with the existing limiter. No code change.
+4. **Denial of service.** Targeted account lockout is possible and is the accepted,
+   temporary trade-off (documented in P9.6). Threshold unchanged at 20. The
+   correct-password-blocked behaviour is retained deliberately.
+5. **Test quality.** Concurrency tests use real threads behind a `threading.Barrier`
+   (genuine simultaneity, not mocks) and assert exact admit/block counts; the HTTP
+   concurrency test exercises the real endpoint. Normalization, unknown accounts,
+   success, multi-IP and expiry are all covered by behavioural (not mocked) tests.
+6. **Final verification.** Focused suite 19/19; full suite 547 passed / 45 skipped;
+   full diff inspected; this report corrected to the measured results.
+
+---
+
+# P10. F6: production startup validation for weak secrets (2026-11-13, uncommitted)
+
+Closes finding **F6** (P5.3): a `JWT_SECRET_KEY` shorter than 32 characters (and a
+short `ADMIN_API_TOKEN`) only logged a start-up warning. Production now **refuses
+to start** (RENDER=true) when a critical authentication secret is missing or weak,
+while development, staging and the test suite keep the warn-only behaviour.
+
+Nothing is committed, pushed, or deployed; no Render/Neon/production access.
+
+## P10.1 Design
+
+- **Production condition:** `RENDER=true` (case-insensitive), the agreed F6
+  signal. `_is_production()` reads it live.
+- **Strength rule:** `_is_strong_secret(v)` = present AND `len(v.strip()) >= 32`.
+  This rejects missing (`None`), empty, whitespace-only, and short values in one
+  predicate.
+- **JWT_SECRET_KEY:** always required and strong in production — it signs every
+  session token. Missing/empty/whitespace/short → refuse start.
+- **ADMIN_API_TOKEN:** validated as **conditionally mandatory**. The only code
+  path that accepts it is the legacy shared-token admin check
+  (`routes/admin.py:_legacy_token_matches`), which is gated on
+  `ADMIN_LEGACY_TOKEN_ENABLED`. So the token is required and strong **only while
+  that flag is true** (its default); when the legacy path is disabled the token is
+  dead configuration and is not validated (so turning the legacy path off is the
+  supported way to run without it). An empty token already fails safe at runtime
+  (grants no access), but with the legacy path enabled a weak/missing token is a
+  real brute-force surface, hence the hard failure.
+- **Lifecycle:** enforced in `_validate_production_secrets()`, called at the very
+  top of `create_app()` (immediately after `app.config.from_object`, **before**
+  ProxyFix, blueprints, JWT, the DB and Redis). A failure aborts app construction;
+  the process never begins serving. Outside production the same function calls the
+  existing `_warn_weak_secrets()` and returns.
+- **No value disclosure:** errors and logs name the variable and the required
+  length only; the secret value never appears. Raised as a dedicated
+  `ConfigurationError`. No replacement secret is ever generated; no hardcoded
+  secret is introduced.
+
+## P10.2 Files
+
+| File | Change |
+|---|---|
+| `backend/app.py` | New `ConfigurationError`, `_is_production()`, `_is_strong_secret()`, and `_validate_production_secrets()` (fatal in production, warn-only otherwise). `_warn_weak_secrets()` now uses the shared predicate (and reports a missing JWT secret too). `create_app()` calls the validator instead of the bare warning. |
+| `security/tests/test_production_secret_validation.py` | New: 30 tests (A–J of the brief) including the strength predicate, production failures, non-production warn-only, value-non-disclosure, and a lifecycle test that `create_app()` aborts. |
+
+No change to `routes/admin.py`, `services/admin_auth.py` or any authentication
+logic: admin and user auth behave exactly as before.
+
+## P10.3 Vulnerability addressed
+
+- **Weak production secrets accepted at start-up (F6).** Before: a short
+  `JWT_SECRET_KEY` (offline-forgeable session tokens) or a short, legacy-enabled
+  `ADMIN_API_TOKEN` (online-guessable full-admin credential) only produced a log
+  line that is easy to miss. After: production will not start with them, forcing
+  the misconfiguration to be fixed before any traffic is served.
+
+## P10.4 Reproducible tests (`security/tests/test_production_secret_validation.py`, 30)
+
+- **A/B (valid):** strong JWT + strong admin token (legacy on) passes; strong JWT
+  with legacy **off** passes even with no admin token.
+- **C/E/G (JWT):** short, missing, empty and whitespace-only `JWT_SECRET_KEY` each
+  raise `ConfigurationError` naming the variable.
+- **D/F/G (admin):** short/missing/empty/whitespace-only `ADMIN_API_TOKEN` raises
+  **when legacy is enabled**, and is **ignored when legacy is disabled**.
+- **H (enforcement):** `RENDER=true`/`TRUE` enforce; a lifecycle test shows
+  `create_app()` itself raises (startup actually blocked), not just the helper.
+- **I (dev):** with `RENDER` unset/`false`/`0`/`no`, weak secrets do **not** raise
+  (a warning is logged instead).
+- **J (test env):** the conftest `app` fixture still builds, and the exact test
+  posture (RENDER unset, long JWT, short admin token, legacy on) does not raise.
+- **No disclosure:** two tests assert the secret value never appears in the raised
+  exception; one asserts both bad secrets are reported together.
+
+## P10.5 Test results (2026-11-13, local, all actually run)
+
+- Focused F6 module: **30 passed** (0.07 s).
+- Full backend security suite: **577 passed, 45 skipped** (547 before F6 + 30 new;
+  skips = the opt-in Postgres/Redis suites). No regressions.
+
+## P10.6 Remaining limitations / operational note
+
+- **Deployment gate (intended).** Because `ADMIN_LEGACY_TOKEN_ENABLED` defaults to
+  true, a production deploy of this change will **fail to start** if the live
+  `JWT_SECRET_KEY` or `ADMIN_API_TOKEN` is missing or < 32 characters. That is the
+  point of F6, but it means the owner must confirm the production values are
+  strong (or set `ADMIN_LEGACY_TOKEN_ENABLED=false`) **before** deploying — exactly
+  the values already listed as a deploy requirement in P2.6 / `docs/DEPLOYMENT.md`.
+  No production value was read or changed by this work.
+- **Scope.** Only `JWT_SECRET_KEY` and `ADMIN_API_TOKEN` are enforced, as F6
+  specifies. Other secrets (`MFA_ENCRYPTION_KEY`, provider API keys) still rely on
+  their own existing checks and are out of F6's scope.
+- Scope note: F7 and F9 were explicitly **not** started in this phase.
+
+---
+
+# P11. F9: fixed, safe client-facing error responses (2026-11-13, uncommitted)
+
+Closes finding **F9** (P5.3). The P5.3 review rated it "Info / negligible" because
+most `str(error)` responses carried hand-written messages. A full audit found that
+the same handlers also caught exceptions whose text was **not** written for clients.
+They leaked raw input echoed by the parser, provider names and credential state, and
+(in server logs) SQL bind values. Every client-facing exception message now comes
+from an allow-list.
+
+Nothing is committed, pushed, or deployed. There was no Render, Neon, Vercel or
+production access. F7 was not started.
+
+## P11.1 Audit (all of `backend/`, excluding `venv`)
+
+Searched: `str(error|exc|e)`, exception interpolation (`{error}`, `%s` with
+exceptions), `repr`, `traceback`/`format_exc`, `errorhandler`, every
+`except ... as` in `routes/`, and the JWT loaders.
+
+| Location | Before | Sensitive? | Verdict |
+|---|---|---|---|
+| `routes/trips.py` generate + PATCH: cost `except ValueError` → `str(error)` (400) | Any `ValueError` from `cost_service`/`date.fromisoformat`. E.g. `startDate: "2026-09-01xyz"` passes the payload parser (`[:10]`) but cost parsing returned **`Invalid isoformat string: '2026-09-01xyz'`** | **Yes.** It reflects raw input and the exception class's wording, and any future `ValueError` in the call chain would also be echoed | **Fixed** |
+| `routes/trips.py` generate + PATCH: `_parse_trip_payload` `except ValueError` → `str(error)` (400) | Only app-written messages today, but a stdlib `ValueError` inside the parser would be echoed | Latent | **Fixed** (allow-listed) |
+| `routes/trips.py` ×7, `routes/expenses.py` ×5: identity `except ValueError` → `str(error)` (401) | Always `"Invalid authenticated user."` | Latent | **Fixed** (constant) |
+| `routes/auth.py` ×5 (`/me` GET/PATCH, `/account` DELETE, `/verify-email`, `/verify-email/resend`): `except InvalidIdentityError` → `str(error)` (401) | Always `"Invalid authenticated user."` | Latent | **Fixed** (constant) |
+| `routes/travel.py` `_db_error_response` (502) for stays, cars, flight search, flight prices | **`"Live travel search is not configured. Duffel credentials are missing."`**, **`"Travelpayouts rejected the API credentials."`**, provider-unreachable messages | **Yes.** It names the vendor and reveals credential/configuration state | **Fixed** |
+| `routes/travel.py` flight search location lookup (400) | `TravelpayoutsError` text | Mixed: the lookup messages are intentional user guidance, but other `TravelpayoutsError`s could reach this path | **Fixed** (lookup messages kept, rest generic) |
+| No app-level error handler | Unhandled exceptions and `abort()` returned Werkzeug HTML pages. These carry no traceback with debug off, but `abort(…, description=…)` text is rendered verbatim and responses were not JSON | Latent | **Fixed** (JSON handlers) |
+| SQLAlchemy engine | `logger.exception` on DB failures writes `[parameters: …]`: e-mails, password/reset-code hashes, token versions | **Yes, in server logs** | **Fixed** (`hide_parameters=True`) |
+| `routes/trips.py` cost warning log `"…failed: %s", error` | Logged raw input/exception text | Low (server log) | Now logs the exception type only |
+
+Already safe, left unchanged: all `except Exception` 500 handlers in
+trips/expenses/admin/auth/health (fixed messages + `logger.exception`); social
+login (TRP-13, generic message); `rates.py` and `weather.py` (generic 503 /
+"temporarily unavailable"); the JWT loaders (fixed messages); `admin_auth.py`
+(`AdminAuthUnavailable` text is never returned); the rate limiter's
+`StorageError(str(error))` (internal only, never logged with detail or returned);
+`social_auth_service` / `itinerary_service` exception interpolation (caught by
+generic handlers before any response).
+
+## P11.2 Remediation
+
+- **`backend/services/client_errors.py` (new).** `ClientValidationError(ValueError)`
+  marks a message written for the client. `client_message(error, fallback)` returns
+  `str(error)` only for that class (non-empty) and `fallback` for anything else,
+  including plain stdlib `ValueError`s. It also holds the shared constants
+  `INVALID_SESSION_MESSAGE`, `GENERIC_SERVER_ERROR` and `UNEXPECTED_ERROR_MESSAGE`.
+  Because the class subclasses `ValueError`, every existing `except ValueError`
+  still catches it.
+- **Trips.** The 17 `raise ValueError(...)` in `_parse_trip_payload` became
+  `ClientValidationError` with **identical text**. `cost_service` raises
+  `ClientValidationError("End date must be after start date.")`. The payload and
+  cost handlers return `client_message(error, "Trip details are invalid.")`, still
+  with status 400.
+- **Identity errors (trips, expenses, auth).** Every handler returns
+  `INVALID_SESSION_MESSAGE` (same text as before, now a constant) with 401.
+- **Travel.** The new `TravelpayoutsLookupError(TravelpayoutsError,
+  ClientValidationError)` is raised only by `resolve_city_to_iata`, and its three
+  user-guidance messages are unchanged. `_provider_error_response` (renamed from
+  `_db_error_response`) returns `"Travel search is temporarily unavailable. Please
+  try again later."` with the same **502**, `error: travel_provider_error` and
+  `code: PROVIDER_ERROR`. The vendor detail is logged server-side. A non-lookup
+  provider error during flight-search resolution now returns that 502 instead of a
+  400 that echoed the provider text.
+- **App-level handlers (`app.py` `_register_error_handlers`).**
+  - `HTTPException`: JSON `{success:false, message:<fixed per status>, error:<HTTP
+    name>}` with the original status. `description` is never returned. `Allow`,
+    `Retry-After` and `WWW-Authenticate` are preserved.
+  - Any status ≥ 500 returns the generic message.
+  - Unhandled `Exception`: rolls back the session, runs `logger.exception`, and
+    returns a generic JSON 500.
+    - *Corrected 2026-11-13 (final review I3); the original text said the log held
+      the "type, method and path only".*
+    - The log message names the exception type, method and path.
+    - `logger.exception` **also records the exception's message and the full
+      traceback**, so any data inside the exception text reaches the server log
+      (never the client).
+    - The handler itself never logs the request body or headers.
+    - SQL bind values are hidden by `hide_parameters`. PostgreSQL `DETAIL` lines
+      (e.g. `Key (email)=(…) already exists`) are part of the exception message and
+      are still logged (final review L3).
+  - Flask-JWT-Extended's own handlers are more specific, so they still win; the JWT
+    401 responses are unchanged.
+- **Logs.** `create_app()` sets `hide_parameters=True` in
+  `SQLALCHEMY_ENGINE_OPTIONS` (via `setdefault`, so the conftest/SQLite options
+  still merge). DB exception text in logs no longer contains bind values.
+  *(Clarified 2026-11-13: server-generated `DETAIL` text can still contain row
+  values; see the correction above and P13.)*
+
+API contract: status codes and JSON shapes are unchanged everywhere. Message text
+changed only where it was unsafe:
+- travel 502 message;
+- the trips 400 fallback for non-validation parser errors;
+- the flight-search provider error, now 502 instead of 400;
+- unknown routes/methods/oversized bodies now get JSON instead of HTML.
+
+The Flutter client does not branch on any changed text (searched `frontend/`).
+
+## P11.3 Files
+
+| File | Change |
+|---|---|
+| `backend/services/client_errors.py` | New: `ClientValidationError`, `client_message`, shared message constants. |
+| `backend/routes/trips.py` | Allow-listed validation errors, constant session message, generic cost fallback, type-only cost log. |
+| `backend/routes/expenses.py` | Constant session message. |
+| `backend/routes/auth.py` | Constant session message (5 handlers + `_current_user_id`). No auth logic change. |
+| `backend/routes/travel.py` | `_provider_error_response` with a fixed message; lookup vs provider split. |
+| `backend/services/travelpayouts_service.py` | `TravelpayoutsLookupError` for `resolve_city_to_iata`. |
+| `backend/services/cost_service.py` | Its one validation message raised as `ClientValidationError`. |
+| `backend/app.py` | JSON `HTTPException`/`Exception` handlers; `hide_parameters=True`. |
+| `security/tests/test_f9_error_disclosure.py` | New: 43 tests. |
+| `security/tests/test_login_account_throttle.py` | Flaky-test fix only (see P11.6). |
+
+## P11.4 Reproducible tests (`security/tests/test_f9_error_disclosure.py`, 43)
+
+Each test plants a secret-looking DSN (`postgresql://…:hunter2-secret@…`) and/or
+SQL text in an exception, then asserts that neither (nor `Traceback` /
+`password_hash`) appears in the JSON body.
+
+- **Helper (8):**
+  - `ClientValidationError` messages pass through;
+  - stdlib `ValueError`, `RuntimeError`, `KeyError` and provider errors fall back;
+  - an empty message falls back;
+  - the class is still a `ValueError`.
+- **Trips (14):**
+  - the stdlib date error is not echoed on generate or PATCH;
+  - the same-day cost message is kept;
+  - six payload validation messages are kept exactly (body equality);
+  - an injected `ValueError` returns the generic 400;
+  - an injected `RuntimeError` returns the generic 500;
+  - identity errors return the fixed 401 on 3 routes;
+  - a DB `OperationalError` on list hides the SQL, the bind e-mail and the DSN.
+- **Identity / auth (5):**
+  - expenses identity error;
+  - `/me`, `/verify-email` and `/verify-email/resend` identity errors;
+  - Apple social-verification detail is hidden.
+- **Travel (6):**
+  - unconfigured Duffel stays and cars, and unconfigured Travelpayouts prices, each
+    use the real service with credentials removed and need no network;
+  - rejected credentials;
+  - a non-lookup error during resolve;
+  - in each of these: the generic 502, `code` kept, and no "Duffel",
+    "Travelpayouts", "credentials" or "not configured" in the body;
+  - the lookup message is kept (400).
+- **Global handlers (9):**
+  - an unhandled exception gives the generic JSON 500, the log has its type and
+    path, and the log has **no** request-body password or Authorization token;
+  - an unhandled DB error hides the SQL and bind values;
+  - `abort(400/503, description=…)` text is hidden;
+  - 404, 405 (with `Allow`) and 413 return JSON;
+  - a DB failure in a route without local try/except (`/verify-email/resend`)
+    returns the generic 500;
+  - JWT 401 handlers are unchanged.
+- **Logs (2):**
+  - `db.engine.hide_parameters is True`;
+  - a real failing statement's exception text has no bind value and says the
+    parameters are hidden.
+
+**Negative control:** with the pre-F9 route files, `app.py` and `cost_service.py`
+temporarily restored, **23 of 43 fail**. The 20 that pass are the helper unit tests
+and the "keep legitimate message" tests, which is correct. The F9 files were then
+restored, and the diff was re-checked.
+
+## P11.5 Test results (2026-11-13, local, all actually run)
+
+- Focused F9 module: **43 passed**.
+- Full security suite (`pytest`, `security/tests`): **620 passed, 45 skipped**
+  (577 before F9 + 43 new; the skips are the opt-in Postgres/Redis suites).
+- Backend suite (`pytest backend -m "not integration"`): **42 passed, 2
+  deselected**.
+  - An unfiltered `pytest backend` run reported `test_itinerary.py::test_generate_itinerary`
+    as failed. That test is marked `integration`, calls the **live Gemini API** with
+    the locally configured key, and received `504 DEADLINE_EXCEEDED`.
+  - It is unrelated to F9: neither the test nor `itinerary_service.py` changed.
+  - It was not re-run, to avoid further external calls.
+- Diff review: only the files in P11.3 changed for F9. CRLF/LF endings match the
+  originals. Nothing is committed.
+
+## P11.6 Flaky F3 test fixed (test-only)
+
+`TestWindowExpiry::test_account_bucket_expires_after_window` (P9) used a 1 s
+epoch-aligned window. The three attempts (~0.3 s each of scrypt hashing) crossed a
+window boundary in roughly half of all runs, so the third attempt got 401 instead
+of 429. It failed 5 of 8 runs **with or without** the F9 changes.
+
+The test now uses a 3 s window and starts at a fresh window boundary. It passed 6
+of 6 runs plus the full suite. No limiter code changed.
+
+## P11.7 Remaining intentional disclosures (justified)
+
+- **Hand-written validation messages** (trip payload, cost "End date must be after
+  start date.", expense validation, travel input checks, auth validation). These
+  are written for users and contain no internal state.
+- **Travel location lookup messages** ("Could not find that location. Check the
+  spelling…"). This is user guidance, and the input itself is not echoed.
+- **Social login conflict/verification wording** (unchanged, TRP-13). The text is
+  generic and names only the provider the client chose.
+- **`rates.py` / `weather.py` "temporarily unavailable" messages.** These are
+  generic and contain no detail.
+
+## P11.8 Remaining limitations
+
+- **Server-side logs still contain some exception detail by design.** This
+  includes provider messages, Open-Meteo response bodies (≤500 chars, no secrets:
+  the API is keyless), and Gemini error payloads. SQL bind values and request
+  bodies/headers are not logged by the new handler.
+  - Ensure the Render log drain access is restricted.
+  - Log retention is F7, which was not started.
+- **`/verify-email` and `/verify-email/resend` still have no local try/except.**
+  DB failures there now go through the global handler: generic JSON 500 plus
+  rollback. That is safe, but the message is less specific.
+- **`hide_parameters` is applied in `create_app()`.** Any other engine (e.g.
+  Alembic's own `env.py` connection) is unaffected. Migrations run from the CLI, not
+  from request paths.
+- **No live/production verification.** That requires a deploy, which is reserved
+  for the owner.
+
+---
+
+# P12. F7: log retention and secure purge (2026-11-13, uncommitted)
+
+Closes finding **F7** (P5.3): `activity_logs` (IP addresses, paths, user ids; 2414
+rows in production at P5) and `admin_audit_log` had no retention. There is now a
+dry-run-by-default `flask logs purge` command.
+
+Nothing is committed, pushed, or deployed. There was no Render/Neon/Vercel or
+production access, and **the purge was never executed against a real database**.
+The only databases used were the in-memory SQLite test DB and the disposable local
+container `tripora_security_test`.
+
+## P12.1 Investigation (verified schema)
+
+| | `activity_logs` | `admin_audit_log` |
+|---|---|---|
+| Timestamp | `created_at DateTime NOT NULL`, default `datetime.utcnow` (**naive UTC**), indexed `ix_activity_logs_created_at` | same, `ix_admin_audit_log_created_at` |
+| Outgoing FK | `user_id → users.id` (no ON DELETE action) | `admin_user_id → users.id ON DELETE SET NULL` |
+| Incoming FKs | **none** | **none** |
+| Writers | `app.py` after-request hook, `POST /api/admin/page-view` | `admin_auth.audit()` (commits separately and never raises), admin routes, `flask admin` CLI |
+| Existing deletes | account deletion removes the user's own rows (`routes/auth.py`) | none |
+| RLS (migration `d5e6f7a8b9c0`, FORCE) | `activity_logs_delete_owner`: the runtime role may only delete rows whose `user_id` = JWT subject | no DELETE policy; `roles.sql` **revokes DELETE** from `tripora_runtime` |
+
+Consequences for the design:
+- Deleting log rows cannot violate any FK.
+- The cutoff must be naive UTC.
+- The purge must run as the database **owner** (`DB_MIGRATION_*`, like migrations).
+- Under the runtime role, a DELETE either affects zero rows silently (RLS) or fails
+  (no grant). Both cases must be detected; neither may report success.
+
+## P12.2 Implementation
+
+- **`backend/services/log_retention.py` (new)**, function `purge_expired_logs(...)`.
+  - **Policy:** `activity_logs` keeps **90 days**; `admin_audit_log` keeps **365
+    days**.
+    - Overrides may only *lengthen* retention. Shorter values raise `ValueError`
+      before anything runs.
+    - `batch_size` must be between 1 and 10000.
+  - **UTC:** one timezone-aware `datetime.now(timezone.utc)` reference per run,
+    truncated to whole seconds and converted to naive UTC.
+    - `cutoff = reference − retention`.
+    - A naive reference time is rejected.
+    - Expired means `created_at < cutoff` (strict), so a row exactly at the cutoff is
+      kept.
+  - **NULL timestamps:** never match `<`, so they are always kept. They are counted
+    and reported.
+  - **Single transaction:**
+    - counts for both tables, then batched deletes for both, then the purge's own
+      audit record, then **one commit**;
+    - any exception rolls everything back and raises `RetentionError`;
+    - the error message carries table names and counts only, and the log gets only
+      the exception type.
+  - **Memory:** `DELETE … WHERE id IN (SELECT id … WHERE created_at < :cutoff
+    ORDER BY id LIMIT :n)`, repeated until it affects 0 rows. No row is loaded
+    into Python.
+  - **No silent no-op:** after deleting, eligible rows are recounted. If any remain,
+    it raises (`"<table>: N expired row(s) could not be deleted (insufficient
+    privileges or row-level security?)"`) and rolls back.
+  - **Audit is not weakened:**
+    - every executed purge appends `admin_audit_log` action `log_retention_purge`;
+    - that record holds the reference time and, per table, retention days, cutoff,
+      eligible and deleted counts;
+    - it commits **atomically** with the deletions, so a purge can never commit
+      without its audit record;
+    - it is new, so it is never itself eligible.
+    - Dry runs write nothing.
+  - **RLS context:** `db_context.scoped(auth_flow=True, admin_read=True)`, the same
+    as the existing `flask admin` commands. Under the owner this changes nothing
+    (BYPASSRLS).
+- **`backend/services/cli.py`:** new group `logs`, command `purge`, registered in
+  `register_cli`. Options:
+  - `--execute` (flag, default off);
+  - `--activity-days` (`IntRange(min=90)`);
+  - `--audit-days` (`IntRange(min=365)`);
+  - `--batch-size` (1–10000).
+
+  The command prints:
+  - the mode (`DRY RUN (nothing will be deleted)` / `EXECUTE`);
+  - the reference time;
+  - per table: retention days, cutoff (ISO `…Z`), eligible count, rows kept
+    without a timestamp, and the deleted count when executing;
+  - a final summary.
+
+  Failures exit with code 1 and print the rollback message. **No record content is
+  ever printed or logged.**
+- **No scheduling.** Nothing runs automatically: no cron, no background thread, no
+  request hook.
+
+Operator usage (owner credentials, the same pattern as migrations):
+
+```
+DB_USER=$DB_MIGRATION_USER DB_PASSWORD=$DB_MIGRATION_PASSWORD flask --app wsgi logs purge            # review
+DB_USER=$DB_MIGRATION_USER DB_PASSWORD=$DB_MIGRATION_PASSWORD flask --app wsgi logs purge --execute  # delete
+```
+
+## P12.3 Files
+
+| File | Change |
+|---|---|
+| `backend/services/log_retention.py` | New: policy, cutoff, batched transactional purge, audit record. |
+| `backend/services/cli.py` | New `logs purge` command; `register_cli` adds the `logs` group. Existing `admin` commands unchanged. |
+| `security/tests/test_log_retention.py` | New: 37 tests (in-memory SQLite). |
+| `security/tests/test_log_retention_postgres.py` | New: 6 opt-in integration tests (real PostgreSQL, runtime and owner roles). New env var `TRIPORA_PG_OWNER_URL` (owner of the disposable DB). |
+
+No model, migration, route, RLS policy or grant changed.
+
+## P12.4 Tests
+
+`test_log_retention.py` (37):
+- **Cutoffs (6):**
+  - policy values 90/365;
+  - the cutoff is naive UTC;
+  - +05:00 and −08:00 references give the same cutoff as UTC;
+  - naive references are rejected;
+  - the default reference is the current UTC time with whole seconds;
+  - **boundary:** a row exactly at the cutoff is kept and a row 1 µs older is
+    deleted, in both tables.
+- **Rules (8):**
+  - a dry run counts 3/2 eligible rows, deletes nothing and writes no audit record;
+  - the API defaults to a dry run;
+  - execute deletes exactly the 91/120/400-day activity rows and the 366/500-day
+    audit rows, and keeps 0/1/89-day and 0/100/364-day rows;
+  - 100–300-day audit rows are kept (a separate, longer policy);
+  - the purge audit record has the counts, cutoffs and `Z` suffixes, contains
+    **no** IP or path, and is itself recent;
+  - repeated runs delete 0 the second time;
+  - empty tables work;
+  - 2510 rows with batch size 1000 issue exactly 5 DELETE statements (3 + 1 empty
+    for activity, 1 for audit), deleting 2500 and keeping 10.
+- **NULL (1):** on a drifted table that allows NULL `created_at`, 2 NULL rows are
+  reported and kept, and only the expired dated row is deleted.
+- **Transactions (10):**
+  - a failure in the audit-table step rolls back the activity deletions already
+    made, and the error does not echo the injected IP;
+  - a simulated RLS zero-row delete is detected (`activity_logs: 3 expired row(s)
+    could not be deleted`) and rolled back;
+  - a failure while recording the purge audit rolls back all deletions;
+  - 6 invalid argument sets (shorter retention, batch 0/10001) touch nothing;
+  - longer retention is honoured.
+- **CLI (12):**
+  - with no flag: a dry run that prints the mode, both retention periods, `Z`
+    cutoffs and counts, deletes nothing, and prints no IP or path;
+  - `--execute` deletes and reports the commit;
+  - 8 unsafe or unknown argument sets (`--activity-days 30`, `--audit-days 90`,
+    `--batch-size 0`, `--execute --activity-days 1`, `--force`, `-y`,
+    `--execute yes`, `--dry-run=false`) are rejected with a non-zero exit and
+    nothing deleted;
+  - a failure exits 1 with the rollback message and no record content;
+  - `--help` documents that nothing is deleted without `--execute`.
+
+`test_log_retention_postgres.py` (6, real PostgreSQL 16, local disposable
+container):
+- **Runtime role:**
+  - a dry run sees the counts;
+  - `--execute` on `activity_logs` is blocked by RLS (zero rows) → detected →
+    rolled back;
+  - the `admin_audit_log` DELETE fails with SQLSTATE **42501
+    insufficient_privilege** → rolled back;
+  - the CLI exits 1 with no content in its output;
+  - in all four cases the seeded rows are unchanged and no purge record is written.
+- **Owner:**
+  - a failure mid-run rolls back the real deletions;
+  - the CLI `--execute --batch-size 1` deletes only the expired seeded rows,
+    keeps recent ones, writes one purge audit record, and a second run deletes 0.
+
+## P12.5 Test results (2026-11-13, local, all actually run against the final code)
+
+- Focused F7 SQLite module: **37 passed**.
+- F7 PostgreSQL module plus the existing runtime-role suites
+  (`test_log_retention_postgres.py`, `test_rls_runtime_role.py`,
+  `test_postgres_runtime_role.py`) on the disposable container: **44 passed**
+  (6 new + 38 existing).
+- Full security suite (`pytest`): **657 passed, 51 skipped**.
+  - That is 620 before F7 + 37 new.
+  - The skips are the 45 opt-in Postgres/Redis tests plus the 6 new opt-in F7
+    Postgres tests.
+- Backend suite (`pytest backend -m "not integration"`): **42 passed, 2
+  deselected** (no live external API calls).
+- Diff review: F7 touches only the files in P12.3. CLI output was checked for
+  record content (none).
+
+## P12.6 Remaining limitations
+
+- **Not executed anywhere real.** The production row counts and the first real
+  dry run are owner actions. The first production use should be a dry run with
+  owner credentials; review its counts, then run `--execute`.
+- **Owner credentials required.** Under `tripora_runtime` the purge always fails,
+  safely and atomically. That is intended; it does not weaken RLS or the
+  append-only audit grant.
+- **No scheduling.** Retention is enforced only when an operator runs the command
+  (suggested: monthly). Any automation (e.g. a Render cron job using the owner
+  credentials) is a separate owner decision.
+- **One transaction per run.** This is fine at current volumes (thousands of rows).
+  With millions of expired rows, the first run holds row locks for its duration.
+  Inserts of new rows are unaffected because they never match the cutoff.
+- **Database only.** Backups and Neon point-in-time history retain purged rows
+  until their own retention expires. Render/stdout log retention is configured in
+  the platform, not here.
+- **"Approximately" is implemented as exact.** It is exactly 90 × 24 h and
+  365 × 24 h; leap years are not special-cased.
+
+---
+
+# P13. Final adversarial review of F3/F6/F9/F7, and remediation of M1 + L1 (2026-11-13, uncommitted)
+
+## P13.1 Final review findings (as reported; read-only audit)
+
+The review was read-only:
+- the working-tree hash was identical before and after;
+- probes lived outside the repo, on in-memory SQLite plus the disposable local PG16
+  container;
+- there was no production or cloud access.
+
+Verdict: **requires minor fixes**. Nothing Critical or High was found.
+
+| ID | Sev. | Finding | Status after P13 |
+|---|---|---|---|
+| M1 | Medium | `POST /api/admin/auth/login` verifies the same account password but had only per-IP limiting. Review evidence: 60 wrong guesses over 6 IPs all returned 401 with the account counter at 0; the correct password then returned 200 + `pendingToken` and also worked on `/api/auth/login`. | **Fixed** (P13.2) |
+| L1 | Low | Targeted lockout. 20 failures from 2 IPs block the victim's correct password for up to 1 h, and a password reset did not clear it. | **Partly mitigated.** A completed reset now clears it; the lockout itself remains the accepted trade-off. |
+| L2 | Low | The in-memory limiter never evicts keys; F3 adds one attacker-chosen key per e-mail (300 e-mails → 300 entries). Applies only without Redis. | Open (fixed operationally by Redis, F4) |
+| L3 | Low | PostgreSQL `DETAIL` lines (row values) remain in logged exception text despite `hide_parameters`. Server logs only. | Open; P11.2 corrected |
+| L4 | Low | The purge audit record has no operator attribution. | Open |
+| I1 | Info | `LOGIN_RATE_LIMIT_HMAC_KEY` strength is not validated. | Open |
+| I2 | Info | F6 is keyed on `RENDER=true` only and checks length, not entropy. `RATE_LIMIT_ENABLED=false` silently disables F3. | Open |
+| I3 | Info | Report inaccuracies in P9 (coverage) and P11.2 (log contents). | **Corrected** (in place, marked) |
+| I4 | Info | `purge_expired_logs()` rolls back a programmatic caller's pending work. | Open (the CLI is unaffected) |
+| I5 | Info (hypotheses) | Concurrent purges, lock duration and very large tables. | Not reproduced |
+
+## P13.2 M1 remediation: one shared per-account counter
+
+- **`backend/routes/auth.py`:** the F3 gate is extracted **unchanged** into two
+  helpers, and `login()` now calls them (behaviour identical; the F3 suite is green).
+  - `enforce_account_login_throttle(normalized_email)`: same HMAC key, same
+    `auth.login_account` bucket, same atomic `limiter.check`, same generic 429 and
+    fail-closed 503.
+  - `clear_account_login_throttle(normalized_email)`.
+- **`backend/routes/admin_auth.py` (`admin_login`):**
+  - The gate is called **after the existing input check and before the user lookup
+    and password hash**, for every address. Admin, non-admin and unknown e-mails
+    therefore get identical responses at every count, so throttling doesn't reveal
+    whether an account exists or is an admin.
+  - A throttled attempt is audited as `login_throttled` (`admin_user_id` NULL,
+    because there is no lookup before the gate), so the audit trail is not weakened.
+  - The counter is cleared only after a **verified admin password**, the same rule
+    as the user login. TOTP or a recovery code is still required afterwards.
+  - Unchanged: MFA enrollment, pending tokens, `enrollment_closed`, sessions and
+    authorization. The MFA-unavailable 503 still returns before anything is counted.
+  - A correct password for a **non-admin** account at the admin endpoint is a failed
+    admin attempt: it is counted and not reset.
+
+## P13.3 L1 remediation: completed reset clears the lockout
+
+In `reset_password`, the account's normalized e-mail is captured with the matched
+user, and `clear_account_login_throttle(email)` runs **only after the conditional
+UPDATE affected exactly one row and `commit()` succeeded**.
+
+These paths never clear the counter:
+- requesting a code;
+- a wrong code;
+- an invalid, expired or reused token;
+- a password-policy rejection;
+- "same as old password";
+- a rowcount mismatch;
+- an exception.
+
+Only that account's counter is cleared.
+
+## P13.4 Tests (`security/tests/test_shared_account_throttle.py`, 17)
+
+- **Shared counter (5):**
+  - user-login failures lock the admin login (correct password → 429, no admin
+    session row);
+  - admin-login failures lock the user login (correct password → 429, no token);
+  - alternating endpoints across 12 distinct IPs give 5×401 then 7×429;
+  - the review reproduction (30 guesses over 30 IPs → 5×401 + 25×429; the correct
+    password is then 429 on **both** endpoints);
+  - a 30-thread simultaneous mixed burst admits exactly 1.
+- **Admin behaviour (7):**
+  - success resets the counter, and the full enroll → activate → `/me` flow still
+    works;
+  - a pending token alone gets 401 on `/me`;
+  - identical 401/429 bodies for admin, non-admin and unknown addresses;
+  - a non-admin correct password is counted;
+  - throttled attempts are audited;
+  - an account-gate fault returns 503 with no session;
+  - MFA unavailable returns 503 before counting.
+- **L1 (5):**
+  - a completed reset clears the counter and the new password logs in;
+  - a reset clears an admin lockout (the lockout is asserted first);
+  - code request, wrong code, invalid token, policy and same-password failures clear
+    nothing (the `reset_key` spy is never called for the account bucket, and the
+    account stays 429);
+  - a reused token doesn't clear a later lockout;
+  - only the reset account is cleared.
+
+**Negative control:** with the pre-fix `auth.py` and `admin_auth.py` temporarily
+restored, **13 of 17 fail**. The 4 that pass are the preservation tests: pending
+token, MFA-unavailable, failed resets don't clear, reused token. The fixed files were
+restored and checked byte-identical by hash.
+
+## P13.5 Test results (2026-11-13, local, final code)
+
+- Focused: `test_shared_account_throttle.py` together with the F3, password-reset,
+  phase-2 admin and backend-only admin suites: **128 passed**.
+- Full security suite: **674 passed, 51 skipped** (657 + 17 new; the skips are the
+  opt-in Postgres/Redis suites).
+- Backend `-m "not integration"`: **42 passed, 2 deselected**.
+- Diff: the only changes this phase are in `backend/routes/auth.py` (two helpers,
+  the `login()` call sites, the reset clear), `backend/routes/admin_auth.py`, the new
+  test file, and this report. F6, F7 and F9 code is untouched.
+
+## P13.6 Remaining limitations
+
+- **The lockout itself remains (L1).** Without a reset, an attacker can still keep an
+  account locked for the window. The reset path is the owner's recovery route, and
+  social login is unaffected. A step-up challenge instead of a hard block would be a
+  separate design change.
+- **A verified admin password resets the shared counter before TOTP.** This mirrors
+  the user login. It only helps someone who already knows the password; TOTP has its
+  own per-session attempt limit plus per-IP limits.
+- **Other password checks** (`DELETE /api/auth/account`, password change in
+  `PATCH /api/auth/me`) require a valid JWT and are not on the shared counter. They
+  are only reachable by someone who already holds the account's session.
+- L2, L3, L4, I1, I2, I4 and I5 remain as listed in P13.1. Production behaviour
+  still depends on Redis (F4) for cross-worker counting.

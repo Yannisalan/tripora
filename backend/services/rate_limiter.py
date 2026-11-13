@@ -176,6 +176,11 @@ class InMemoryRateLimitStorage(RateLimitStorage):
         with self._lock:
             self._data.clear()
 
+    def clear_key(self, bucket, key):
+        """Drop the counter for a single (bucket, key) across all windows."""
+        with self._lock:
+            self._data.pop((bucket, key), None)
+
 
 class RedisRateLimitStorage(RateLimitStorage):
     """Shared fixed-window counters in Redis (atomic per request)."""
@@ -217,6 +222,15 @@ class RedisRateLimitStorage(RateLimitStorage):
         except Exception as error:
             raise StorageError(str(error)) from error
 
+    def clear_key(self, bucket, key):
+        """Drop the counter for a single (bucket, key) across all windows."""
+        pattern = "{}{}:{}:*".format(self._prefix, bucket, key)
+        try:
+            for redis_key in self._client.scan_iter(pattern):
+                self._client.delete(redis_key)
+        except Exception as error:
+            raise StorageError(str(error)) from error
+
 
 class RateLimiter:
     """Applies per-bucket fixed-window limits.
@@ -249,6 +263,26 @@ class RateLimiter:
         self.sensitive_buckets = set(sensitive_buckets)
         self.retry_seconds = retry_seconds
         self._primary_down_until = 0.0
+
+    def _peek_count(self, bucket_name, key, window_start):
+        """Read the current window count WITHOUT incrementing it.
+
+        Mirrors ``_count``'s choice of backend (primary unless its circuit
+        breaker is open, otherwise the in-memory fallback) so a read sees the
+        same counter a write would touch. A read never trips the breaker: a
+        transient read error just falls back to the local store.
+        """
+        primary_is_local = isinstance(self.storage, InMemoryRateLimitStorage)
+
+        if primary_is_local or time.time() >= self._primary_down_until:
+            try:
+                return self.storage.get(bucket_name, key, window_start)
+            except StorageError:
+                logger.error(
+                    "Rate-limit store unavailable on read; using fallback."
+                )
+
+        return self.fallback_storage.get(bucket_name, key, window_start)
 
     def _count(self, bucket_name, key, window_start, window):
         """Atomically record one request and return the window count."""
@@ -345,6 +379,64 @@ class RateLimiter:
             "remaining": remaining,
             "reset_at": reset_at,
         }
+
+    def peek(self, bucket_name, key):
+        """Report a bucket's current state for ``key`` WITHOUT counting.
+
+        Returns a dict with ``count``, ``limit``, ``window``, ``reset_at`` and
+        ``exceeded`` (True once ``count`` has reached ``limit``). An unlimited
+        or unknown bucket is never exceeded. Used as a read-only gate that can
+        reject an attempt before any side effect (e.g. before verifying a
+        password), so the gate itself never consumes budget.
+        """
+        settings = self._settings(bucket_name)
+        if settings is None or settings.get("limit") is None:
+            return {
+                "count": 0,
+                "limit": None,
+                "window": None,
+                "reset_at": None,
+                "exceeded": False,
+            }
+
+        limit = settings["limit"]
+        window = settings["window"]
+
+        now = int(time.time())
+        window_start = (now // window) * window
+
+        count = self._peek_count(bucket_name, key, window_start)
+
+        return {
+            "count": count,
+            "limit": limit,
+            "window": window,
+            "reset_at": window_start + window,
+            "exceeded": count >= limit,
+        }
+
+    def reset_key(self, bucket_name, key):
+        """Drop a single key's counter in both the primary and fallback stores.
+
+        Used to clear an account's failed-attempt budget after a *successful*
+        login, so legitimate authentication is never penalised by earlier
+        failures. Best-effort: a storage error here is logged and swallowed
+        (the login has already succeeded; a lingering counter only means the
+        next failed attempt counts from a slightly higher base).
+        """
+        for store in (self.storage, self.fallback_storage):
+            clear_key = getattr(store, "clear_key", None)
+            if clear_key is None:
+                continue
+            try:
+                clear_key(bucket_name, key)
+            except StorageError:
+                logger.error("Could not reset rate-limit key for %s", bucket_name)
+            except Exception:  # noqa: BLE001 - never let cleanup break a login
+                logger.exception(
+                    "Unexpected error resetting rate-limit key for %s",
+                    bucket_name,
+                )
 
     def reset(self):
         """Drop all stored counters (used to isolate test budgets)."""

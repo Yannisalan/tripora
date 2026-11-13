@@ -16,6 +16,7 @@ from models.expense import (
     Expense,
 )
 from models.trip import Trip
+from services.client_errors import INVALID_SESSION_MESSAGE
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def _get_authenticated_user_id():
     try:
         return int(user_id)
     except (TypeError, ValueError):
-        raise ValueError("Invalid authenticated user.")
+        raise ValueError(INVALID_SESSION_MESSAGE)
 
 
 def _get_owned_trip_or_404(trip_id, user_id):
@@ -139,10 +140,10 @@ def get_trip_expenses(trip_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -201,10 +202,10 @@ def create_expense(trip_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     data = request.get_json(silent=True)
@@ -271,10 +272,10 @@ def get_expense(expense_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -314,10 +315,10 @@ def update_expense(expense_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -379,10 +380,10 @@ def delete_expense(expense_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:

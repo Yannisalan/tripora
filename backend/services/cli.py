@@ -8,6 +8,7 @@ control:
     flask --app wsgi admin revoke user@example.com
     flask --app wsgi admin revoke-sessions user@example.com
     flask --app wsgi admin list
+    flask --app wsgi logs purge [--execute]   (log retention, see below)
 
 These commands never print or log secrets. Granting admin opens a 24-hour
 window in which that user can enroll TOTP at /admin/login; after enrollment
@@ -21,7 +22,7 @@ from flask.cli import AppGroup
 from config.database import db
 from models.admin_security import AdminMfa
 from models.user import ROLE_ADMIN, ROLE_USER, User
-from services import admin_auth, db_context
+from services import admin_auth, db_context, log_retention
 
 admin_cli = AppGroup("admin", help="Manage Tripora administrators.")
 
@@ -115,6 +116,89 @@ def list_admins():
             click.echo("{}\t{}\t{}".format(user.id, user.email, state))
 
 
+# ============================================================
+# LOG RETENTION (F7)
+# ============================================================
+#
+#     flask --app wsgi logs purge             # dry run: report only
+#     flask --app wsgi logs purge --execute   # delete expired rows
+#
+# Run with the database OWNER credentials (DB_MIGRATION_USER/PASSWORD), like
+# migrations: the runtime role cannot delete audit rows and RLS limits its
+# activity-log deletes, so under it the purge fails and rolls back.
+# Never scheduled automatically.
+
+logs_cli = AppGroup("logs", help="Log retention for activity and audit logs.")
+
+
+def _fmt_utc(moment):
+    # The service already uses whole-second reference times.
+    return moment.isoformat() + "Z"
+
+
+@logs_cli.command("purge")
+@click.option(
+    "--execute", is_flag=True, default=False,
+    help="Actually delete expired rows. Without it nothing is deleted.",
+)
+@click.option(
+    "--activity-days", type=click.IntRange(min=log_retention.ACTIVITY_LOG_RETENTION_DAYS),
+    default=log_retention.ACTIVITY_LOG_RETENTION_DAYS, show_default=True,
+    help="activity_logs retention (may only be lengthened).",
+)
+@click.option(
+    "--audit-days", type=click.IntRange(min=log_retention.ADMIN_AUDIT_RETENTION_DAYS),
+    default=log_retention.ADMIN_AUDIT_RETENTION_DAYS, show_default=True,
+    help="admin_audit_log retention (may only be lengthened).",
+)
+@click.option(
+    "--batch-size", type=click.IntRange(1, log_retention.MAX_BATCH_SIZE),
+    default=log_retention.DEFAULT_BATCH_SIZE, show_default=True,
+    help="Rows deleted per statement (all inside one transaction).",
+)
+def purge_logs(execute, activity_days, audit_days, batch_size):
+    """Report, and with --execute delete, log rows past their retention."""
+    mode = "EXECUTE" if execute else "DRY RUN (nothing will be deleted)"
+    click.echo("Log retention purge: {}".format(mode))
+
+    try:
+        report = log_retention.purge_expired_logs(
+            execute=execute,
+            activity_days=activity_days,
+            audit_days=audit_days,
+            batch_size=batch_size,
+        )
+    except log_retention.RetentionError as error:
+        raise click.ClickException(str(error))
+
+    click.echo("Reference time (UTC): {}".format(_fmt_utc(report.reference_time)))
+    for entry in report.tables:
+        click.echo(
+            "{}: retention {} days, cutoff {} "
+            "(rows with created_at strictly before the cutoff are expired)".format(
+                entry.table, entry.retention_days, _fmt_utc(entry.cutoff))
+        )
+        click.echo("  eligible: {}".format(entry.eligible))
+        if entry.null_timestamps:
+            click.echo(
+                "  rows without created_at (kept): {}".format(entry.null_timestamps))
+        if execute:
+            click.echo("  deleted: {}".format(entry.deleted))
+
+    if execute:
+        click.echo(
+            "Committed: {} row(s) deleted; purge recorded in admin_audit_log "
+            "as '{}'.".format(report.total_deleted, log_retention.PURGE_AUDIT_ACTION)
+        )
+    else:
+        click.echo(
+            "Dry run complete: {} row(s) would be deleted. Re-run with --execute "
+            "to delete them.".format(report.total_eligible)
+        )
+
+
 def register_cli(app):
     if "admin" not in app.cli.commands:
         app.cli.add_command(admin_cli)
+    if "logs" not in app.cli.commands:
+        app.cli.add_command(logs_cli)

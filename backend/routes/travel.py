@@ -21,8 +21,10 @@ from services.duffel_service import (
     search_cars,
     search_stays,
 )
+from services.client_errors import client_message
 from services.travelpayouts_service import (
     TravelpayoutsError,
+    TravelpayoutsLookupError,
     resolve_city_to_iata,
     search_flight_prices,
 )
@@ -40,12 +42,25 @@ def _body():
     return request.get_json(silent=True) or {}
 
 
-def _db_error_response(error):
-    """Map a hard provider failure to a clean client-safe 502 response."""
-    logger.warning("Travel search failed: %s", error)
+TRAVEL_PROVIDER_UNAVAILABLE_MESSAGE = (
+    "Travel search is temporarily unavailable. Please try again later."
+)
+
+
+def _provider_error_response(error):
+    """Map a hard provider failure to a clean client-safe 502 response.
+
+    Provider exception text names the vendor and its configuration state
+    ("credentials are missing", "rejected the API credentials"), so it is
+    logged server-side only. A location the user mistyped is the exception:
+    its message was written for the user (``TravelpayoutsLookupError``).
+    """
+    logger.warning(
+        "Travel search failed (%s): %s", type(error).__name__, error
+    )
     return jsonify({
         "success": False,
-        "message": str(error),
+        "message": client_message(error, TRAVEL_PROVIDER_UNAVAILABLE_MESSAGE),
         "error": "travel_provider_error",
         "code": "PROVIDER_ERROR",
     }), 502
@@ -131,11 +146,13 @@ def search_flights_route():
     try:
         origin = resolve_city_to_iata(origin_input)
         destination = resolve_city_to_iata(destination_input)
-    except TravelpayoutsError as error:
+    except TravelpayoutsLookupError as error:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": client_message(error),
         }), 400
+    except TravelpayoutsError as error:
+        return _provider_error_response(error)
 
     if origin == destination:
         return jsonify({
@@ -187,7 +204,7 @@ def search_flights_route():
         )
         results = _flight_price_results_to_flights(results)
     except TravelpayoutsError as error:
-        return _db_error_response(error)
+        return _provider_error_response(error)
 
     return jsonify({
         "success": True,
@@ -249,7 +266,7 @@ def flight_prices_route():
             currency=currency,
         )
     except TravelpayoutsError as error:
-        return _db_error_response(error)
+        return _provider_error_response(error)
 
     return jsonify({
         "success": True,
@@ -326,7 +343,7 @@ def search_stays_route():
             rooms=rooms,
         )
     except DuffelError as error:
-        return _db_error_response(error)
+        return _provider_error_response(error)
 
     return jsonify({
         "success": True,
@@ -399,7 +416,7 @@ def search_cars_route():
             driver_age=driver_age,
         )
     except DuffelError as error:
-        return _db_error_response(error)
+        return _provider_error_response(error)
 
     return jsonify({
         "success": True,

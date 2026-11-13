@@ -1,6 +1,8 @@
 import hashlib
+import hmac
 import logging
 import secrets
+import time
 import uuid
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
@@ -47,6 +49,12 @@ from models.admin_security import (
 )
 from models.expense import Expense
 from services import bot_protection, turnstile
+from services.client_errors import INVALID_SESSION_MESSAGE
+from services.rate_limiter import (
+    limiter,
+    RateLimitExceeded,
+    RateLimitUnavailable,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -346,14 +354,10 @@ def _current_user_id():
     try:
         user_id = int(identity)
     except (TypeError, ValueError) as error:
-        raise InvalidIdentityError(
-            "Invalid authenticated user."
-        ) from error
+        raise InvalidIdentityError(INVALID_SESSION_MESSAGE) from error
 
     if user_id <= 0:
-        raise InvalidIdentityError(
-            "Invalid authenticated user."
-        )
+        raise InvalidIdentityError(INVALID_SESSION_MESSAGE)
 
     return user_id
 
@@ -769,6 +773,129 @@ def register():
 # POST /api/auth/login
 # ============================================================
 
+# ============================================================
+# PER-ACCOUNT LOGIN THROTTLE (F3)
+# ============================================================
+#
+# A second rate-limit bucket, independent of the per-IP auth limit enforced in
+# app.before_request. It bounds login attempts for one account across every
+# source IP, so distributed credential stuffing cannot be masked by rotating
+# IPs. Properties:
+#   * Atomic gate. Enforced with limiter.check() (atomic increment-and-compare,
+#     the same primitive as the per-IP limiter), so a simultaneous distributed
+#     burst cannot slip past: at most `limit` attempts per window are admitted,
+#     the rest are refused BEFORE any password hash. A read-then-write gate
+#     would let a cold-start burst bypass the limit entirely; this does not.
+#   * Checked before verification, so a tripped account refuses even a correct
+#     password (stops a stuffing run from winning on the attempt that guesses
+#     right).
+#   * Reset on success. A successful login clears the counter, so legitimate
+#     use is never penalised -- the effective metric is consecutive failed
+#     attempts, bounded also by the fixed window.
+#   * Keyed on the normalized e-mail's keyed HMAC, never the raw address, and
+#     applied whether or not an account exists, so a blocked response is
+#     identical for registered and unknown addresses and never reveals which.
+#   * Fails CLOSED on an unexpected limiter error (rejects rather than silently
+#     admitting an unthrottled attempt); the designed Redis-outage fallback
+#     (per-process counting) still keeps login available.
+# See config.settings (RATE_LIMIT_LOGIN_ACCOUNT_*) and services.rate_limiter.
+
+ACCOUNT_LOGIN_BUCKET = "auth.login_account"
+
+
+def _account_login_key(normalized_email):
+    """Return the HMAC-keyed rate-limit identifier for an e-mail.
+
+    Only the keyed HMAC-SHA256 digest of the normalized e-mail is ever used as
+    a rate-limit key (or logged); the raw address is not. The digest is
+    domain-separated with a fixed label so it cannot collide with any other
+    HMAC use of the same server secret.
+    """
+    secret = Config.login_rate_limit_hmac_key()
+    message = ("login-throttle:v1:" + normalized_email).encode("utf-8")
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()
+
+
+def _account_login_throttled_response(exc):
+    """Build the generic 429 returned when an account's login budget is spent.
+
+    Deliberately identical in shape and wording to the global per-IP 429
+    (app.enforce_rate_limits), so a throttled account is not distinguishable
+    from ordinary IP throttling and account existence is never revealed.
+    """
+    resp = jsonify({
+        "success": False,
+        "message": "Rate limit exceeded. Please try again later.",
+    })
+    resp.status_code = 429
+
+    reset_at = getattr(exc, "reset_at", None)
+    limit = getattr(exc, "limit", None)
+    if reset_at is not None:
+        resp.headers["Retry-After"] = str(max(0, int(reset_at) - int(time.time())))
+        resp.headers["X-RateLimit-Reset"] = str(int(reset_at))
+    if limit is not None:
+        resp.headers["X-RateLimit-Limit"] = str(limit)
+        resp.headers["X-RateLimit-Remaining"] = "0"
+    return resp
+
+
+def _login_throttle_unavailable_response():
+    """Fail-closed 503 for a limiter error that is neither a hit nor an outage.
+
+    Matches the global limiter's ``closed``-mode response. Returned when the
+    per-account gate raises unexpectedly, so a limiter fault can never become a
+    silent fail-open path that disables brute-force protection.
+    """
+    resp = jsonify({
+        "success": False,
+        "message": "Service temporarily unavailable. Please try again.",
+    })
+    resp.status_code = 503
+    resp.headers["Retry-After"] = "30"
+    return resp
+
+
+def enforce_account_login_throttle(normalized_email):
+    """Count one password attempt against the account; refuse when over.
+
+    Shared by every endpoint that verifies an account password
+    (``/api/auth/login`` and ``/api/admin/auth/login``), so both draw from the
+    SAME per-account counter: failures on one count towards the other, and
+    neither can be used to keep guessing once the account's budget is spent.
+    Call it before any user lookup or password hash, for every address
+    (registered or not), so the response never reveals account existence.
+
+    Returns ``None`` when the attempt may proceed, otherwise the Flask
+    response to return (generic 429, or a fail-closed 503).
+    """
+    account_key = _account_login_key(normalized_email)
+    try:
+        limiter.check(ACCOUNT_LOGIN_BUCKET, account_key)
+    except RateLimitExceeded as exc:
+        return _account_login_throttled_response(exc)
+    except RateLimitUnavailable:
+        logger.warning("Per-account login throttle unavailable (closed mode)")
+        return _login_throttle_unavailable_response()
+    except Exception:  # noqa: BLE001 - fail closed on an unexpected limiter error
+        logger.exception(
+            "Per-account login throttle failed; rejecting attempt (fail-closed)"
+        )
+        return _login_throttle_unavailable_response()
+    return None
+
+
+def clear_account_login_throttle(normalized_email):
+    """Clear the account's counter after the user proved control of it.
+
+    Called only after a verified password (login, admin password step) or a
+    completed, committed password reset. Best-effort: never raises.
+    """
+    limiter.reset_key(
+        ACCOUNT_LOGIN_BUCKET, _account_login_key(normalized_email)
+    )
+
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
 
@@ -803,6 +930,18 @@ def login():
     email = str(email).strip().lower()
     password = str(password)
 
+    # ----------------------------------------------------
+    # PER-ACCOUNT THROTTLE GATE (atomic; before verification)
+    # ----------------------------------------------------
+    # One atomic increment-and-compare per attempt, keyed on the e-mail's HMAC.
+    # Admits at most `limit` attempts per window regardless of how many source
+    # IPs fire simultaneously, and refuses them before any password hash. A
+    # successful login resets the counter (below), so legitimate use is never
+    # penalised. An unexpected limiter error fails CLOSED.
+    throttled = enforce_account_login_throttle(email)
+    if throttled is not None:
+        return throttled
+
     try:
 
         user = User.query.filter_by(
@@ -829,10 +968,16 @@ def login():
         )
 
         if stored_hash is None or not password_ok:
+            # The attempt was already counted atomically by the gate above, so
+            # nothing to do here but return the generic error.
             return jsonify({
                 "success": False,
                 "message": INVALID_LOGIN_MESSAGE,
             }), 401
+
+        # Authentication succeeded: clear the account's failed-attempt budget
+        # so a legitimate login is never penalised by earlier failures.
+        clear_account_login_throttle(email)
 
         # ----------------------------------------------------
         # JWT
@@ -1716,6 +1861,7 @@ def reset_password():
         # invalidated by a concurrent request cannot still change the password.
         user_id = user.id
         observed_password_hash = user.password_hash
+        account_email = str(user.email or "").strip().lower()
         db.session.rollback()
 
         if check_password_hash(observed_password_hash, password):
@@ -1773,6 +1919,12 @@ def reset_password():
 
         db.session.commit()
 
+        # L1: the reset is committed, so the user has proven control of the
+        # account's mailbox. Lift a lockout an attacker may have imposed with
+        # failed logins. Only this account's counter; only after success.
+        if account_email:
+            clear_account_login_throttle(account_email)
+
         logger.info("Password reset completed for user: %s", user_id)
 
         return jsonify({
@@ -1819,11 +1971,11 @@ def get_current_user():
             "user": _user_response(user),
         }), 200
 
-    except InvalidIdentityError as error:
+    except InvalidIdentityError:
 
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     except Exception:
@@ -2088,13 +2240,13 @@ def update_current_user():
             "user": _user_response(user),
         }), 200
 
-    except InvalidIdentityError as error:
+    except InvalidIdentityError:
 
         db.session.rollback()
 
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     except Exception:
@@ -2238,13 +2390,13 @@ def delete_current_user():
             "message": "Account deleted successfully.",
         }), 200
 
-    except InvalidIdentityError as error:
+    except InvalidIdentityError:
 
         db.session.rollback()
 
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     except Exception:
@@ -2329,8 +2481,8 @@ def verify_email():
 
     try:
         user_id = _current_user_id()
-    except InvalidIdentityError as error:
-        return jsonify({"success": False, "message": str(error)}), 401
+    except InvalidIdentityError:
+        return jsonify({"success": False, "message": INVALID_SESSION_MESSAGE}), 401
 
     data = request.get_json(silent=True) or {}
     code = str(data.get("code") or "").strip()
@@ -2445,8 +2597,8 @@ def resend_verification_email():
 
     try:
         user_id = _current_user_id()
-    except InvalidIdentityError as error:
-        return jsonify({"success": False, "message": str(error)}), 401
+    except InvalidIdentityError:
+        return jsonify({"success": False, "message": INVALID_SESSION_MESSAGE}), 401
 
     user = db.session.get(User, user_id)
 

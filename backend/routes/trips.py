@@ -16,6 +16,11 @@ from models.user import User
 from routes.auth import VALID_CURRENCIES, VALID_LANGUAGES
 from routes.rates import convert_cost_from_usd
 from routes.weather import get_forecast_for_generation
+from services.client_errors import (
+    INVALID_SESSION_MESSAGE,
+    ClientValidationError,
+    client_message,
+)
 from services.cost_service import calculate_trip_cost
 from services.itinerary_service import (
     AIBusyError,
@@ -27,6 +32,10 @@ from services.itinerary_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Fallback when trip input is rejected by something other than our own
+# validators (e.g. a standard-library parser whose message echoes input).
+INVALID_TRIP_DETAILS_MESSAGE = "Trip details are invalid."
 
 
 trips_bp = Blueprint(
@@ -42,12 +51,12 @@ def _get_authenticated_user_id():
     try:
         return int(user_id)
     except (TypeError, ValueError) as error:
-        raise ValueError("Invalid authenticated user.") from error
+        raise ValueError(INVALID_SESSION_MESSAGE) from error
 
 
 def _parse_trip_payload(data):
     if not data:
-        raise ValueError("No trip data provided.")
+        raise ClientValidationError("No trip data provided.")
 
     destination = data.get("destination")
     start_date = data.get("startDate")
@@ -59,18 +68,18 @@ def _parse_trip_payload(data):
     budget_amount = data.get("budgetAmount")
 
     if not destination or not str(destination).strip():
-        raise ValueError("Destination is required.")
+        raise ClientValidationError("Destination is required.")
 
     destination_str = str(destination).strip()
     if len(destination_str) > 200:
-        raise ValueError("Destination must be 200 characters or less.")
+        raise ClientValidationError("Destination must be 200 characters or less.")
 
     if budget is not None and not isinstance(budget, str):
-        raise ValueError("Budget must be a text value.")
+        raise ClientValidationError("Budget must be a text value.")
     if budget is not None:
         budget_str = str(budget).strip()
         if len(budget_str) > 100:
-            raise ValueError("Budget must be 100 characters or less.")
+            raise ClientValidationError("Budget must be 100 characters or less.")
         budget = budget_str
 
     if travel_style is not None:
@@ -82,32 +91,32 @@ def _parse_trip_payload(data):
             travel_style = None
         else:
             if len(travel_style_str) > 100:
-                raise ValueError("Travel style must be 100 characters or less.")
+                raise ClientValidationError("Travel style must be 100 characters or less.")
             travel_style = travel_style_str
     else:
         travel_style = None
 
     if not start_date or not end_date:
-        raise ValueError("Start date and end date are required.")
+        raise ClientValidationError("Start date and end date are required.")
 
     # Dates must be ISO strings. Rejecting non-string values (e.g. integers
     # like 20260901) prevents them from slipping past fromisoformat (which
     # would parse "20260901" as 2026-09-01) and later crashing the cost
     # service with `int.split`.
     if not isinstance(start_date, str) or not isinstance(end_date, str):
-        raise ValueError("Invalid date format.")
+        raise ClientValidationError("Invalid date format.")
 
     if not isinstance(travelers, int) or travelers <= 0:
-        raise ValueError("Travelers must be a positive number.")
+        raise ClientValidationError("Travelers must be a positive number.")
 
     if travelers > 50:
-        raise ValueError("Travelers cannot exceed 50.")
+        raise ClientValidationError("Travelers cannot exceed 50.")
 
     if not isinstance(interests, list):
-        raise ValueError("Interests must be a list.")
+        raise ClientValidationError("Interests must be a list.")
 
     if len(interests) > 20:
-        raise ValueError("Too many interests.")
+        raise ClientValidationError("Too many interests.")
 
     for interest in interests:
         if (
@@ -115,7 +124,7 @@ def _parse_trip_payload(data):
             or not interest.strip()
             or len(interest) > 60
         ):
-            raise ValueError("Invalid interest value.")
+            raise ClientValidationError("Invalid interest value.")
 
     if budget_amount is not None:
         try:
@@ -124,7 +133,7 @@ def _parse_trip_payload(data):
                 raise InvalidOperation
             budget_amount = budget_amount.quantize(Decimal("0.01"))
         except (InvalidOperation, TypeError):
-            raise ValueError(
+            raise ClientValidationError(
                 "Budget amount must be a positive number."
             ) from None
 
@@ -132,14 +141,14 @@ def _parse_trip_payload(data):
         start_date_obj = date.fromisoformat(start_date[:10])
         end_date_obj = date.fromisoformat(end_date[:10])
     except (ValueError, TypeError) as error:
-        raise ValueError("Invalid date format.") from error
+        raise ClientValidationError("Invalid date format.") from error
 
     if end_date_obj < start_date_obj:
-        raise ValueError("End date cannot be before start date.")
+        raise ClientValidationError("End date cannot be before start date.")
 
     trip_duration_days = (end_date_obj - start_date_obj).days + 1
     if trip_duration_days > 365:
-        raise ValueError("Trip duration cannot exceed 365 days.")
+        raise ClientValidationError("Trip duration cannot exceed 365 days.")
 
     return {
         "destination": destination_str,
@@ -299,10 +308,10 @@ def generate_trip():
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     logger.info("Generating trip for user: %s", user_id)
@@ -319,7 +328,7 @@ def generate_trip():
     except ValueError as error:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": client_message(error, INVALID_TRIP_DETAILS_MESSAGE),
         }), 400
 
     # --------------------------------------------------------
@@ -367,11 +376,14 @@ def generate_trip():
 
     except ValueError as error:
 
-        logger.warning("Trip cost calculation failed: %s", error)
+        logger.warning(
+            "Trip cost calculation rejected the request (%s)",
+            type(error).__name__,
+        )
 
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": client_message(error, INVALID_TRIP_DETAILS_MESSAGE),
         }), 400
 
     except Exception as error:
@@ -505,10 +517,10 @@ def get_trips():
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -552,10 +564,10 @@ def get_trip(trip_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -599,10 +611,10 @@ def delete_trip(trip_id):
 
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -657,10 +669,10 @@ def delete_trip(trip_id):
 def update_trip(trip_id):
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     data = request.get_json(silent=True)
@@ -670,7 +682,7 @@ def update_trip(trip_id):
     except ValueError as error:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": client_message(error, INVALID_TRIP_DETAILS_MESSAGE),
         }), 400
 
     preferred_language, preferred_currency = _get_user_preferences(user_id)
@@ -678,9 +690,13 @@ def update_trip(trip_id):
     try:
         cost = _build_cost(payload, currency=preferred_currency)
     except ValueError as error:
+        logger.warning(
+            "Trip cost calculation rejected the update (%s)",
+            type(error).__name__,
+        )
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": client_message(error, INVALID_TRIP_DETAILS_MESSAGE),
         }), 400
     except Exception as error:
         logger.exception("Updating trip cost failed")
@@ -756,10 +772,10 @@ def update_trip(trip_id):
 def regenerate_trip_itinerary(trip_id):
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     try:
@@ -829,10 +845,10 @@ def regenerate_trip_itinerary(trip_id):
 def swap_activity(trip_id):
     try:
         user_id = _get_authenticated_user_id()
-    except ValueError as error:
+    except ValueError:
         return jsonify({
             "success": False,
-            "message": str(error),
+            "message": INVALID_SESSION_MESSAGE,
         }), 401
 
     data = request.get_json(silent=True)

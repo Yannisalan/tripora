@@ -17,6 +17,8 @@ import os
 
 import requests
 
+from services.client_errors import ClientValidationError
+
 logger = logging.getLogger(__name__)
 
 # Travelpayouts Data Access API base URL.
@@ -33,7 +35,19 @@ NOT_CONFIGURED_MESSAGE = (
 
 
 class TravelpayoutsError(Exception):
-    """Raised when a Travelpayouts lookup cannot be completed (fail closed)."""
+    """Raised when a Travelpayouts lookup cannot be completed (fail closed).
+
+    The message is for the server log only: it can name the provider or its
+    configuration state, so the route layer never returns it to the client.
+    """
+
+
+class TravelpayoutsLookupError(TravelpayoutsError, ClientValidationError):
+    """The user's origin/destination could not be resolved to an IATA code.
+
+    Its messages are written for the user ("check the spelling..."), so the
+    route layer may return them unchanged.
+    """
 
 
 def _api_token():
@@ -87,7 +101,7 @@ def resolve_city_to_iata(value):
     """
     text = (value or "").strip()
     if not text:
-        raise TravelpayoutsError("An origin/destination is required.")
+        raise TravelpayoutsLookupError("An origin/destination is required.")
     up = text.upper()
     if _looks_like_code(up):
         return up
@@ -102,12 +116,12 @@ def resolve_city_to_iata(value):
         places = response.json()
     except (requests.RequestException, OSError, ValueError) as error:
         logger.warning("Travelpayouts autocomplete failed: %s", error)
-        raise TravelpayoutsError(
+        raise TravelpayoutsLookupError(
             "Could not look up that location. Check the spelling and try again."
         )
 
     if not isinstance(places, list):
-        raise TravelpayoutsError(
+        raise TravelpayoutsLookupError(
             "Could not look up that location. Check the spelling and try again."
         )
 
@@ -122,7 +136,7 @@ def resolve_city_to_iata(value):
         if not best and needle in name:
             best = str(code or "").upper()
     if not best:
-        raise TravelpayoutsError(
+        raise TravelpayoutsLookupError(
             "Could not find that location. Check the spelling or enter its airport code."
         )
     return best

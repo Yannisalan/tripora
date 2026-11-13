@@ -408,10 +408,17 @@ def test_every_configured_bucket_names_a_real_endpoint(app, monkeypatch):
     endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
     configured = set(settings_mod.Config.rate_limit_buckets())
 
+    # Buckets that are deliberately NOT Flask endpoints: they are applied
+    # explicitly in code rather than resolved by the before_request hook.
+    #   AI_GLOBAL          - platform-wide AI ceiling, keyed "global".
+    #   auth.login_account - per-account (e-mail-keyed) login throttle (F3),
+    #                        applied inside the login route, counting failures.
+    NON_ENDPOINT_BUCKETS = {"AI_GLOBAL", "auth.login_account"}
+
     stale = {
         name for name in configured
         if not name.startswith("DEFAULT_")
-        and name != "AI_GLOBAL"
+        and name not in NON_ENDPOINT_BUCKETS
         and name not in endpoints
     }
     assert not stale, "Buckets for non-existent endpoints: {}".format(stale)

@@ -12,6 +12,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
 )
 from sqlalchemy import text
+from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config.database import db
@@ -30,6 +31,10 @@ from routes.turnstile import turnstile_bp
 from routes.weather import weather_bp
 from services import db_context, turnstile
 from services.cli import register_cli
+from services.client_errors import (
+    GENERIC_SERVER_ERROR,
+    UNEXPECTED_ERROR_MESSAGE,
+)
 from services.client_ip import client_ip, rate_limit_ip_key
 from services.rate_limiter import (
     UNLIMITED_ENDPOINTS,
@@ -49,23 +54,92 @@ logger.info(
     bool(os.getenv("TRAVELPAYOUTS_API_KEY")),
 )
 
-# Minimum length for HMAC/shared secrets. Shorter values are reported at
-# startup but not rejected, so an existing deployment is never bricked by an
-# upgrade; rotate them to long random values (e.g. `secrets.token_urlsafe(48)`).
+# Minimum length for HMAC/shared secrets. In production (RENDER=true) a secret
+# below this is fatal (see _validate_production_secrets); elsewhere it is only
+# reported, so a dev/test environment is never bricked. Rotate weak secrets to
+# long random values (e.g. `secrets.token_urlsafe(48)`).
 MIN_SECRET_LENGTH = 32
 
 
+class ConfigurationError(RuntimeError):
+    """Raised when required production security configuration is invalid.
+
+    Carries only the names of offending variables, never their values.
+    """
+
+
+def _is_production():
+    """True in the Render production environment (F6's agreed condition)."""
+    return os.getenv("RENDER", "").lower() == "true"
+
+
+def _is_strong_secret(value):
+    """A secret is strong enough when it is present and, ignoring surrounding
+    whitespace, at least MIN_SECRET_LENGTH characters.
+
+    Rejects missing (None), empty, whitespace-only, and too-short values. The
+    value itself is never logged or returned.
+    """
+    return value is not None and len(value.strip()) >= MIN_SECRET_LENGTH
+
+
 def _warn_weak_secrets():
-    if len(Config.JWT_SECRET_KEY or "") < MIN_SECRET_LENGTH:
+    """Non-fatal startup warnings for weak secrets (dev/staging/test)."""
+    if not _is_strong_secret(Config.JWT_SECRET_KEY):
         logger.warning(
-            "JWT_SECRET_KEY is shorter than %d characters; rotate it.",
+            "JWT_SECRET_KEY is missing or shorter than %d characters; rotate it.",
             MIN_SECRET_LENGTH,
         )
     admin = Config.ADMIN_API_TOKEN or ""
-    if admin and len(admin) < MIN_SECRET_LENGTH:
+    if admin and len(admin.strip()) < MIN_SECRET_LENGTH:
         logger.warning(
             "ADMIN_API_TOKEN is shorter than %d characters; rotate it.",
             MIN_SECRET_LENGTH,
+        )
+
+
+def _validate_production_secrets():
+    """Refuse to start in production (RENDER=true) with weak/missing secrets.
+
+    Outside production the historical behaviour is preserved: weak secrets are
+    logged as warnings, never fatal, so development, staging and the test suite
+    are not bricked. Secret VALUES are never logged or placed in the exception;
+    only the name of the offending variable and the required length appear.
+
+    - JWT_SECRET_KEY is always required (it signs every session token).
+    - ADMIN_API_TOKEN is the shared legacy-admin credential and is only a live
+      authentication path while ADMIN_LEGACY_TOKEN_ENABLED is true; it is then
+      required to be present and strong. When the legacy path is disabled the
+      token is dead configuration and is not validated.
+    """
+    if not _is_production():
+        _warn_weak_secrets()
+        return
+
+    problems = []
+
+    if not _is_strong_secret(Config.JWT_SECRET_KEY):
+        problems.append(
+            "JWT_SECRET_KEY must be set to at least {} characters".format(
+                MIN_SECRET_LENGTH
+            )
+        )
+
+    if Config.ADMIN_LEGACY_TOKEN_ENABLED and not _is_strong_secret(
+        Config.ADMIN_API_TOKEN
+    ):
+        problems.append(
+            "ADMIN_API_TOKEN must be set to at least {} characters while "
+            "ADMIN_LEGACY_TOKEN_ENABLED is true (or disable the legacy admin "
+            "token by setting ADMIN_LEGACY_TOKEN_ENABLED=false)".format(
+                MIN_SECRET_LENGTH
+            )
+        )
+
+    if problems:
+        raise ConfigurationError(
+            "Refusing to start in production (RENDER=true) due to insecure "
+            "security configuration: " + "; ".join(problems) + "."
         )
 
 
@@ -208,6 +282,79 @@ def _configure_rate_limit_storage():
 
 
 # ============================================================
+# ERROR HANDLERS (F9)
+# ============================================================
+#
+# Last line of defence for anything a route does not handle itself. Every
+# response is JSON with a fixed message chosen by status code: neither the
+# exception text nor an HTTPException ``description`` (which a caller of
+# ``abort()`` may have filled with internal detail) ever reaches the client.
+# Flask-JWT-Extended registers handlers for its own exception classes; Flask
+# picks the most specific handler, so those keep their 401/422 responses.
+# ------------------------------------------------------------
+
+_HTTP_ERROR_MESSAGES = {
+    400: "Bad request.",
+    401: "Authentication is required.",
+    403: "You do not have permission to perform this action.",
+    404: "The requested resource was not found.",
+    405: "Method not allowed.",
+    408: "The request timed out.",
+    409: "The request conflicts with the current state.",
+    413: "The request is too large.",
+    415: "Unsupported media type.",
+    422: "The request could not be processed.",
+    429: "Too many requests. Please try again later.",
+}
+
+
+def _register_error_handlers(app):
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(error):
+        status = error.code or 500
+        if status >= 500:
+            logger.error(
+                "HTTP %s on %s %s", status, request.method, request.path
+            )
+            message = UNEXPECTED_ERROR_MESSAGE
+        else:
+            message = _HTTP_ERROR_MESSAGES.get(status, "Request failed.")
+        response = jsonify({
+            "success": False,
+            "message": message,
+            "error": error.name,
+        })
+        response.status_code = status
+        # Keep protocol headers such as Allow (405) and Retry-After.
+        for name, value in error.get_headers():
+            if name in ("Allow", "Retry-After", "WWW-Authenticate"):
+                response.headers[name] = value
+        return response
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_exception(error):
+        # The full traceback goes to the server log; the client gets a
+        # fixed message. Roll back so a failed transaction never leaks into
+        # the next request on this connection.
+        logger.exception(
+            "Unhandled %s on %s %s",
+            type(error).__name__,
+            request.method,
+            request.path,
+        )
+        try:
+            db.session.rollback()
+        except Exception:  # noqa: BLE001 - never mask the original failure
+            logger.exception("Rollback after unhandled error failed")
+        return jsonify({
+            "success": False,
+            "message": UNEXPECTED_ERROR_MESSAGE,
+            "error": GENERIC_SERVER_ERROR,
+        }), 500
+
+
+# ============================================================
 # EXTENSIONS
 # ============================================================
 
@@ -231,7 +378,9 @@ def create_app():
     MAX_CONTENT_LENGTH = 1024 * 1024
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
-    _warn_weak_secrets()
+    # Fail fast on weak/missing production secrets, before any blueprint, DB or
+    # network wiring. In non-production this only logs warnings.
+    _validate_production_secrets()
     turnstile.log_startup_status()
 
     # Trust X-Forwarded-For / -Proto only from the configured number of
@@ -290,6 +439,16 @@ def create_app():
     # ========================================================
     # DATABASE
     # ========================================================
+    #
+    # F9: SQLAlchemy renders bind parameters into exception text
+    # ("[parameters: ...]"). Route handlers log DB failures with
+    # logger.exception, so without this the server log would receive
+    # emails, password/reset-code hashes and token versions.
+    # --------------------------------------------------------
+
+    engine_options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+    engine_options.setdefault("hide_parameters", True)
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_options
 
     db.init_app(app)
 
@@ -671,6 +830,8 @@ def create_app():
                 "database": "disconnected",
                 "error": "Internal server error.",
             }), 500
+
+    _register_error_handlers(app)
 
     register_cli(app)
 

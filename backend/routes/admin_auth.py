@@ -30,6 +30,12 @@ GENERIC_MFA_FAILURE = "Invalid or expired verification code."
 # Same cost as a real password check when the account does not qualify.
 from routes.auth import _DUMMY_PASSWORD_HASH  # noqa: E402
 
+# Shared per-account login throttle (F3 / M1).
+from routes.auth import (  # noqa: E402
+    clear_account_login_throttle,
+    enforce_account_login_throttle,
+)
+
 
 def _bearer():
     header = request.headers.get("Authorization", "")
@@ -104,6 +110,18 @@ def admin_login():
     if not email or not isinstance(password, str) or not password:
         return jsonify({"success": False, "message": GENERIC_LOGIN_FAILURE}), 401
 
+    # M1: the SAME per-account counter as /api/auth/login (shared HMAC key and
+    # bucket), applied before the lookup and the password hash, for every
+    # address. Without it this endpoint was a password oracle for admin
+    # accounts limited only per IP.
+    throttled = enforce_account_login_throttle(email)
+    if throttled is not None:
+        admin_auth.audit(
+            "login_throttled", None, request, throttled.status_code,
+            ip_address=client_ip(),
+        )
+        return throttled
+
     user = User.query.filter_by(email=email).first()
     qualifies = (
         user is not None
@@ -124,6 +142,10 @@ def admin_login():
             request, 401, ip_address=client_ip(),
         )
         return jsonify({"success": False, "message": GENERIC_LOGIN_FAILURE}), 401
+
+    # Verified password: same reset-on-success rule as the user login. The
+    # second factor (TOTP / recovery code) is still required below.
+    clear_account_login_throttle(email)
 
     mfa = db.session.get(AdminMfa, user.id)
     enrolled = mfa is not None and mfa.enabled_at is not None

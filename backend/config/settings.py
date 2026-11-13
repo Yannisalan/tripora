@@ -320,6 +320,16 @@ class Config:
     RATE_LIMIT_AUTH_LIMIT = os.getenv("RATE_LIMIT_AUTH_LIMIT", "10")
     RATE_LIMIT_AUTH_WINDOW = os.getenv("RATE_LIMIT_AUTH_WINDOW", "600")
 
+    # Per-ACCOUNT login throttle (keyed on the e-mail, not the IP). This is a
+    # second, independent bucket layered on top of the per-IP auth limit above:
+    # it counts FAILED login attempts for one account across every source IP,
+    # so distributed credential stuffing cannot be hidden by rotating IPs.
+    # Default: 20 failed attempts per account per hour.
+    RATE_LIMIT_LOGIN_ACCOUNT_LIMIT = os.getenv(
+        "RATE_LIMIT_LOGIN_ACCOUNT_LIMIT", "20")
+    RATE_LIMIT_LOGIN_ACCOUNT_WINDOW = os.getenv(
+        "RATE_LIMIT_LOGIN_ACCOUNT_WINDOW", "3600")
+
     # Password reset endpoints (forgot-password flow) -- much tighter than
     # general auth because these are prime brute-force targets.
     RATE_LIMIT_RESET_LIMIT = os.getenv("RATE_LIMIT_RESET_LIMIT", "5")
@@ -346,6 +356,7 @@ class Config:
     # and RATE_LIMIT_FAILURE_MODE=closed.
     SENSITIVE_RATE_LIMIT_BUCKETS = (
         "auth.login",
+        "auth.login_account",
         "auth.register",
         "auth.social_login",
         "auth.google_login",
@@ -392,6 +403,21 @@ class Config:
         return os.getenv("APPLE_CLIENT_ID", "")
 
     @classmethod
+    def login_rate_limit_hmac_key(cls):
+        """Return the HMAC key (bytes) used to derive per-account login keys.
+
+        The raw e-mail is never used as a rate-limit key or written to a log;
+        only its keyed HMAC-SHA256 digest is. A dedicated
+        ``LOGIN_RATE_LIMIT_HMAC_KEY`` may be set to separate this use from JWT
+        signing; otherwise the already-required server secret ``JWT_SECRET_KEY``
+        is reused (the digest is domain-separated by a fixed label at the call
+        site, so it cannot collide with any other HMAC use of the same secret).
+        """
+        dedicated = os.getenv("LOGIN_RATE_LIMIT_HMAC_KEY", "").strip()
+        secret = dedicated or cls.JWT_SECRET_KEY or ""
+        return secret.encode("utf-8")
+
+    @classmethod
     def _bucket(cls, limit_value, window_value, default_limit, default_window):
         """Parse one bucket's limit/window with safe fallbacks."""
         return {
@@ -425,6 +451,8 @@ class Config:
         SW_W = cls.RATE_LIMIT_AI_SWAP_WINDOW
         AD = cls.RATE_LIMIT_ADMIN_LIMIT
         AD_W = cls.RATE_LIMIT_ADMIN_WINDOW
+        ACCT = cls.RATE_LIMIT_LOGIN_ACCOUNT_LIMIT
+        ACCT_W = cls.RATE_LIMIT_LOGIN_ACCOUNT_WINDOW
         V = cls.RATE_LIMIT_VERIFY_LIMIT
         V_W = cls.RATE_LIMIT_VERIFY_WINDOW
         VR = cls.RATE_LIMIT_VERIFY_RESEND_LIMIT
@@ -441,6 +469,10 @@ class Config:
             "trips.swap_activity": cls._bucket(SW, SW_W, 20, 600),
             # ---- authentication endpoints ----
             "auth.login": cls._bucket(A, A_W, 10, 600),
+            # Per-account (e-mail-keyed) login throttle. Not a Flask endpoint,
+            # so the before_request hook never resolves to it; it is applied
+            # explicitly inside the login route, counting failures only.
+            "auth.login_account": cls._bucket(ACCT, ACCT_W, 20, 3600),
             "auth.register": cls._bucket(A, A_W, 10, 600),
             "auth.social_login": cls._bucket(A, A_W, 10, 600),
             "auth.google_login": cls._bucket(A, A_W, 10, 600),
