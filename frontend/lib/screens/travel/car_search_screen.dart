@@ -153,7 +153,7 @@ class _CarSearchScreenState extends State<CarSearchScreen> {
               else if (_searched) ...[
                 Text(
                   _cars.length == 1
-                      ? context.tr('car.resultOne')
+                      ? context.tr('car.resultOne', params: {'n': '1', 'count': '1'})
                       : context.tr(
                           'car.resultMany',
                           params: {

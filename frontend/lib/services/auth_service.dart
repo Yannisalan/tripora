@@ -536,7 +536,34 @@ class AuthService {
   // GET CURRENT USER
   // ============================================================
 
-  Future<Map<String, dynamic>> getCurrentUser() async {
+  /// The account request currently in flight, shared by concurrent callers
+  /// (the Profile tab and the sidebar card both ask at start-up). Cleared
+  /// on completion, so later calls always fetch fresh data.
+  static Future<Map<String, dynamic>>? _currentUserInFlight;
+
+  Future<Map<String, dynamic>> getCurrentUser() {
+    final pending = _currentUserInFlight;
+    if (pending != null) return pending.then(_copyUserResponse);
+
+    final request = _getCurrentUserUnshared();
+    _currentUserInFlight = request;
+    request.then<void>((_) {}, onError: (_) {}).whenComplete(() {
+      if (identical(_currentUserInFlight, request)) {
+        _currentUserInFlight = null;
+      }
+    });
+    return request.then(_copyUserResponse);
+  }
+
+  /// Independent copy per caller (the nested user map included).
+  static Map<String, dynamic> _copyUserResponse(Map<String, dynamic> r) {
+    final copy = Map<String, dynamic>.of(r);
+    final user = copy['user'];
+    if (user is Map) copy['user'] = Map<String, dynamic>.from(user);
+    return copy;
+  }
+
+  Future<Map<String, dynamic>> _getCurrentUserUnshared() async {
     final headers = await getAuthHeaders();
 
     final response = await http.get(

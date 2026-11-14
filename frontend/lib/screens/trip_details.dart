@@ -10,6 +10,9 @@ import '../../services/trip_service.dart';
 import '../../widgets/shimmer_loader.dart';
 import 'expenses/expense_tracker_screen.dart';
 import 'weather/trip_weather_screen.dart';
+import '../widgets/adaptive_grid.dart';
+import '../core/design/glass/glass_tokens.dart';
+import '../core/utils/trip_dates.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final TripModel trip;
@@ -99,6 +102,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     return message;
   }
 
+  /// "1 day" / "8 days": the translated phrase carries the number.
+  String _durationText() {
+    final n = _trip.numberOfDays;
+    return n == 1
+        ? context.tr('details.dayCount', params: {'n': '1'})
+        : context.tr('details.days', params: {'n': '$n'});
+  }
+
   String _formatDate(DateTime date) {
     final locale = Localizations.localeOf(context).toLanguageTag();
 
@@ -183,25 +194,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   // Last day -> 100%
   // After the trip -> 100%
   double _getTripProgress() {
-    final now = DateTime.now();
-
-    final today = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    );
-
-    final start = DateTime(
-      _trip.startDate.year,
-      _trip.startDate.month,
-      _trip.startDate.day,
-    );
-
-    final end = DateTime(
-      _trip.endDate.year,
-      _trip.endDate.month,
-      _trip.endDate.day,
-    );
+    // Local calendar days, DST-safe (shared with Home and My Trips).
+    final today = TripDates.today();
+    final start = TripDates.calendarDate(_trip.startDate);
+    final end = TripDates.calendarDate(_trip.endDate);
 
     if (today.isBefore(start)) {
       return 0.0;
@@ -211,13 +207,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       return 1.0;
     }
 
-    final totalTravelDays = end.difference(start).inDays;
+    final totalTravelDays = TripDates.daysBetween(start, end);
 
     if (totalTravelDays <= 0) {
       return 1.0;
     }
 
-    final elapsedDays = today.difference(start).inDays;
+    final elapsedDays = TripDates.daysBetween(start, today);
 
     return (elapsedDays / totalTravelDays).clamp(0.0, 1.0);
   }
@@ -312,11 +308,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               _buildHeroSection(),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final horizontalPadding = constraints.maxWidth >= 1024
-                      ? 40.0
-                      : constraints.maxWidth >= 768
-                          ? 24.0
-                          : 16.0;
+                  final layout =
+                      TriporaBreakpoints.sizeFor(constraints.maxWidth);
+                  final horizontalPadding =
+                      layout == TriporaLayoutSize.expanded
+                          ? 40.0
+                          : layout == TriporaLayoutSize.medium
+                              ? 24.0
+                              : 16.0;
 
                   final maxWidth = constraints.maxWidth > 1280
                       ? 1100.0
@@ -488,6 +487,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         final scheme = Theme.of(dialogContext).colorScheme;
 
         return AlertDialog(
+          scrollable: true,
           backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -927,6 +927,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         const SizedBox(height: 7),
 
                         DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: budget,
                           decoration: _inputDecoration(
                             context.tr('planner.budget'),
@@ -1071,8 +1072,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                               ),
                             ),
                             style: FilledButton.styleFrom(
-                              backgroundColor: scheme.primary,
-                              foregroundColor: scheme.onPrimary,
+                              backgroundColor: context.brandFill,
+                              foregroundColor: context.onBrandFill,
                               shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(8),
@@ -1153,13 +1154,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: colors.border,
+          color: context.inputBorder,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: colors.border,
+          color: context.inputBorder,
         ),
       ),
       focusedBorder: OutlineInputBorder(
@@ -1286,8 +1287,8 @@ style: TextStyle(
                   context.tr('common.tryAgain'),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  backgroundColor: context.brandFill,
+                  foregroundColor: context.onBrandFill,
                   minimumSize: const Size(
                     140,
                     48,
@@ -1330,10 +1331,12 @@ style: TextStyle(
                   'error': _errorMessage ?? '',
                 },
               ),
-              style: const TextStyle(
+              // Warning hue stays on the icon and tint; the message uses
+              // primary text (the fixed dark amber was ~3:1 in dark mode).
+              style: TextStyle(
                 fontSize: 13,
                 height: 1.5,
-                color: Color(0xFF8A5A00),
+                color: context.triporaColors.textPrimary,
               ),
             ),
           ),
@@ -1405,8 +1408,14 @@ style: TextStyle(
         20,
         30,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF070235),
+      // Tripora 2.0 brand panel (same as the Itinerary header): midnight
+      // navy in both modes, soft-white text, crimson accents. Was the old
+      // hardcoded indigo #070235.
+      decoration: BoxDecoration(
+        color: context.brandPanel,
+        border: Border(
+          bottom: BorderSide(color: context.triporaColors.borderStrong),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1425,45 +1434,49 @@ style: TextStyle(
                 children: [
                   Row(
                     children: [
-                      Container(
+                      Flexible(
+                        child: Container(
                         padding:
                             const EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: context.appStatus.info
-                              .withValues(alpha: 0.16),
+                          color: context.onBrandPanel
+                              .withValues(alpha: 0.10),
                           borderRadius:
                               BorderRadius.circular(999),
                           border: Border.all(
-                            color: context.appStatus.info
-                                .withValues(alpha: 0.3),
+                            color: context.onBrandPanel
+                                .withValues(alpha: 0.16),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.auto_awesome,
                               size: 13,
-                              color: Color(0xFF93C5FD),
+                              color: context.brandPanelAccent,
                             ),
                             const SizedBox(width: 6),
-                            Text(
+                            Flexible(
+                              child: Text(
                               context.tr(
                                 'details.aiTravelPlan',
                               ),
-                              style: const TextStyle(
-                                color: Color(0xFFBFDBFE),
+                              style: TextStyle(
+                                color: context.onBrandPanel,
                                 fontSize: 10,
                                 fontWeight:
                                     FontWeight.w700,
                                 letterSpacing: 1.1,
                               ),
                             ),
+                            ),
                           ],
                         ),
+                      ),
                       ),
                     ],
                   ),
@@ -1472,9 +1485,9 @@ style: TextStyle(
                   const SizedBox(height: 20),
                   Text(
                     _trip.destination,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Noto Serif',
-                      color: Colors.white,
+                      color: context.onBrandPanel,
                       fontSize: 36,
                       fontWeight: FontWeight.w600,
                       height: 1.15,
@@ -1483,18 +1496,18 @@ style: TextStyle(
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.calendar_today_outlined,
                         size: 16,
-                        color: Color(0xFFCBD5E1),
+                        color: context.onBrandPanelSubtle,
                       ),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           '${_formatDate(_trip.startDate)} – '
                           '${_formatDate(_trip.endDate)}',
-                          style: const TextStyle(
-                            color: Color(0xFFCBD5E1),
+                          style: TextStyle(
+                            color: context.onBrandPanelSubtle,
                             fontSize: 14,
                           ),
                         ),
@@ -1508,9 +1521,10 @@ style: TextStyle(
                     children: [
                       _heroMetric(
                         '${_trip.numberOfDays}',
+                        // Plain unit word under the number.
                         _trip.numberOfDays == 1
                             ? context.tr('details.day')
-                            : context.tr('details.days'),
+                            : context.tr('common.daysWord'),
                       ),
                       _heroMetric(
                         '${_trip.travelers}',
@@ -1539,20 +1553,26 @@ style: TextStyle(
   }
 
   Widget _buildStatusPill() {
-    final now = DateTime.now();
+    // The pill sits on the trip hero, which is dark (photo + scrim) in both
+    // themes, so it always takes the dark-theme status colors.
+    // Same calendar-day countdown as Home and My Trips (TripDates). It
+    // used to subtract the current TIME, which dropped a day ("Starts in
+    // 3 days" while Home said 4).
+    final today = TripDates.today();
+    final start = TripDates.calendarDate(_trip.startDate);
+    final end = TripDates.calendarDate(_trip.endDate);
 
     String label;
     IconData icon;
     Color color;
 
-    if (now.isBefore(_trip.startDate)) {
-      final daysUntil =
-          _trip.startDate.difference(now).inDays;
+    if (today.isBefore(start)) {
+      final daysUntil = TripDates.daysBetween(today, start);
 
       // Pass the number under every name a translation might use
       // ({days}, {n} or {count}) so the placeholder is always replaced.
-      label = daysUntil <= 0
-          ? context.tr('details.startingToday')
+      label = daysUntil == 1
+          ? context.tr('trips.startsTomorrow')
           : context.tr(
               'details.upcomingIn',
               params: {
@@ -1563,15 +1583,19 @@ style: TextStyle(
             );
 
       icon = Icons.event_outlined;
-      color = context.appStatus.info;
-    } else if (now.isAfter(_trip.endDate)) {
+      color = AppStatusColors.dark.info;
+    } else if (today == start) {
+      label = context.tr('details.startingToday');
+      icon = Icons.event_outlined;
+      color = AppStatusColors.dark.info;
+    } else if (today.isAfter(end)) {
       label = context.tr('details.tripCompleted');
       icon = Icons.check_circle_outline;
-      color = context.triporaColors.textMuted;
+      color = TriporaColors.dark.textMuted;
     } else {
       label = context.tr('details.tripInProgress');
       icon = Icons.flight_takeoff_rounded;
-      color = context.appStatus.success;
+      color = AppStatusColors.dark.success;
     }
 
     return Container(
@@ -1595,12 +1619,16 @@ style: TextStyle(
             color: color,
           ),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -1669,8 +1697,7 @@ style: TextStyle(
                 _overviewItem(
                   Icons.calendar_month_outlined,
                   context.tr('details.duration'),
-                  '${_trip.numberOfDays} '
-                  '${_trip.numberOfDays == 1 ? context.tr('details.day') : context.tr('details.days')}',
+                  _durationText(),
                 ),
                 _overviewItem(
                   Icons.people_outline,
@@ -1695,15 +1722,12 @@ style: TextStyle(
                 ),
               ];
 
-              return GridView.count(
-                crossAxisCount: columns,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 18,
-                childAspectRatio:
+              return AdaptiveGrid(
+                columns: columns,
+                spacing: 16,
+                runSpacing: 18,
+                minChildAspectRatio:
                     columns == 4 ? 2.8 : 3.4,
-                shrinkWrap: true,
-                physics:
-                    const NeverScrollableScrollPhysics(),
                 children: items,
               );
             },
@@ -1797,9 +1821,7 @@ style: TextStyle(
           ),
           _statTile(
             label: context.tr('details.duration'),
-            value:
-                '${_trip.numberOfDays} '
-                '${_trip.numberOfDays == 1 ? context.tr('details.day') : context.tr('details.days')}',
+            value: _durationText(),
             icon: Icons.schedule_outlined,
           ),
         ];
@@ -1976,14 +1998,9 @@ style: TextStyle(
           context.tr('details.commandDeck'),
         ),
         const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          shrinkWrap: true,
-          physics:
-              const NeverScrollableScrollPhysics(),
-          childAspectRatio: 0.9,
+        AdaptiveGrid(
+          columns: 3,
+          minChildAspectRatio: 0.9,
           children: items
               .map(
                 (item) => _deckTile(item),
@@ -2152,32 +2169,32 @@ style: TextStyle(
       }
     }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.92,
-          expand: false,
-          builder: (
-            context,
-            scrollController,
-          ) {
+    // Desktop (expanded): a side panel next to the trip, which keeps the
+    // trip visible. Phones and tablets: the original draggable bottom
+    // sheet. Both show the same content and close the same way.
+    final sidePanel =
+        TriporaBreakpoints.of(context) == TriporaLayoutSize.expanded;
+
+    Widget buildPanel(
+      BuildContext context,
+      ScrollController? scrollController,
+    ) {
             return Container(
               decoration:
                   BoxDecoration(
                 color: context.triporaColors.surface,
-                borderRadius:
-                    const BorderRadius.vertical(
+                borderRadius: sidePanel
+                    ? const BorderRadius.horizontal(
+                        left: Radius.circular(24),
+                      )
+                    : const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
               ),
               child: Column(
                 children: [
                   const SizedBox(height: 12),
+                  if (!sidePanel)
                   Container(
                     width: 42,
                     height: 4,
@@ -2409,6 +2426,66 @@ style: TextStyle(
                 ],
               ),
             );
+    }
+
+    if (sidePanel) {
+      showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel:
+            MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        barrierColor: Colors.black.withValues(alpha: 0.35),
+        transitionDuration:
+            GlassMotion.resolve(context, GlassMotion.base),
+        pageBuilder: (dialogContext, _, _) {
+          return Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: 460,
+              height: double.infinity,
+              child: Material(
+                type: MaterialType.transparency,
+                child: SafeArea(
+                  left: false,
+                  child: buildPanel(dialogContext, null),
+                ),
+              ),
+            ),
+          );
+        },
+        transitionBuilder: (context, animation, _, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: GlassMotion.standard,
+              ),
+            ),
+            child: child,
+          );
+        },
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (
+            context,
+            scrollController,
+          ) {
+            return buildPanel(context, scrollController);
           },
         );
       },
@@ -2532,13 +2609,20 @@ style: TextStyle(
             ),
           ),
         ),
-        Text(
-          formattedTotal,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: context.headingColor,
+        const SizedBox(width: 12),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              formattedTotal,
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                color: context.headingColor,
+              ),
+            ),
           ),
         ),
       ],
@@ -2682,7 +2766,7 @@ style: TextStyle(
             ),
             child: Text(
               _trip.itinerary.length == 1
-                  ? context.tr('details.dayCount')
+                  ? context.tr('details.dayCount', params: {'n': '1'})
                   : context.tr(
                       'details.dayCountMany',
                       params: {
@@ -2807,7 +2891,7 @@ style: TextStyle(
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: context.brandFill,
                     borderRadius:
                         BorderRadius.circular(
                       12,
@@ -2819,7 +2903,7 @@ style: TextStyle(
                     dayNumber?.toString() ?? '?',
                     style:
                         TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: context.onBrandFill,
                       fontSize: 15,
                       fontWeight:
                           FontWeight.w700,

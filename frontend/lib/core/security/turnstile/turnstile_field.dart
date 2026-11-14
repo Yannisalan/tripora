@@ -75,7 +75,12 @@ class _TurnstileFieldState extends State<TurnstileField> {
               style: TextStyle(color: errorColor),
             ),
           ),
-          TextButton(onPressed: _load, child: Text(context.tr('turnstile.retry'))),
+          Flexible(
+            child: TextButton(
+              onPressed: _load,
+              child: Text(context.tr('turnstile.retry')),
+            ),
+          ),
         ],
       );
     }
@@ -90,7 +95,7 @@ class _TurnstileFieldState extends State<TurnstileField> {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 12),
-          Text(context.tr('turnstile.loading')),
+          Expanded(child: Text(context.tr('turnstile.loading'))),
         ],
       );
     }

@@ -6,6 +6,7 @@ import '../../core/design/glass/glass_surface.dart';
 import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/destinations.dart';
+import '../../widgets/destination_image.dart';
 import '../../models/destination_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/destination_card.dart';
@@ -130,25 +131,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.network(
-                            destination.imageUrl,
-                            fit: BoxFit.cover,
-                            cacheWidth: 900,
-                            errorBuilder: (
-                              context,
-                              error,
-                              stackTrace,
-                            ) {
-                              return Container(
-                                color: colors.surfaceSecondary,
-                                child: Icon(
-                                  Icons.image_not_supported_outlined,
-                                  color: colors.textMuted,
-                                  size: 36,
-                                ),
-                              );
-                            },
-                          ),
+                          DestinationImage(url: destination.imageUrl),
                           DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -274,8 +257,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         _planDestination(destination);
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: scheme.primary,
-                        foregroundColor: scheme.onPrimary,
+                        backgroundColor: context.brandFill,
+                        foregroundColor: context.onBrandFill,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -330,13 +313,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Size from the width this page actually gets - beside the desktop
+    // sidebar that is less than the window - not from the whole window.
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          _buildForWidth(context, constraints.maxWidth),
+    );
+  }
+
+  Widget _buildForWidth(BuildContext context, double width) {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
-    final width = MediaQuery.of(context).size.width;
-
-    final isCompact = width < 760;
-    final isTablet = width >= 760 && width < 1200;
+    final layout = TriporaBreakpoints.sizeFor(width);
+    final isCompact = layout == TriporaLayoutSize.compact;
+    final isTablet = layout == TriporaLayoutSize.medium;
 
     final filtered = _filteredDestinations;
 
@@ -383,7 +374,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             left: horizontalPadding,
             right: horizontalPadding,
             top: 24,
-            bottom: 24 + 96,
+            bottom: 24 + GlassNavMetrics.bottomClearance(context),
           ),
           children: [
             Center(
@@ -499,13 +490,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
-                              color: colors.border,
+                              color: context.inputBorder,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(
-                              color: colors.border,
+                              color: context.inputBorder,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -554,8 +545,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 });
                               },
                               child: AnimatedContainer(
-                                duration: const Duration(
-                                  milliseconds: 180,
+                                duration: GlassMotion.resolve(
+                                  context,
+                                  const Duration(milliseconds: 180),
                                 ),
                                 padding:
                                     const EdgeInsets.symmetric(

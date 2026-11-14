@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,11 +6,42 @@ import 'package:google_fonts/google_fonts.dart';
 import '../design/glass/glass_tokens.dart';
 
 /// ---------------------------------------------------------------------
-/// Tripora / Nocturne Voyage Design System
+/// Tripora 2.0 design system
 ///
-/// Light + dark semantic theme.
-/// Dark mode uses deep indigo surfaces rather than pure black.
+/// Light + dark semantic theme. Dark mode uses the Tripora 2.0 deep navy
+/// surfaces; both modes use the crimson brand accent ([TriporaBrand]).
 /// ---------------------------------------------------------------------
+
+/// Tripora 2.0 brand palette (Phase 4 brief), the single source for the
+/// crimson accent and the navy surfaces.
+///
+/// [crimson] is the exact brand colour. It is used where WCAG asks for 3:1
+/// (icons, indicators, dots, active borders, the brand mark, large text).
+/// Normal-size TEXT needs 4.5:1, which #F01D54 does not reach on white
+/// (4.19:1), under white text (4.19:1) or on the navy cards (#111729,
+/// 4.25:1). Two same-hue variants (HSL lightness changed only) cover that:
+///
+/// - [crimsonDeep]  #D20E41 (L 0.527 -> 0.439): white text on it 5.41:1,
+///   on white / the light page gradient 5.41 / 4.63:1. Filled-button
+///   background in both modes and the light-mode accent text colour.
+/// - [crimsonBright] #F56A8E (L 0.527 -> 0.689): 5.22:1 on #22263A,
+///   6.22:1 on #111729, 6.77:1 on #080D1B. Dark-mode accent text colour.
+class TriporaBrand {
+  TriporaBrand._();
+
+  static const Color crimson = Color(0xFFF01D54);
+  static const Color crimsonDeep = Color(0xFFD20E41);
+  static const Color crimsonBright = Color(0xFFF56A8E);
+
+  static const Color navy = Color(0xFF080D1B);
+  static const Color midnight = Color(0xFF111729);
+  static const Color slate = Color(0xFF22263A);
+  static const Color softWhite = Color(0xFFE8E9F0);
+  static const Color mutedGrey = Color(0xFF9296A8);
+
+  /// Accent for TEXT in the current mode (4.5:1 on that mode's surfaces).
+  static Color accentText(bool isDark) => isDark ? crimsonBright : crimsonDeep;
+}
 
 class AppColors {
   AppColors._();
@@ -18,8 +50,10 @@ class AppColors {
   // Brand
   // ------------------------------------------------------------
 
-  static const Color primary = Color(0xFF1E1B4B);
-  static const Color primaryDark = Color(0xFF14123A);
+  // Tripora 2.0: the light-mode accent is the AA crimson variant (white
+  // text on it 5.41:1; it on white 5.41:1). Was indigo #1E1B4B.
+  static const Color primary = TriporaBrand.crimsonDeep;
+  static const Color primaryDark = Color(0xFFA80B34);
 
   static const Color secondary = Color(0xFF3B82F6);
   static const Color tertiary = Color(0xFFF59E0B);
@@ -47,10 +81,21 @@ class AppColors {
 
   static const Color textPrimary = Color(0xFF191C1E);
   static const Color textSecondary = Color(0xFF47464F);
-  static const Color textMuted = Color(0xFF64748B);
+  // Same slate hue as the original #64748B with HSL lightness 0.469 ->
+  // 0.439, so muted text reaches WCAG AA 4.5:1 on the ambient page
+  // gradient (#E7EDFF) and light glass, not only on white.
+  static const Color textMuted = Color(0xFF5E6D82);
 
   static const Color border = Color(0xFFE2E8F0);
   static const Color borderStrong = Color(0xFFCBD5E1);
+
+  // Text-field outline. The field fill (white) is indistinguishable from
+  // the white/near-white surfaces it sits on, so the outline is the only
+  // visible boundary and must reach 3:1 (WCAG 2.2 SC 1.4.11). This is the
+  // theme's existing ColorScheme.outline value: 3.7-4.5:1 on #FFFFFF,
+  // #F8FAFC, #F1F5F9 and the page gradient top #E7EDFF. Decorative
+  // dividers keep [border].
+  static const Color inputBorder = Color(0xFF787680);
 
   static const Color surfaceInfo = Color(0xFFEFF6FF);
   static const Color surfaceSecondary = Color(0xFFF1F5F9);
@@ -62,9 +107,12 @@ class AppColors {
   // Legacy gradients
   // ------------------------------------------------------------
 
-  static const Color gradientStart = Color(0xFF1E1B4B);
-  static const Color gradientMid = Color(0xFF3B5BDB);
-  static const Color gradientEnd = Color(0xFF3B82F6);
+  // Tripora 2.0 crimson brand gradient (was indigo -> blue). Every stop
+  // is at or darker than crimsonDeep, so white text on any point of it is
+  // >= 5.4:1.
+  static const Color gradientStart = Color(0xFF7A0A28);
+  static const Color gradientMid = Color(0xFFA80B34);
+  static const Color gradientEnd = TriporaBrand.crimsonDeep;
 
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -80,8 +128,8 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
+      gradientMid,
       primary,
-      secondary,
     ],
   );
 }
@@ -97,10 +145,10 @@ class AppColorsDark {
   // Brand
   // ------------------------------------------------------------
 
-  // Bright enough to work on dark surfaces, but still feels like
-  // Tripora's indigo rather than generic purple.
-  static const Color primary = Color(0xFFC4C1FB);
-  static const Color primaryDark = Color(0xFFE3DFFF);
+  // Tripora 2.0: the dark-mode accent is the AA crimson variant that
+  // reads as text on every navy surface (>= 5.2:1). Was lavender #C4C1FB.
+  static const Color primary = TriporaBrand.crimsonBright;
+  static const Color primaryDark = Color(0xFFFFB3C6);
 
   static const Color secondary = Color(0xFF8DB4FF);
   static const Color tertiary = Color(0xFFFFB95F);
@@ -114,39 +162,50 @@ class AppColorsDark {
   // Dark surface hierarchy
   // ------------------------------------------------------------
 
+  // Tripora 2.0 navy hierarchy (brief: #080D1B / #111729 / #22263A).
   // Main application background.
-  static const Color background = Color(0xFF0D0D14);
+  static const Color background = TriporaBrand.navy;
 
   // Cards / primary surfaces.
-  static const Color surface = Color(0xFF15151E);
+  static const Color surface = TriporaBrand.midnight;
 
-  // Slightly elevated cards.
-  static const Color surfaceElevated = Color(0xFF1C1C28);
+  // Slightly elevated cards: midpoint of midnight and slate.
+  static const Color surfaceElevated = Color(0xFF1A1F32);
 
   // Highest elevation surfaces.
-  static const Color surfaceHighest = Color(0xFF252532);
+  static const Color surfaceHighest = TriporaBrand.slate;
 
   // ------------------------------------------------------------
   // Dark typography
   // ------------------------------------------------------------
 
-  static const Color textPrimary = Color(0xFFF1F2F4);
-  static const Color textSecondary = Color(0xFFC7C5D0);
-  static const Color textMuted = Color(0xFF9493A2);
+  // Brief soft white #E8E9F0 (16.0:1 on navy).
+  static const Color textPrimary = TriporaBrand.softWhite;
+  // Between soft white and muted grey, same cool hue: 8.8:1 on #22263A.
+  static const Color textSecondary = Color(0xFFC3C6D4);
+  // Brief muted grey #9296A8, unchanged: 5.08:1 on slate #22263A (the
+  // lightest navy surface) and >= 4.92:1 directly under the navy glass top
+  // highlight (GlassTheme.dark.highlight is kept at 5% white for this).
+  static const Color textMuted = TriporaBrand.mutedGrey;
 
   // ------------------------------------------------------------
   // Dark borders
   // ------------------------------------------------------------
 
-  static const Color border = Color(0xFF2D2D39);
-  static const Color borderStrong = Color(0xFF424250);
+  static const Color border = Color(0xFF242A3F);
+  static const Color borderStrong = Color(0xFF363D57);
+
+  // Text-field outline (see AppColors.inputBorder). borderStrong's hue
+  // with HSL lightness 0.286 -> 0.526: >= 3:1 on every dark surface and
+  // glass body an input sits on (#0D0D14 4.7:1 ... #333339 3.0:1).
+  static const Color inputBorder = Color(0xFF7B7B92);
 
   // ------------------------------------------------------------
   // Dark tinted surfaces
   // ------------------------------------------------------------
 
   static const Color surfaceInfo = Color(0xFF17243B);
-  static const Color surfaceSecondary = Color(0xFF1B1B25);
+  static const Color surfaceSecondary = Color(0xFF161C2F);
   static const Color surfaceAccent = Color(0xFF302516);
 
   static const Color overlay = Color(0xB3000000);
@@ -155,12 +214,13 @@ class AppColorsDark {
   // Dark gradients
   // ------------------------------------------------------------
 
-  static const Color gradientStart = Color(0xFF1E1B4B);
-  static const Color gradientMid = Color(0xFF363264);
-  static const Color gradientEnd = Color(0xFF536FAF);
+  // Tripora 2.0: navy -> deep crimson (was indigo -> blue / lavender).
+  static const Color gradientStart = TriporaBrand.midnight;
+  static const Color gradientMid = Color(0xFF7A0A28);
+  static const Color gradientEnd = TriporaBrand.crimsonDeep;
 
-  static const Color gradientStrongStart = Color(0xFF363264);
-  static const Color gradientStrongEnd = Color(0xFFC4C1FB);
+  static const Color gradientStrongStart = Color(0xFFA80B34);
+  static const Color gradientStrongEnd = TriporaBrand.crimsonDeep;
 
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -265,11 +325,20 @@ class AppStatusColors extends ThemeExtension<AppStatusColors> {
   final Color error;
   final Color info;
 
+  // Light mode: status colors are drawn as text and icons on white/near-
+  // white surfaces, where the brand swatches (#10B981, #F59E0B, #3B82F6)
+  // only reach 2.5:1 / 2.2:1 / 3.7:1. These are the SAME hue and
+  // saturation with HSL lightness lowered just until WCAG AA 4.5:1 on every
+  // light surface text sits on: #FFFFFF, the #F8FAFC background and the
+  // ambient page gradient's top (#E7EDFF) (enforced by
+  // test/theme_contrast_test.dart and test/theme_screens_test.dart).
+  // Translucent tints built from them (alpha 0.08-0.16 pills) keep the same
+  // hue. Dark mode is unchanged.
   static const AppStatusColors light = AppStatusColors(
-    success: AppColors.success,
-    warning: AppColors.warning,
-    error: AppColors.error,
-    info: AppColors.info,
+    success: Color(0xFF0B7A55), // AppColors.success hue, L 0.394 -> 0.259
+    warning: Color(0xFF945F06), // AppColors.warning hue, L 0.502 -> 0.302
+    error: AppColors.error, // already 6.5:1
+    info: Color(0xFF0B61EE), // AppColors.info hue, L 0.598 -> 0.488
   );
 
   static const AppStatusColors dark = AppStatusColors(
@@ -508,9 +577,57 @@ extension TriporaColorsX on BuildContext {
   /// Light mode keeps the original deep-indigo heading (0xFF070235) so light
   /// mode looks exactly as before. Dark mode uses the normal primary text
   /// color, because that indigo is nearly invisible on dark surfaces.
+  /// Enabled text-field outline (>= 3:1 boundary, WCAG SC 1.4.11).
+  Color get inputBorder =>
+      isDark ? AppColorsDark.inputBorder : AppColors.inputBorder;
+
+  /// Light mode uses the brand midnight navy (was deep indigo #070235).
   Color get headingColor => isDark
       ? triporaColors.textPrimary
-      : const Color(0xFF070235);
+      : TriporaBrand.midnight;
+
+  /// Accent icons on a `colorScheme.primary` panel (trip header, chips).
+  ///
+  /// With the crimson primary in both modes, the old sky accent (#93C5FD)
+  /// is only 3.0:1 on crimson, so both modes use onPrimary.
+  Color get onPrimaryAccent => Theme.of(this).colorScheme.onPrimary;
+
+  // ------------------------------------------------------------
+  // Tripora 2.0 brand roles (Phase 4 consistency pass). Same in both
+  // modes, so a filled primary action or icon tile looks identical in
+  // light and dark.
+  // ------------------------------------------------------------
+
+  /// Filled primary actions, icon tiles, number badges, selected option
+  /// cards: the deep AA crimson.
+  Color get brandFill => TriporaBrand.crimsonDeep;
+
+  /// Text/icons on [brandFill]: white, 5.41:1.
+  Color get onBrandFill => Colors.white;
+
+  /// Secondary text on [brandFill]: white at 94% (>= 4.8:1).
+  Color get onBrandFillSubtle => Colors.white.withValues(alpha: 0.94);
+
+  /// Large dark brand panels (e.g. the itinerary trip header): midnight
+  /// navy in both modes, never a crimson slab.
+  Color get brandPanel => TriporaBrand.midnight;
+
+  /// Text on [brandPanel]: soft white, 14.7:1.
+  Color get onBrandPanel => TriporaBrand.softWhite;
+
+  /// Secondary text on [brandPanel]: 10.5:1.
+  Color get onBrandPanelSubtle => AppColorsDark.textSecondary;
+
+  /// Accent icons on [brandPanel]: bright AA crimson, 6.2:1.
+  Color get brandPanelAccent => TriporaBrand.crimsonBright;
+
+  /// Secondary text on a `colorScheme.primary` panel. White at 70% is only
+  /// 3.0:1 on the light crimson, so light mode uses 94%; dark mode's navy
+  /// onPrimary at 88% stays above 4.5:1 on the bright crimson.
+  Color get onPrimarySubtle => Theme.of(this)
+      .colorScheme
+      .onPrimary
+      .withValues(alpha: isDark ? 0.88 : 0.94);
 }
 
 /// ---------------------------------------------------------------------
@@ -568,6 +685,8 @@ class AppTheme {
     ).copyWith(
       primary: AppColors.primary,
       onPrimary: Colors.white,
+      primaryContainer: Color(0xFFFFD9E0),
+      onPrimaryContainer: Color(0xFF3F0012),
 
       secondary: AppColors.secondary,
       onSecondary: Colors.white,
@@ -606,9 +725,10 @@ class AppTheme {
 
       // Primary
       primary: AppColorsDark.primary,
-      onPrimary: Color(0xFF29264F),
-      primaryContainer: Color(0xFF403C70),
-      onPrimaryContainer: Color(0xFFE7E3FF),
+      // Navy on the bright crimson: 6.77:1.
+      onPrimary: TriporaBrand.navy,
+      primaryContainer: Color(0xFF4A1226),
+      onPrimaryContainer: Color(0xFFFFD9E0),
 
       // Secondary
       secondary: AppColorsDark.secondary,
@@ -640,7 +760,7 @@ class AppTheme {
       surfaceContainerHighest: AppColorsDark.surfaceHighest,
       surfaceContainerHigh: AppColorsDark.surfaceElevated,
       surfaceContainer: AppColorsDark.surface,
-      surfaceContainerLow: Color(0xFF111119),
+      surfaceContainerLow: Color(0xFF0D1222),
       surfaceContainerLowest: AppColorsDark.background,
 
       // Borders
@@ -648,8 +768,8 @@ class AppTheme {
       outlineVariant: AppColorsDark.border,
 
       // Other
-      inverseSurface: Color(0xFFE8E8F0),
-      onInverseSurface: Color(0xFF292931),
+      inverseSurface: Color(0xFFE8E9F0),
+      onInverseSurface: Color(0xFF22263A),
       inversePrimary: AppColors.primary,
       shadow: Colors.black,
       scrim: Colors.black,
@@ -903,10 +1023,12 @@ class AppTheme {
       // Elevated buttons
       // ----------------------------------------------------------
 
+      // Filled buttons use the deep AA crimson with white text in BOTH
+      // modes (5.41:1), matching the brand fill.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
+          backgroundColor: TriporaBrand.crimsonDeep,
+          foregroundColor: Colors.white,
           disabledBackgroundColor: bg.border,
           disabledForegroundColor: bg.textMuted,
           elevation: 0,
@@ -929,8 +1051,8 @@ class AppTheme {
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
+          backgroundColor: TriporaBrand.crimsonDeep,
+          foregroundColor: Colors.white,
           disabledBackgroundColor: bg.border,
           disabledForegroundColor: bg.textMuted,
           minimumSize: const Size.fromHeight(48),
@@ -1008,12 +1130,17 @@ class AppTheme {
         prefixIconColor: bg.textMuted,
         suffixIconColor: bg.textMuted,
 
+        // Enabled outline: the field's only visible boundary, so it uses
+        // the 3:1 input outline token (WCAG SC 1.4.11), not the
+        // decorative divider colour.
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(
             AppRadius.base,
           ),
           borderSide: BorderSide(
-            color: bg.border,
+            color: bg.isDarkBg
+                ? AppColorsDark.inputBorder
+                : AppColors.inputBorder,
           ),
         ),
 
@@ -1022,7 +1149,9 @@ class AppTheme {
             AppRadius.base,
           ),
           borderSide: BorderSide(
-            color: bg.border,
+            color: bg.isDarkBg
+                ? AppColorsDark.inputBorder
+                : AppColors.inputBorder,
           ),
         ),
 
@@ -1180,6 +1309,40 @@ class AppTheme {
       // ----------------------------------------------------------
       // Dialogs
       // ----------------------------------------------------------
+
+      // ----------------------------------------------------------
+      // Page transitions (Phase 2, F5)
+      //
+      // One restrained style instead of the per-platform defaults: a short
+      // fade-forward on Android, web, Windows and Linux, over the theme's
+      // own background (navy in dark mode, so no black flash between
+      // pages). iOS and macOS keep the native Cupertino slide because it
+      // carries the edge swipe-back gesture.
+      // ----------------------------------------------------------
+
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final platform in const [
+            TargetPlatform.android,
+            TargetPlatform.fuchsia,
+            TargetPlatform.linux,
+            TargetPlatform.windows,
+          ])
+            platform: FadeForwardsPageTransitionsBuilder(
+              backgroundColor: bg.backgroundColor,
+            ),
+          TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: const CupertinoPageTransitionsBuilder(),
+        },
+      ),
+
+      // Date picker: the month/year header defaults to 60% onSurface,
+      // which is 4.2:1 on the light dialog surface (below WCAG AA). Use the
+      // secondary text token instead; everything else stays Material's
+      // scheme-derived default.
+      datePickerTheme: DatePickerThemeData(
+        subHeaderForegroundColor: bg.textSecondary,
+      ),
 
       dialogTheme: DialogThemeData(
         backgroundColor: bg.surfaceElevated,

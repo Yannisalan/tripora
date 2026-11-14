@@ -6,9 +6,39 @@ import '../../core/design/glass/glass_background.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../data/destinations.dart';
+import '../../widgets/destination_image.dart';
+import '../../core/utils/trip_dates.dart';
 import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
+import '../../widgets/adaptive_grid.dart';
 import '../../widgets/shimmer_loader.dart';
+
+/// The AI data-processing disclosure shown before the first generation.
+///
+/// Pops `true` (consented) or `false` (declined); the barrier is not
+/// dismissible. `scrollable` keeps the full disclosure reachable on short
+/// screens (landscape phones, 1.3x text) instead of clipping it. Public so
+/// the responsive tests can size-check the exact dialog users see.
+Widget buildAiConsentDialog(BuildContext dialogContext) {
+  return AlertDialog(
+    scrollable: true,
+    title: Text(dialogContext.tr('planner.aiDisclosureTitle')),
+    content: Text(
+      dialogContext.tr('planner.aiDisclosureBody'),
+      style: const TextStyle(height: 1.4),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(dialogContext).pop(false),
+        child: Text(dialogContext.tr('planner.aiDisclosureDecline')),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.of(dialogContext).pop(true),
+        child: Text(dialogContext.tr('planner.aiDisclosureConfirm')),
+      ),
+    ],
+  );
+}
 
 class PlannerScreen extends StatefulWidget {
   final String? initialDestination;
@@ -353,7 +383,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
 
     final int days =
-        endDate!.difference(startDate!).inDays + 1;
+        TripDates.daysBetween(startDate!, endDate!) + 1;
 
     if (days == 2) {
       return 'Weekend';
@@ -643,25 +673,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(dialogContext.tr('planner.aiDisclosureTitle')),
-          content: Text(
-            dialogContext.tr('planner.aiDisclosureBody'),
-            style: const TextStyle(height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(dialogContext.tr('planner.aiDisclosureDecline')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(dialogContext.tr('planner.aiDisclosureConfirm')),
-            ),
-          ],
-        );
-      },
+      builder: buildAiConsentDialog,
     );
 
     if (confirmed == true) {
@@ -788,7 +800,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
       child: Row(
         children: [
-          TextButton.icon(
+          Flexible(
+            child: TextButton.icon(
             onPressed: isGenerating
                 ? null
                 : () => Navigator.maybePop(context),
@@ -799,6 +812,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
             ),
             label: Text(
               context.tr('common.cancel'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
@@ -806,6 +821,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 color: colors.textPrimary,
               ),
             ),
+          ),
           ),
 
           const Spacer(),
@@ -830,17 +846,26 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
           const Spacer(),
 
-          TextButton(
-            onPressed: isGenerating
-                ? null
-                : _resetForm,
-            child: Text(
-              context.tr('planner.reset'),
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colors.textMuted,
+          // "Reset" is never cut to "Res…": when its share of a narrow
+          // row is too small it scales down whole instead of truncating.
+          Flexible(
+            child: TextButton(
+              onPressed: isGenerating
+                  ? null
+                  : _resetForm,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  context.tr('planner.reset'),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textMuted,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1054,8 +1079,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
     BuildContext context,
     dynamic destination,
   ) {
-    final colors = context.triporaColors;
-
     return ClipRRect(
       borderRadius:
           BorderRadius.circular(16),
@@ -1065,19 +1088,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              destination.imageUrl,
-              fit: BoxFit.cover,
-errorBuilder: (_, _, _) =>
-                    Container(
-                  color: colors.surfaceSecondary,
-                  child: Icon(
-                    Icons
-                        .image_not_supported_outlined,
-                    color: colors.textMuted,
-                  ),
-                ),
-            ),
+            DestinationImage(url: destination.imageUrl),
 
             DecoratedBox(
               decoration:
@@ -1231,7 +1242,7 @@ errorBuilder: (_, _, _) =>
                               height: 2,
                             ),
                             Text(
-                              '${endDate!.difference(startDate!).inDays + 1} '
+                              '${TripDates.daysBetween(startDate!, endDate!) + 1} '
                               '${context.tr('planner.days')}',
                               style:
                                   TextStyle(
@@ -1473,16 +1484,17 @@ errorBuilder: (_, _, _) =>
             ),
           ];
 
-          return GridView.count(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            shrinkWrap: true,
-            physics:
-                const NeverScrollableScrollPhysics(),
-            childAspectRatio:
+          // Same columns and proportions as before; rows grow when a
+          // long translation or larger text needs more height.
+          // Wide layouts: cap the tile height (~150 px) instead of
+          // letting the 1.45 ratio grow tiles to ~260 px squares.
+          final cellWidth =
+              (constraints.maxWidth - 12 * (columns - 1)) / columns;
+          return AdaptiveGrid(
+            columns: columns,
+            minChildAspectRatio:
                 columns == 2
-                    ? 1.45
+                    ? (cellWidth / 150).clamp(1.45, double.infinity)
                     : 3.0,
             children: cards,
           );
@@ -1505,7 +1517,7 @@ errorBuilder: (_, _, _) =>
 
     return Material(
       color: isSelected
-          ? scheme.primary
+          ? context.brandFill
           : colors.surface,
       borderRadius:
           BorderRadius.circular(14),
@@ -1524,7 +1536,7 @@ errorBuilder: (_, _, _) =>
                 BorderRadius.circular(14),
             border: Border.all(
               color: isSelected
-                  ? scheme.primary
+                  ? context.brandFill
                   : colors.border,
             ),
           ),
@@ -1538,7 +1550,7 @@ errorBuilder: (_, _, _) =>
                     icon,
                     size: 20,
                     color: isSelected
-                        ? scheme.onPrimary
+                        ? context.onBrandFill
                         : scheme.primary,
                   ),
 
@@ -1557,10 +1569,7 @@ errorBuilder: (_, _, _) =>
                         fontWeight:
                             FontWeight.w700,
                         color: isSelected
-                            ? scheme.onPrimary
-                                .withValues(
-                                alpha: 0.7,
-                              )
+                            ? context.onBrandFillSubtle
                             : colors.textMuted,
                       ),
                     ),
@@ -1582,7 +1591,7 @@ errorBuilder: (_, _, _) =>
                   fontWeight:
                       FontWeight.w700,
                   color: isSelected
-                      ? scheme.onPrimary
+                      ? context.onBrandFill
                       : colors.textPrimary,
                 ),
               ),
@@ -1598,10 +1607,7 @@ errorBuilder: (_, _, _) =>
                       'Manrope',
                   fontSize: 11,
                   color: isSelected
-                      ? scheme.onPrimary
-                          .withValues(
-                          alpha: 0.75,
-                        )
+                      ? context.onBrandFillSubtle
                       : colors.textMuted,
                 ),
               ),
@@ -2004,7 +2010,6 @@ errorBuilder: (_, _, _) =>
     BuildContext context,
   ) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment:
@@ -2021,11 +2026,11 @@ errorBuilder: (_, _, _) =>
             style:
                 FilledButton.styleFrom(
               backgroundColor:
-                  scheme.primary,
+                  context.brandFill,
               foregroundColor:
-                  scheme.onPrimary,
+                  context.onBrandFill,
               disabledBackgroundColor:
-                  scheme.primary
+                  context.brandFill
                       .withValues(
                 alpha: 0.55,
               ),
@@ -2046,7 +2051,7 @@ errorBuilder: (_, _, _) =>
                         CircularProgressIndicator(
                       strokeWidth: 2,
                       color:
-                          scheme.onPrimary,
+                          context.onBrandFill,
                     ),
                   )
                 : const Icon(
@@ -2125,7 +2130,6 @@ errorBuilder: (_, _, _) =>
     Widget? trailingWidget,
   }) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       width: double.infinity,
@@ -2161,7 +2165,7 @@ errorBuilder: (_, _, _) =>
                     Alignment.center,
                 decoration:
                     BoxDecoration(
-                  color: scheme.primary,
+                  color: context.brandFill,
                   shape:
                       BoxShape.circle,
                 ),
@@ -2175,7 +2179,7 @@ errorBuilder: (_, _, _) =>
                     fontWeight:
                         FontWeight.w800,
                     color:
-                        scheme.onPrimary,
+                        context.onBrandFill,
                   ),
                 ),
               ),
@@ -2264,7 +2268,7 @@ errorBuilder: (_, _, _) =>
         ),
         borderSide:
             BorderSide(
-          color: colors.border,
+          color: context.inputBorder,
         ),
       ),
       enabledBorder:
@@ -2275,7 +2279,7 @@ errorBuilder: (_, _, _) =>
         ),
         borderSide:
             BorderSide(
-          color: colors.border,
+          color: context.inputBorder,
         ),
       ),
       focusedBorder:
@@ -2325,7 +2329,11 @@ errorBuilder: (_, _, _) =>
           : onTap,
       borderRadius:
           BorderRadius.circular(8),
-      child: Column(
+      // >= 48 px tap target (was 38 px).
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment:
             CrossAxisAlignment.start,
         children: [
@@ -2340,17 +2348,20 @@ errorBuilder: (_, _, _) =>
                   FontWeight.w700,
               letterSpacing: 1,
               color:
-                  colors.textMuted,
+                  colors.textSecondary,
             ),
           ),
 
           const SizedBox(height: 4),
 
+          // Two lines on narrow phones: "Please select a date." used to
+          // be cut to "Please select a da…".
           Text(
             _displayDate(
               context,
               date,
             ),
+            maxLines: 2,
             overflow:
                 TextOverflow.ellipsis,
             style: TextStyle(
@@ -2361,10 +2372,11 @@ errorBuilder: (_, _, _) =>
                   FontWeight.w700,
               color: selected
                   ? colors.textPrimary
-                  : colors.textMuted,
+                  : colors.textSecondary,
             ),
           ),
         ],
+      ),
       ),
     );
   }

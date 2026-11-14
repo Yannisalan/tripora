@@ -141,7 +141,13 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
         slivers: [
           _buildAppBar(context, lang),
           SliverToBoxAdapter(
-            child: _buildBody(context, lang),
+            // Readable column on wide windows; unchanged on phones.
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 920),
+                child: _buildBody(context, lang),
+              ),
+            ),
           ),
         ],
       ),
@@ -505,10 +511,13 @@ class _TripWeatherScreenState extends State<TripWeatherScreen> {
                       ].where((s) => s.isNotEmpty).join(', '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      // The info hue is kept on the icon and tint; the
+                      // label uses primary text (info on its own 10% tint
+                      // is 3.95:1 in light mode).
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: appStatus.info,
+                        color: context.triporaColors.textPrimary,
                       ),
                     ),
                   ),

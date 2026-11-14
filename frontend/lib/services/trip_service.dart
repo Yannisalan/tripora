@@ -548,7 +548,27 @@ class TripService {
   // GET /api/trips
   // ============================================================
 
-  Future<List<TripModel>> getTrips() async {
+  /// The trip-list request currently in flight, shared by every caller
+  /// that asks while it is running (Home and My Trips both load at start-
+  /// up). Cleared as soon as it completes, so any later call - including a
+  /// pull-to-refresh - always fetches fresh data.
+  static Future<List<TripModel>>? _tripsInFlight;
+
+  Future<List<TripModel>> getTrips() {
+    // Each caller gets its own list, so one screen editing its copy (e.g.
+    // removing a deleted trip) never changes another screen's data.
+    final pending = _tripsInFlight;
+    if (pending != null) return pending.then(List<TripModel>.of);
+
+    final request = _getTripsUnshared();
+    _tripsInFlight = request;
+    request.then<void>((_) {}, onError: (_) {}).whenComplete(() {
+      if (identical(_tripsInFlight, request)) _tripsInFlight = null;
+    });
+    return request.then(List<TripModel>.of);
+  }
+
+  Future<List<TripModel>> _getTripsUnshared() async {
     List<TripModel> trips;
 
     try {

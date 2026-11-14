@@ -231,6 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
+          scrollable: true,
           backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -343,6 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
+          scrollable: true,
           backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -465,11 +467,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? _buildGuestState()
                   : LayoutBuilder(
                   builder: (context, constraints) {
-                    final isDesktop = constraints.maxWidth > 900;
+                    final layout = TriporaBreakpoints.sizeFor(
+                      constraints.maxWidth,
+                    );
+                    final isDesktop =
+                        layout == TriporaLayoutSize.expanded;
 
                     final horizontalPadding = isDesktop
                         ? 40.0
-                        : constraints.maxWidth > 600
+                        : layout == TriporaLayoutSize.medium
                             ? 24.0
                             : 16.0;
 
@@ -478,7 +484,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         horizontalPadding,
                         12,
                         horizontalPadding,
-                        48 + 96,
+                        48 + GlassNavMetrics.bottomClearance(context),
                       ),
                       child: Center(
                         child: ConstrainedBox(
@@ -935,8 +941,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: scheme.primary,
-                      foregroundColor: scheme.onPrimary,
+                      backgroundColor: context.brandFill,
+                      foregroundColor: context.onBrandFill,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -985,13 +991,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 68,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: scheme.primary,
+                  color: context.brandFill,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.person_outline,
                   size: 32,
-                  color: scheme.onPrimary,
+                  color: context.onBrandFill,
                 ),
               ),
 
@@ -1211,11 +1217,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: BorderSide(color: context.inputBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: BorderSide(color: context.inputBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1277,11 +1283,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: BorderSide(color: context.inputBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: BorderSide(color: context.inputBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(
@@ -1300,6 +1306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAppearanceToggle() {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
+    final fullWidth = MediaQuery.sizeOf(context).width < 600;
 
     return GlassSurface(
       variant: GlassVariant.card,
@@ -1361,63 +1368,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 14),
 
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: SegmentedButton<ThemeMode>(
-              key: ValueKey(
-                'appearance-${AppPreferences.instance.themeMode}',
-              ),
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: const Icon(Icons.light_mode_outlined),
-                  label: Text(
-                    context.tr('profile.light'),
-                  ),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  icon: const Icon(
-                    Icons.brightness_auto_outlined,
-                  ),
-                  label: Text(
-                    context.tr('profile.system'),
-                  ),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: const Icon(
-                    Icons.dark_mode_outlined,
-                  ),
-                  label: Text(
-                    context.tr('profile.dark'),
-                  ),
-                ),
-              ],
-              selected: {
-                AppPreferences.instance.themeMode,
-              },
-              showSelectedIcon: false,
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                textStyle: WidgetStateProperty.all(
-                  const TextStyle(
-                    fontFamily: 'Manrope',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              onSelectionChanged: (selection) {
-                AppPreferences.instance.setThemeMode(
-                  selection.first,
-                );
-              },
+          // Phones (< 600 px): full width with three equal options. It
+          // used to be scaled down to fit (27 px tall at 320 px). Wider
+          // layouts keep the compact selector, scaled down only if a long
+          // translation needs it.
+          if (fullWidth)
+            _appearanceSelector(fullWidth: true)
+          else
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: _appearanceSelector(fullWidth: false),
             ),
-          ),
         ],
       ),
+    );
+  }
+
+  Widget _appearanceSelector({required bool fullWidth}) {
+    // Below ~380 px the icons left too little room and "System" broke
+    // mid-word; the labels alone fit (same rule as the Flights toggle).
+    final icons = MediaQuery.sizeOf(context).width >= 380;
+
+    return SegmentedButton<ThemeMode>(
+      key: ValueKey('appearance-${AppPreferences.instance.themeMode}'),
+      segments: [
+        ButtonSegment(
+          value: ThemeMode.light,
+          icon: icons ? const Icon(Icons.light_mode_outlined) : null,
+          label: Text(context.tr('profile.light')),
+        ),
+        ButtonSegment(
+          value: ThemeMode.system,
+          icon: icons ? const Icon(Icons.brightness_auto_outlined) : null,
+          label: Text(context.tr('profile.system')),
+        ),
+        ButtonSegment(
+          value: ThemeMode.dark,
+          icon: icons ? const Icon(Icons.dark_mode_outlined) : null,
+          label: Text(context.tr('profile.dark')),
+        ),
+      ],
+      selected: {AppPreferences.instance.themeMode},
+      showSelectedIcon: false,
+      expandedInsets: fullWidth ? EdgeInsets.zero : null,
+      style: ButtonStyle(
+        // Standard density + padded: every option has a >= 48 px tap area
+        // (compact density left it at 40 px on tablet and desktop).
+        tapTargetSize: MaterialTapTargetSize.padded,
+        visualDensity: VisualDensity.standard,
+        textStyle: WidgetStateProperty.all(
+          const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      onSelectionChanged: (selection) {
+        AppPreferences.instance.setThemeMode(selection.first);
+      },
     );
   }
 
@@ -1499,20 +1509,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSaveButton() {
-    final scheme = Theme.of(context).colorScheme;
-
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: FilledButton.icon(
         onPressed: _isSaving ? null : _saveProfile,
         style: FilledButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          disabledBackgroundColor: scheme.primary.withValues(
+          backgroundColor: context.brandFill,
+          foregroundColor: context.onBrandFill,
+          disabledBackgroundColor: context.brandFill.withValues(
             alpha: 0.55,
           ),
-          disabledForegroundColor: scheme.onPrimary.withValues(
+          disabledForegroundColor: context.onBrandFill.withValues(
             alpha: 0.7,
           ),
           shape: RoundedRectangleBorder(
@@ -1526,13 +1534,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 17,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: scheme.onPrimary,
+                  color: context.onBrandFill,
                 ),
               )
             : Icon(
                 Icons.check_rounded,
                 size: 19,
-                color: scheme.onPrimary,
+                color: context.onBrandFill,
               ),
         label: Text(
           _isSaving

@@ -6,14 +6,23 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/auth/login_gate.dart';
 import '../../core/design/glass/glass_surface.dart';
 import '../../core/design/glass/glass_tokens.dart';
+import '../../core/preferences/active_aura.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/trip_dates.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../data/destinations.dart';
+import '../../models/destination_model.dart';
 import '../../models/trip_model.dart';
 import '../../routes/app_routes.dart';
 import '../../services/trip_service.dart';
+import '../../services/weather_service.dart';
 import '../trip_details.dart';
+import '../../widgets/active_aura_selector.dart';
 import '../../widgets/shimmer_loader.dart';
+import '../../widgets/theme_toggle.dart';
+import '../../widgets/tripora_brand.dart';
+import 'home_dashboard_parts.dart';
+import 'home_hero.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.showAppBar = true});
@@ -34,17 +43,75 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingTrips = true;
   String? _tripError;
 
-  // ---------------------------------------------------------------------------
-  // Nocturne Voyage design tokens
-  // ---------------------------------------------------------------------------
+  final TextEditingController _command = TextEditingController();
 
-  static const Color midnight = Color(0xFF1E1B4B);
-  static const Color white = Color(0xFFFFFFFF);
+  /// Forecast for the hero trip, only when the existing weather endpoint
+  /// returned one; never synthesized.
+  Map<String, dynamic>? _heroWeather;
+  int? _heroWeatherTripId;
+
+  /// Shown in the discovery hero when the user has no upcoming trip and no
+  /// Active Aura: the first of Home's existing featured destinations.
+  static const String _featuredCity = 'Seychelles';
 
   @override
   void initState() {
     super.initState();
     _loadTrips();
+  }
+
+  @override
+  void dispose() {
+    _command.dispose();
+    super.dispose();
+  }
+
+  /// The next trip that has not ended yet (earliest start first).
+  TripModel? get _heroTrip {
+    final today = TripDates.today();
+    final upcoming = _trips
+        .where((t) => !TripDates.calendarDate(t.endDate).isBefore(today))
+        .toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    return upcoming.isEmpty ? null : upcoming.first;
+  }
+
+  /// The destination record whose city appears in a trip's free-text
+  /// destination, used only for its photo and description.
+  static DestinationModel? _destinationFor(String text) {
+    final lower = text.toLowerCase();
+    for (final d in destinations) {
+      if (lower.contains(d.city.toLowerCase())) return d;
+    }
+    return null;
+  }
+
+  static DestinationModel get _featured =>
+      destinations.firstWhere(
+        (d) => d.city == _featuredCity,
+        orElse: () => destinations.first,
+      );
+
+  Future<void> _loadHeroWeather() async {
+    final trip = _heroTrip;
+    final id = trip?.id;
+    if (id == null || id == _heroWeatherTripId) return;
+    _heroWeatherTripId = id;
+    try {
+      final data = await WeatherService.fetchWeather(id);
+      if (!mounted || _heroTrip?.id != id) return;
+      setState(() => _heroWeather = data);
+    } catch (_) {
+      // No forecast: the hero simply shows no weather.
+      if (!mounted) return;
+      setState(() => _heroWeather = null);
+    }
+  }
+
+  void _runCommand(String text) {
+    final aura = ActiveAura.instance.destination;
+    final destination = text.isNotEmpty ? text : aura?.fullName;
+    _openPlanner(destination);
   }
 
   Future<void> _loadTrips() async {
@@ -64,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _trips = trips;
         _isLoadingTrips = false;
       });
+      _loadHeroWeather();
     } catch (error) {
       if (!mounted) return;
 
@@ -121,8 +189,9 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, constraints) {
             final width = constraints.maxWidth;
 
-            final isMobile = width < 768;
-            final isTablet = width >= 768 && width < 1024;
+            final layout = TriporaBreakpoints.sizeFor(width);
+            final isMobile = layout == TriporaLayoutSize.compact;
+            final isTablet = layout == TriporaLayoutSize.medium;
 
             final horizontalPadding = isMobile
                 ? 16.0
@@ -137,8 +206,9 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.only(
                 left: horizontalPadding,
                 right: horizontalPadding,
-                top: isMobile ? 24 : 36,
-                bottom: (isMobile ? 24 : 36) + 96,
+                top: isMobile ? 16 : 28,
+                bottom: (isMobile ? 24 : 36) +
+                    GlassNavMetrics.bottomClearance(context),
               ),
               children: [
                 Center(
@@ -146,19 +216,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     constraints: const BoxConstraints(
                       maxWidth: maxContentWidth,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHero(isMobile),
-                        SizedBox(height: isMobile ? 40 : 56),
-                        _buildTripSnapshot(isMobile, isTablet),
-                        SizedBox(height: isMobile ? 44 : 56),
-                        _buildDestinationsHeader(isMobile),
-                        const SizedBox(height: 18),
-                        _buildDestinationStrip(isMobile),
-                        SizedBox(height: isMobile ? 44 : 56),
-                        _buildQuickActions(isMobile, isTablet),
-                      ],
+                    child: ListenableBuilder(
+                      listenable: ActiveAura.instance,
+                      builder: (context, _) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Below the sidebar breakpoint the Active Aura
+                          // selector lives here instead of the sidebar.
+                          if (widget.showAppBar) ...[
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: SizedBox(
+                                width: 320,
+                                child: ActiveAuraSelector(),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          _buildHero(layout),
+                          const SizedBox(height: 16),
+                          _buildCommandBar(isMobile),
+                          SizedBox(height: isMobile ? 28 : 36),
+                          AccentAuraStrip(
+                            destinations: destinations,
+                            selectedCity: ActiveAura.instance.destination?.city,
+                            onSelected: (d) => ActiveAura.instance.select(d),
+                          ),
+                          SizedBox(height: isMobile ? 40 : 52),
+                          _buildTripSnapshot(isMobile, isTablet),
+                          SizedBox(height: isMobile ? 44 : 56),
+                          _buildQuickActions(isMobile, isTablet),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -180,27 +269,35 @@ class _HomeScreenState extends State<HomeScreen> {
       scrolledUnderElevation: 0,
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      titleSpacing: 20,
-      title: Text(
-        'Tripora',
-        style: GoogleFonts.manrope(
-          color: context.headingColor,
-          fontSize: 20,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
-        ),
+      titleSpacing: 16,
+      // Same wordmark as the desktop sidebar. Scales down (never clips)
+      // when a 320 px phone at large text leaves little room beside the
+      // actions.
+      title: const FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: TriporaWordmark(),
       ),
       actions: [
+        // Compact/medium layouts have no sidebar: direct Light/Dark toggle.
+        const ThemeToggleButton(),
+        const SizedBox(width: 4),
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: SizedBox(
-            width: 120,
+          // Sized to its label (no fixed width), so long translations such
+          // as "Pianifica un Viaggio" fit; capped so the brand title keeps
+          // its room, wrapping to a second line only when it must.
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.sizeOf(context).width * 0.55,
+            ),
             child: _primaryButton(
               label: context.tr('nav.planTrip'),
               icon: Icons.add_rounded,
               onPressed: () => _openPlanner(),
               height: 44,
-              horizontalPadding: 8,
+              horizontalPadding: 12,
+              shrinkWrap: true,
             ),
           ),
         ),
@@ -212,126 +309,65 @@ class _HomeScreenState extends State<HomeScreen> {
   // Hero
   // ---------------------------------------------------------------------------
 
-  Widget _buildHero(bool isMobile) {
-    final colors = context.triporaColors;
+  Widget _buildHero(TriporaLayoutSize layout) {
+    final trip = _heroTrip;
+    final aura = ActiveAura.instance.destination;
 
-    return GlassSurface(
-      variant: GlassVariant.card,
-      borderRadius: BorderRadius.circular(GlassRadius.lg),
-      padding: EdgeInsets.all(isMobile ? 24 : 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: colors.surfaceSecondary,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: colors.border),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome_rounded, size: 14, color: context.appStatus.info),
-                  const SizedBox(width: 7),
-                  Text(
-                    context.tr('home.aiPoweredTravelPlanning'),
-                    style: TextStyle(
-                      color: context.headingColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    if (trip != null) {
+      return HomeHero(
+        layout: layout,
+        trip: trip,
+        destination: _destinationFor(trip.destination),
+        isActiveAura: false,
+        weather: _heroWeather,
+        onOpenTrip: () => _openTrip(trip),
+        onPlan: _openPlanner,
+        onExplore: _openExplore,
+      );
+    }
+    return HomeHero(
+      layout: layout,
+      trip: null,
+      destination: aura ?? _featured,
+      isActiveAura: aura != null,
+      weather: null,
+      onOpenTrip: () {},
+      onPlan: _openPlanner,
+      onExplore: _openExplore,
+    );
+  }
+
+  Widget _buildCommandBar(bool isMobile) {
+    final aura = ActiveAura.instance.destination;
+
+    return AiCommandBar(
+      controller: _command,
+      compact: isMobile,
+      auraCity: aura?.city,
+      onRun: _runCommand,
+      chips: [
+        if (aura != null)
+          AiCommandChip(
+            label: context.tr('home.chipPlanCity', params: {'city': aura.city}),
+            icon: Icons.auto_awesome_rounded,
+            onTap: () => _openPlanner(aura.fullName),
           ),
-
-          const SizedBox(height: 24),
-
-          Text(
-            context.tr('home.heroTitle'),
-            style: GoogleFonts.notoSerif(
-              color: context.headingColor,
-              fontSize: isMobile ? 34 : 48,
-              height: 1.08,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -1.1,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 650),
-            child: Text(
-              context.tr('home.heroDescription'),
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 16,
-                height: 1.55,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _primaryButton(
-                label: context.tr('home.startPlanning'),
-                icon: Icons.auto_awesome_rounded,
-                onPressed: () => _openPlanner(),
-                height: 48,
-              ),
-              _secondaryButton(
-                label: context.tr('home.exploreDestinations'),
-                icon: Icons.explore_outlined,
-                onPressed: _openExplore,
-                height: 48,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 28),
-
-          Container(height: 1, color: colors.border),
-
-          const SizedBox(height: 18),
-
-          SizedBox(
-            width: double.infinity,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _HeroMeta(
-                    icon: Icons.schedule_outlined,
-                    label: context.tr('home.personalized'),
-                  ),
-                  const SizedBox(width: 16),
-                  _HeroMeta(
-                    icon: Icons.auto_awesome_outlined,
-                    label: context.tr('home.aiGenerated'),
-                  ),
-                  const SizedBox(width: 16),
-                  _HeroMeta(
-                    icon: Icons.public_outlined,
-                    label: context.tr('home.global'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        AiCommandChip(
+          label: context.tr('home.exploreDestinations'),
+          icon: Icons.explore_outlined,
+          onTap: _openExplore,
+        ),
+        AiCommandChip(
+          label: context.tr('home.chipFlights'),
+          icon: Icons.flight_takeoff_rounded,
+          onTap: () => MainShell.currentIndex.value = 2,
+        ),
+        AiCommandChip(
+          label: context.tr('nav.trips'),
+          icon: Icons.card_travel_outlined,
+          onTap: _openTrips,
+        ),
+      ],
     );
   }
 
@@ -426,7 +462,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTripCard(TripModel trip) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     return GlassSurface(
       variant: GlassVariant.card,
@@ -442,12 +477,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: scheme.primary,
+                  color: TriporaBrand.crimsonDeep,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   Icons.flight_takeoff_rounded,
-                  color: scheme.onPrimary,
+                  color: Colors.white,
                   size: 19,
                 ),
               ),
@@ -506,13 +541,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: context.appStatus.success,
               ),
               const SizedBox(width: 7),
-              Text(
-                context.tr('home.savedItinerary'),
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.7,
+              Expanded(
+                child: Text(
+                  context.tr('home.savedItinerary'),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.7,
+                  ),
                 ),
               ),
             ],
@@ -600,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ? context.appStatus.info
         : isNetworkError
         ? context.appStatus.warning
-        : const Color(0xFFBA1A1A);
+        : context.appStatus.error;
 
     final IconData icon = isAuthError
         ? Icons.lock_outline_rounded
@@ -638,216 +675,30 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          TextButton(
-            onPressed: isAuthError
-                ? () => Navigator.pushNamed(
-                    context,
-                    AppRoutes.login,
-                  ).then((_) => _loadTrips())
-                : _loadTrips,
-            style: TextButton.styleFrom(foregroundColor: context.headingColor),
-            child: Text(
-              isAuthError
-                  ? context.tr('home.signIn')
-                  : context.tr('common.retry'),
-              style: const TextStyle(fontWeight: FontWeight.w800),
+          const SizedBox(width: 8),
+
+          Flexible(
+            child: TextButton(
+              onPressed: isAuthError
+                  ? () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.login,
+                    ).then((_) => _loadTrips())
+                  : _loadTrips,
+              style: TextButton.styleFrom(
+                foregroundColor: context.headingColor,
+              ),
+              child: Text(
+                isAuthError
+                    ? context.tr('home.signIn')
+                    : context.tr('common.retry'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Destinations
-  // ---------------------------------------------------------------------------
-
-  Widget _buildDestinationsHeader(bool isMobile) {
-    return _sectionHeading(
-      title: context.tr('home.popularDestinations'),
-      eyebrow: context.tr('home.curatedForYou'),
-      trailing: TextButton(
-        onPressed: _openExplore,
-        style: TextButton.styleFrom(foregroundColor: context.headingColor),
-        child: Text(
-          context.tr('common.seeAll'),
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDestinationStrip(bool isMobile) {
-    const featuredKeys = {'Seychelles', 'Paris', 'Cotonou', 'Tokyo', 'Bali'};
-
-    final featured = destinations
-        .where((d) => featuredKeys.contains(d.city))
-        .toList();
-
-    final list = featured.length >= 2
-        ? featured
-        : destinations.take(5).toList();
-
-    return SizedBox(
-      height: isMobile ? 330 : 350,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: list.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 16),
-        itemBuilder: (context, index) {
-          final destination = list[index];
-
-          return SizedBox(
-            width: isMobile ? 280 : 310,
-            child: _editorialDestinationCard(destination),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _editorialDestinationCard(dynamic destination) {
-    final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
-
-    return GlassSurface(
-      variant: GlassVariant.card,
-      borderRadius: BorderRadius.circular(GlassRadius.md),
-      padding: EdgeInsets.zero,
-      onTap: () => _openPlanner(destination.fullName),
-      child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 6,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      destination.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: colors.surfaceSecondary,
-                          child: Icon(
-                            Icons.image_not_supported_outlined,
-                            color: colors.textMuted,
-                            size: 32,
-                          ),
-                        );
-                      },
-                    ),
-
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 90,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              midnight.withValues(alpha: 0.72),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    Positioned(
-                      left: 16,
-                      bottom: 14,
-                      right: 16,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              destination.city,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.notoSerif(
-                                color: white,
-                                fontSize: 25,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_outward_rounded,
-                            color: white,
-                            size: 19,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Expanded(
-                flex: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        destination.country.toUpperCase(),
-                        style: TextStyle(
-                          color: colors.textMuted,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-
-                      const SizedBox(height: 7),
-
-                      Expanded(
-                        child: Text(
-                          destination.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_outlined,
-                            size: 14,
-                            color: scheme.primary,
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              destination.tripLength,
-                              style: TextStyle(
-                                color: context.headingColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
     );
   }
 
@@ -931,7 +782,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildActionCard(_ActionItem action) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     return GlassSurface(
       variant: GlassVariant.card,
@@ -944,10 +794,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: scheme.primary,
+                  color: TriporaBrand.crimsonDeep,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(action.icon, color: scheme.onPrimary, size: 21),
+                child: Icon(action.icon, color: Colors.white, size: 21),
               ),
 
               const SizedBox(width: 14),
@@ -1060,18 +910,27 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onPressed,
     double height = 48,
     double horizontalPadding = 22,
+    // Size to the label instead of the theme's full-width minimum; the
+    // label may wrap to two lines rather than truncate.
+    bool shrinkWrap = false,
   }) {
-    final scheme = Theme.of(context).colorScheme;
-
     return SizedBox(
-      height: height,
+      height: shrinkWrap ? null : height,
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 17),
-        label: Text(label),
+        label: shrinkWrap
+            ? Text(
+                label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+              )
+            : Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
+          minimumSize: shrinkWrap ? Size(0, height) : null,
+          // Brand fill (deep AA crimson + white), as the filled buttons.
+          backgroundColor: TriporaBrand.crimsonDeep,
+          foregroundColor: Colors.white,
           elevation: 0,
           padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1085,65 +944,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _secondaryButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onPressed,
-    double height = 48,
-  }) {
-    final colors = context.triporaColors;
-
-    return SizedBox(
-      height: height,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 17),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: context.headingColor,
-          backgroundColor: Colors.transparent,
-          side: BorderSide(color: colors.borderStrong),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Hero metadata
-// -----------------------------------------------------------------------------
-
-class _HeroMeta extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _HeroMeta({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: scheme.primary),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.7,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 // -----------------------------------------------------------------------------

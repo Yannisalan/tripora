@@ -9,6 +9,7 @@ import '../../core/design/glass/glass_tokens.dart';
 import '../../core/utils/logger.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/trip_dates.dart';
 import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
 import '../../widgets/shimmer_loader.dart';
@@ -117,6 +118,7 @@ class _TripsScreenState extends State<TripsScreen> {
         final colors = dialogContext.triporaColors;
 
         return AlertDialog(
+          scrollable: true,
           backgroundColor: colors.surface,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
@@ -311,31 +313,23 @@ class _TripsScreenState extends State<TripsScreen> {
   }) _tripStatus(TripModel trip) {
     final colors = context.triporaColors;
 
-    final now = DateTime.now();
+    // Compare calendar days, not instants: a trip starting tomorrow is
+    // "tomorrow" all day today. (Previously the days-until-departure value
+    // was fed into the trip COUNT string "{n} upcoming trips", which made a
+    // trip 58 days away read "58 upcoming trips".)
+    final today = TripDates.today();
+    final start = TripDates.calendarDate(trip.startDate);
+    final end = TripDates.calendarDate(trip.endDate);
 
-    if (now.isBefore(trip.startDate)) {
-      final daysUntil =
-          trip.startDate.difference(now).inDays;
+    if (today.isBefore(start)) {
+      final daysUntil = TripDates.daysBetween(today, start);
 
-      final String label;
-
-      if (daysUntil <= 0) {
-        label = context.tr('trips.startingToday');
-      } else if (daysUntil == 1) {
-        label = context.tr(
-          'trips.upcomingOne',
-        );
-      } else {
-        // Pass the number under both names so the {n} / {count}
-        // placeholder in the translation is always replaced.
-        label = context.tr(
-          'trips.upcomingMany',
-          params: {
-            'n': daysUntil.toString(),
-            'count': daysUntil.toString(),
-          },
-        );
-      }
+      final label = daysUntil == 1
+          ? context.tr('trips.startsTomorrow')
+          : context.tr(
+              'trips.startsInDays',
+              params: {'n': daysUntil.toString()},
+            );
 
       return (
         label: label,
@@ -344,7 +338,15 @@ class _TripsScreenState extends State<TripsScreen> {
       );
     }
 
-    if (now.isAfter(trip.endDate)) {
+    if (today == start) {
+      return (
+        label: context.tr('trips.startingToday'),
+        icon: Icons.event_outlined,
+        color: context.appStatus.info,
+      );
+    }
+
+    if (today.isAfter(end)) {
       return (
         label: context.tr('trips.completed'),
         icon: Icons.check_circle_outline,
@@ -383,13 +385,17 @@ class _TripsScreenState extends State<TripsScreen> {
             color: status.color,
           ),
           const SizedBox(width: 5),
-          Text(
-            status.label,
-            style: TextStyle(
-              color: status.color,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
+          Flexible(
+            child: Text(
+              status.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: status.color,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.1,
+              ),
             ),
           ),
         ],
@@ -464,9 +470,9 @@ class _TripsScreenState extends State<TripsScreen> {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
 
-          final isMobile = width < 768;
-          final isTablet =
-              width >= 768 && width < 1024;
+          final layout = TriporaBreakpoints.sizeFor(width);
+          final isMobile = layout == TriporaLayoutSize.compact;
+          final isTablet = layout == TriporaLayoutSize.medium;
 
           final horizontalPadding = isMobile
               ? 16.0
@@ -483,7 +489,8 @@ class _TripsScreenState extends State<TripsScreen> {
               left: horizontalPadding,
               right: horizontalPadding,
               top: isMobile ? 24 : 36,
-              bottom: (isMobile ? 24 : 36) + 96,
+              bottom: (isMobile ? 24 : 36) +
+                    GlassNavMetrics.bottomClearance(context),
             ),
             children: [
               Center(
@@ -591,7 +598,7 @@ class _TripsScreenState extends State<TripsScreen> {
     // Pass the number under both names so the {n} / {count}
     // placeholder in the translation is always replaced.
     final journeyText = _trips.length == 1
-        ? context.tr('trips.journeyOne')
+        ? context.tr('trips.journeyOne', params: {'n': '1'})
         : context.tr(
             'trips.journeyMany',
             params: {
@@ -690,11 +697,16 @@ class _TripsScreenState extends State<TripsScreen> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = isMobile
-            ? constraints.maxWidth
+        // One column until the cards have room for their metric rows:
+        // below ~700 px of content (viewports under 768 px) two columns
+        // squeezed names onto two lines and stacked every metric.
+        final columns = isMobile || constraints.maxWidth < 700
+            ? 1
             : isTablet
-                ? (constraints.maxWidth - 16) / 2
-                : (constraints.maxWidth - 32) / 3;
+                ? 2
+                : 3;
+        final cardWidth =
+            (constraints.maxWidth - 16 * (columns - 1)) / columns;
 
         return Wrap(
           spacing: 16,
@@ -739,10 +751,12 @@ class _TripsScreenState extends State<TripsScreen> {
         physics:
             const AlwaysScrollableScrollPhysics(),
         children: [
-          SizedBox(
-            height:
-                MediaQuery.of(context).size.height *
-                    0.72,
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  MediaQuery.sizeOf(context).height *
+                      0.72,
+            ),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
@@ -752,6 +766,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     maxWidth: 500,
                   ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment:
                         MainAxisAlignment.center,
                     children: [
@@ -875,7 +890,7 @@ class _TripsScreenState extends State<TripsScreen> {
                           width: 76,
                           height: 76,
                           decoration: BoxDecoration(
-                            color: scheme.primary,
+                            color: context.brandFill,
                             borderRadius:
                                 BorderRadius.circular(
                               20,
@@ -885,7 +900,7 @@ class _TripsScreenState extends State<TripsScreen> {
                             Icons
                                 .flight_takeoff_outlined,
                             size: 34,
-                            color: scheme.onPrimary,
+                            color: context.onBrandFill,
                           ),
                         ),
 
@@ -980,7 +995,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     height: 44,
                     decoration:
                         BoxDecoration(
-                      color: scheme.primary,
+                      color: context.brandFill,
                       borderRadius:
                           BorderRadius.circular(
                         12,
@@ -988,7 +1003,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     ),
                     child: Icon(
                       Icons.location_on_outlined,
-                      color: scheme.onPrimary,
+                      color: context.onBrandFill,
                       size: 21,
                     ),
                   ),
@@ -1120,7 +1135,7 @@ class _TripsScreenState extends State<TripsScreen> {
 
               Row(
                 children: [
-                  _statusPill(trip),
+                  Flexible(child: _statusPill(trip)),
                 ],
               ),
 
@@ -1145,7 +1160,9 @@ class _TripsScreenState extends State<TripsScreen> {
                   ),
                   _metric(
                     Icons.people_outline,
-                    context.tr('trips.travelers'),
+                    // Column label (the count is the value below it);
+                    // 'trips.travelers' is the "{n} travelers" phrase.
+                    context.tr('details.travelers'),
                     '${trip.travelers}',
                   ),
                   _metric(
@@ -1180,18 +1197,25 @@ class _TripsScreenState extends State<TripsScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: scheme.primary,
+                      color: context.brandFill,
                       borderRadius:
                           BorderRadius.circular(
                         999,
                       ),
                     ),
                     child: Text(
-                      '${trip.numberOfDays} '
-                      '${trip.numberOfDays == 1 ? context.tr('trips.day') : context.tr('trips.days')}',
+                      // The phrase carries the number ("8 days"); it
+                      // was previously prefixed a second time, giving
+                      // "8 {n} days".
+                      trip.numberOfDays == 1
+                          ? context.tr('details.dayCount', params: {'n': '1'})
+                          : context.tr(
+                              'trips.days',
+                              params: {'n': '${trip.numberOfDays}'},
+                            ),
                       style:
                           TextStyle(
-                        color: scheme.onPrimary,
+                        color: context.onBrandFill,
                         fontSize: 10,
                         fontWeight:
                             FontWeight.w800,
@@ -1258,7 +1282,10 @@ class _TripsScreenState extends State<TripsScreen> {
 
           const SizedBox(width: 8),
 
-          Column(
+          // Flexible: on a narrow card the metric wraps inside its slot
+          // instead of overflowing it.
+          Flexible(
+            child: Column(
             crossAxisAlignment:
                 CrossAxisAlignment.start,
             children: [
@@ -1290,6 +1317,7 @@ class _TripsScreenState extends State<TripsScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ],
       ),
@@ -1335,8 +1363,6 @@ class _TripsScreenState extends State<TripsScreen> {
     required IconData icon,
     required VoidCallback onPressed,
   }) {
-    final scheme = Theme.of(context).colorScheme;
-
     return SizedBox(
       height: 48,
       child: ElevatedButton.icon(
@@ -1347,8 +1373,8 @@ class _TripsScreenState extends State<TripsScreen> {
         ),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
+          backgroundColor: context.brandFill,
+          foregroundColor: context.onBrandFill,
           elevation: 0,
           padding:
               const EdgeInsets.symmetric(

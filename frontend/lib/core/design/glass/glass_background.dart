@@ -36,12 +36,13 @@ class GlassBackground extends StatelessWidget {
     // accent, so the backdrop carries real colour and luminance for glass to
     // refract. Blurring a uniform pale field is why light mode previously
     // read as a plain grey card instead of glass.
-    final sky = GlassAccents.sky.withValues(
-      alpha: (isDark ? 0.22 : 0.42) * intensity,
+    // Dark (Tripora 2.0): a restrained deep-ocean glow top-left and a
+    // faint crimson glow top-right over the navy base, no bright sky.
+    final sky = (isDark ? GlassAccents.ocean : GlassAccents.sky).withValues(
+      alpha: (isDark ? 0.30 : 0.42) * intensity,
     );
-    final indigo = GlassAccents.indigo.withValues(
-      alpha: (isDark ? 0.24 : 0.34) * intensity,
-    );
+    final indigo = (isDark ? GlassAccents.crimson : GlassAccents.indigo)
+        .withValues(alpha: (isDark ? 0.10 : 0.34) * intensity);
     final indigoSoft = GlassAccents.indigo.withValues(
       alpha: 0.30 * intensity,
     );

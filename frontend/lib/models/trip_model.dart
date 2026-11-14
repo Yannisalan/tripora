@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../core/utils/trip_dates.dart';
+
 class TripModel {
   final int? id;
 
@@ -41,21 +43,8 @@ class TripModel {
   // NUMBER OF DAYS
   // ============================================================
 
-  int get numberOfDays {
-    final start = DateTime(
-      startDate.year,
-      startDate.month,
-      startDate.day,
-    );
-
-    final end = DateTime(
-      endDate.year,
-      endDate.month,
-      endDate.day,
-    );
-
-    return end.difference(start).inDays + 1;
-  }
+  // Calendar-day arithmetic (DST-safe): see TripDates.
+  int get numberOfDays => TripDates.daysBetween(startDate, endDate) + 1;
 
   // ============================================================
   // FORMAT DATE FOR API
@@ -213,17 +202,13 @@ class TripModel {
     final dynamic rawEndDate =
         json['endDate'] ?? json['end_date'];
 
+    // Date-only values: keep the written calendar day, never shift it
+    // through a timezone conversion (see TripDates.parseDate).
     final DateTime parsedStartDate =
-        DateTime.tryParse(
-              rawStartDate?.toString() ?? '',
-            ) ??
-            DateTime.now();
+        TripDates.parseDate(rawStartDate) ?? TripDates.today();
 
     final DateTime parsedEndDate =
-        DateTime.tryParse(
-              rawEndDate?.toString() ?? '',
-            ) ??
-            parsedStartDate;
+        TripDates.parseDate(rawEndDate) ?? parsedStartDate;
 
     // ----------------------------------------------------------
     // TRAVELERS

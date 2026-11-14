@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/design/glass/glass_background.dart';
 import '../../core/design/glass/glass_surface.dart';
@@ -294,7 +295,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   // SOCIAL SIGN-IN
-                  if (!kIsWeb) ...[
+                  // Social buttons are API-gated off (AppConfig.showThirdPartyAuth);
+                  // without them the "or with email" divider would have nothing above it.
+                  if (!kIsWeb && AppConfig.showThirdPartyAuth) ...[
                     const SizedBox(height: 32),
 
                     SocialSignInSection(
@@ -561,14 +564,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 24),
 
                   // LOGIN LINK
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment:
+                        WrapCrossAlignment.center,
                     children: [
                       Text(
                         context.tr(
                           'register.haveAccount',
                         ),
+                        textAlign: TextAlign.center,
                       ),
                       TextButton(
                         onPressed: _isLoading
@@ -612,16 +617,20 @@ class _FieldsDivider extends StatelessWidget {
         const Expanded(
           child: Divider(),
         ),
-        Padding(
+        Flexible(
+          flex: 3,
+          child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: 12,
           ),
           child: Text(
             context.tr('register.orWithEmail'),
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: context.triporaColors.textMuted,
               fontWeight: FontWeight.w500,
             ),
+          ),
           ),
         ),
         const Expanded(
@@ -655,12 +664,21 @@ class _ConsentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
 
-    return InkWell(
+    // The whole row is the control: one tap target of at least 48 px
+    // that carries the checkbox state for assistive technology (the 24 px
+    // box alone was below the 48 px minimum).
+    return MergeSemantics(
+      child: Semantics(
+        checked: value,
+        enabled: onChanged != null,
+        child: InkWell(
       onTap: onChanged == null
           ? null
           : () => onChanged!(!value),
       borderRadius: BorderRadius.circular(8),
-      child: Padding(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 4,
           vertical: 6,
@@ -670,13 +688,15 @@ class _ConsentRow extends StatelessWidget {
             SizedBox(
               width: 24,
               height: 24,
-              child: Checkbox(
+              child: ExcludeSemantics(
+                child: Checkbox(
                 value: value,
                 onChanged: onChanged == null
                     ? null
                     : (_) => onChanged!(!value),
                 visualDensity:
                     VisualDensity.compact,
+              ),
               ),
             ),
 
@@ -724,6 +744,9 @@ class _ConsentRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+      ),
         ),
       ),
     );

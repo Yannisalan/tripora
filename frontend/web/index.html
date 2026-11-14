@@ -20,6 +20,9 @@
 <meta name="theme-color" content="#F8FAFC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D0D14" media="(prefers-color-scheme: dark)">
 
+<!-- Saved theme choice, applied before first paint (see theme_boot.js). -->
+<script src="theme_boot.js"></script>
+
 <style>
   html, body {
     margin: 0;
@@ -28,6 +31,13 @@
   }
   @media (prefers-color-scheme: dark) {
     html, body { background-color: #0D0D14; }
+  }
+  /* An explicit Light/Dark choice wins over the OS scheme. */
+  html[data-theme="light"], html[data-theme="light"] body {
+    background-color: #E8EEFB;
+  }
+  html[data-theme="dark"], html[data-theme="dark"] body {
+    background-color: #0D0D14;
   }
   /* Bot-protection honeypot (lib/core/security/turnstile). Hidden by this
      static rule, not by script: moved off-screen rather than display:none,

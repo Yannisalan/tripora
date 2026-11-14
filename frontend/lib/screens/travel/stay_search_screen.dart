@@ -137,7 +137,7 @@ class _StaySearchScreenState extends State<StaySearchScreen> {
               else if (_searched) ...[
                 Text(
                   _stays.length == 1
-                      ? context.tr('stay.resultOne')
+                      ? context.tr('stay.resultOne', params: {'n': '1', 'count': '1'})
                       : context.tr(
                           'stay.resultMany',
                           params: {

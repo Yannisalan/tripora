@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/design/glass/glass_background.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/logger.dart';
 
@@ -21,6 +22,7 @@ import '../screens/legal/legal_screen.dart';
 import '../screens/legal/legal_content.dart';
 
 import '../screens/auth/verify_email_screen.dart';
+import '../core/utils/trip_dates.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -98,7 +100,9 @@ class AppRoutes {
       // ========================================================
       // EXPLORE
       // ========================================================
-      explore: (_) => const ExploreScreen(),
+      // Standalone tab routes get the shell's ambient background (they
+      // paint none of their own).
+      explore: (_) => const GlassBackground(child: ExploreScreen()),
 
       // ========================================================
       // PLANNER
@@ -127,12 +131,12 @@ class AppRoutes {
       // ========================================================
       // MY TRIPS
       // ========================================================
-      trips: (_) => const TripsScreen(),
+      trips: (_) => const GlassBackground(child: TripsScreen()),
 
       // ========================================================
       // PROFILE
       // ========================================================
-      profile: (_) => const ProfileScreen(),
+      profile: (_) => const GlassBackground(child: ProfileScreen()),
 
       // ========================================================
       // CHECK FLIGHT PRICES (OPEN TO ALL LOGGED-IN USERS)
@@ -157,7 +161,9 @@ class AppRoutes {
           prefill = Map<String, dynamic>.from(arguments);
         }
 
-        return FlightSearchScreen(prefill: prefill);
+        return GlassBackground(
+          child: FlightSearchScreen(prefill: prefill),
+        );
       },
     };
 
@@ -406,7 +412,8 @@ class AppRoutes {
       return null;
     }
 
-    return DateTime.tryParse(stringValue);
+    // Trip dates are date-only: keep the written calendar day.
+    return TripDates.parseDate(stringValue);
   }
 
   // ============================================================

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import 'legal_content.dart';
 
@@ -36,8 +37,21 @@ class LegalScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      // Legal text keeps a readable line length on wide windows.
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final gutter = TriporaBreakpoints.gutterFor(
+            constraints.maxWidth,
+            maxContentWidth: 760,
+            minGutter: 24,
+          );
+          return ListView(
+        padding: EdgeInsets.fromLTRB(
+          gutter,
+          12,
+          gutter,
+          40 + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
           for (final section in sections) ...[
             if (section.title.isNotEmpty) ...[
@@ -67,6 +81,8 @@ class LegalScreen extends StatelessWidget {
           ],
           const SizedBox(height: 12),
         ],
+      );
+        },
       ),
       ),
     );

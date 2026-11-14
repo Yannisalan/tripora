@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'destination_image.dart';
 
 import '../core/l10n/app_localizations.dart';
 import '../core/design/glass/glass_surface.dart';
@@ -65,35 +66,13 @@ class DestinationCard extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        // Decode to a small texture so scrolling through many
-                        // cards never exhausts WebGL memory on iOS Safari
-                        // (which crashes the page when it runs out of GPU
-                        // texture slots).
-                        cacheWidth: 900,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) {
-                            return child;
-                          }
-
-                          return Container(
-                            color: context.triporaColors.border,
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: context.triporaColors.border,
-                            child: Center(
-                              child: Icon(
-                                Icons.image_not_supported_outlined,
-                                size: 40,
-                                color: context.triporaColors.textMuted,
-                              ),
-                            ),
-                          );
-                        },
+                      // Shared loading behaviour: dark placeholder, short
+                      // fade-in, calm error state, small decode size.
+                      DestinationImage(
+                        url: imageUrl,
+                        placeholder: ColoredBox(
+                          color: context.triporaColors.border,
+                        ),
                       ),
                       // Gradient overlay for legibility
                       DecoratedBox(
@@ -211,10 +190,10 @@ class DestinationCard extends StatelessWidget {
                         const SizedBox(height: 14),
                         SizedBox(
                           width: double.infinity,
-                          height: 44,
+                          height: 48,
                           child: GradientButton(
                             onPressed: onPlan,
-                            height: 44,
+                            height: 48,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             borderRadius: const BorderRadius.all(
                               Radius.circular(12),

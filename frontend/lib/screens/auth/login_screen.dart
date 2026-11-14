@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/auth/login_gate.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/design/glass/glass_background.dart';
@@ -221,7 +222,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 32),
 
                   // SOCIAL SIGN-IN
-                  if (!kIsWeb) ...[
+                  // Social buttons are API-gated off (AppConfig.showThirdPartyAuth);
+                  // without them the "or with email" divider would have nothing above it.
+                  if (!kIsWeb && AppConfig.showThirdPartyAuth) ...[
                     SocialSignInSection(
                       onSuccess: () {
                         if (!mounted) return;
@@ -392,12 +395,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
 
                   // SIGN UP
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment:
+                        WrapCrossAlignment.center,
                     children: [
                       Text(
                         context.tr('login.noAccount'),
+                        textAlign: TextAlign.center,
                       ),
                       TextButton(
                         onPressed: _isLoading

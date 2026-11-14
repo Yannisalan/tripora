@@ -8,6 +8,7 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/design/glass/glass_background.dart';
 import '../../core/preferences/app_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/trip_dates.dart';
 import '../../routes/app_routes.dart';
 
 class ItineraryScreen extends StatelessWidget {
@@ -42,13 +43,9 @@ class ItineraryScreen extends StatelessWidget {
     return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
-  DateTime? _dateValue(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return DateTime.tryParse(value.toString());
-  }
+  // Date-only trip values keep their written calendar day (no timezone
+  // shift); shared with the rest of the app (TripDates).
+  DateTime? _dateValue(dynamic value) => TripDates.parseDate(value);
 
   // ============================================================
   // GET ACTUAL TRIP OBJECT
@@ -84,7 +81,7 @@ class ItineraryScreen extends StatelessWidget {
       trip['startDate'] ?? trip['start_date'],
     );
 
-    return date ?? DateTime.now();
+    return date ?? TripDates.today();
   }
 
   // ============================================================
@@ -229,7 +226,8 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   int get numberOfDays {
-    final difference = endDate.difference(startDate).inDays;
+    // Calendar days, DST-safe (TripDates).
+    final difference = TripDates.daysBetween(startDate, endDate);
 
     return difference >= 0 ? difference + 1 : 1;
   }
@@ -456,14 +454,16 @@ class ItineraryScreen extends StatelessWidget {
   // ============================================================
 
   Widget _buildTripHeader(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
+      // Tripora 2.0 brand panel: midnight navy with soft-white text and
+      // crimson accents in both modes (was a solid primary slab). The
+      // hairline separates it from the navy page in dark mode.
       decoration: BoxDecoration(
-        color: scheme.primary,
+        color: context.brandPanel,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.triporaColors.borderStrong),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,19 +474,19 @@ class ItineraryScreen extends StatelessWidget {
               vertical: 7,
             ),
             decoration: BoxDecoration(
-              color: scheme.onPrimary.withValues(alpha: 0.10),
+              color: context.onBrandPanel.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: scheme.onPrimary.withValues(alpha: 0.16),
+                color: context.onBrandPanel.withValues(alpha: 0.16),
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.auto_awesome,
                   size: 14,
-                  color: Color(0xFF93C5FD),
+                  color: context.brandPanelAccent,
                 ),
                 const SizedBox(width: 7),
                 Text(
@@ -496,7 +496,7 @@ class ItineraryScreen extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.1,
-                    color: scheme.onPrimary,
+                    color: context.onBrandPanel,
                   ),
                 ),
               ],
@@ -512,7 +512,7 @@ class ItineraryScreen extends StatelessWidget {
               fontSize: 38,
               height: 1.08,
               fontWeight: FontWeight.w700,
-              color: scheme.onPrimary,
+              color: context.onBrandPanel,
             ),
           ),
 
@@ -525,7 +525,7 @@ class ItineraryScreen extends StatelessWidget {
               fontFamily: 'Manrope',
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: scheme.onPrimary.withValues(alpha: 0.70),
+              color: context.onBrandPanelSubtle,
             ),
           ),
 
@@ -564,7 +564,7 @@ class ItineraryScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             Divider(
-              color: scheme.onPrimary.withValues(alpha: 0.12),
+              color: context.onBrandPanel.withValues(alpha: 0.12),
               height: 1,
             ),
 
@@ -577,7 +577,7 @@ class ItineraryScreen extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.2,
-                color: scheme.onPrimary.withValues(alpha: 0.55),
+                color: context.onBrandPanelSubtle,
               ),
             ),
 
@@ -594,10 +594,10 @@ class ItineraryScreen extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: scheme.onPrimary.withValues(alpha: 0.08),
+                      color: context.onBrandPanel.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: scheme.onPrimary.withValues(alpha: 0.12),
+                        color: context.onBrandPanel.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Text(
@@ -609,7 +609,7 @@ class ItineraryScreen extends StatelessWidget {
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: scheme.onPrimary,
+                        color: context.onBrandPanel,
                       ),
                     ),
                   );
@@ -701,15 +701,13 @@ class ItineraryScreen extends StatelessWidget {
     IconData icon,
     String text,
   ) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
           size: 16,
-          color: const Color(0xFF93C5FD),
+          color: context.brandPanelAccent,
         ),
         const SizedBox(width: 7),
         Text(
@@ -718,7 +716,7 @@ class ItineraryScreen extends StatelessWidget {
             fontFamily: 'Manrope',
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: scheme.onPrimary,
+            color: context.onBrandPanel,
           ),
         ),
       ],
@@ -1044,7 +1042,6 @@ class ItineraryScreen extends StatelessWidget {
     required List<_Activity> activities,
   }) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       width: double.infinity,
@@ -1067,7 +1064,7 @@ class ItineraryScreen extends StatelessWidget {
                 height: 50,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: scheme.primary,
+                  color: context.brandFill,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
@@ -1076,7 +1073,7 @@ class ItineraryScreen extends StatelessWidget {
                     fontFamily: 'Manrope',
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: scheme.onPrimary,
+                    color: context.onBrandFill,
                   ),
                 ),
               ),
@@ -1314,8 +1311,8 @@ class ItineraryScreen extends StatelessWidget {
               ),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: scheme.primary,
-              foregroundColor: scheme.onPrimary,
+              backgroundColor: context.brandFill,
+              foregroundColor: context.onBrandFill,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),

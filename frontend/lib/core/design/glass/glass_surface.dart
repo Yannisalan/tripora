@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import 'glass_tokens.dart';
@@ -211,15 +212,18 @@ class GlassSurface extends StatelessWidget {
       );
     }
 
-    Widget panel = DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        gradient: showBorder ? glass.borderGradient : null,
-        border: showBorder
-            ? null
-            : Border.all(color: glass.strokeBottom, width: strokeWidth),
-        boxShadow:
-            elevation > 0 ? glass.shadows(lift: elevation) : null,
+    // Hairline border + drop shadow, painted OUTSIDE the translucent panel
+    // only. (Painting them as a BoxDecoration put the full-size border
+    // gradient and the shadow underneath the translucent fill, washing
+    // every panel grey and costing text contrast - not the documented
+    // "gradient hairline border".)
+    Widget panel = CustomPaint(
+      painter: _GlassFramePainter(
+        radius: radius,
+        strokeWidth: strokeWidth,
+        ring: showBorder ? glass.borderGradient : null,
+        ringColor: showBorder ? null : glass.strokeBottom,
+        shadows: elevation > 0 ? glass.shadows(lift: elevation) : const [],
       ),
       child: Padding(
         padding: showBorder
@@ -257,6 +261,69 @@ class GlassSurface extends StatelessWidget {
 
     return panel;
   }
+}
+
+/// Paints a glass panel's frame: drop shadows clipped to the outside of the
+/// panel, then a hairline ring (gradient or solid) on its edge.
+class _GlassFramePainter extends CustomPainter {
+  _GlassFramePainter({
+    required this.radius,
+    required this.strokeWidth,
+    required this.ring,
+    required this.ringColor,
+    required this.shadows,
+  });
+
+  final BorderRadius radius;
+  final double strokeWidth;
+  final Gradient? ring;
+  final Color? ringColor;
+  final List<BoxShadow> shadows;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final outer = radius.toRRect(rect);
+
+    if (shadows.isNotEmpty) {
+      canvas.save();
+      // Everything except the panel itself.
+      canvas.clipPath(
+        Path.combine(
+          PathOperation.difference,
+          Path()..addRect(rect.inflate(400)),
+          Path()..addRRect(outer),
+        ),
+      );
+      for (final s in shadows) {
+        final shadowRRect =
+            radius.toRRect(rect.shift(s.offset).inflate(s.spreadRadius));
+        canvas.drawRRect(shadowRRect, s.toPaint());
+      }
+      canvas.restore();
+    }
+
+    final ringRRect = outer.deflate(strokeWidth / 2);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    if (ring != null) {
+      paint.shader = ring!.createShader(rect);
+    } else if (ringColor != null) {
+      paint.color = ringColor!;
+    } else {
+      return;
+    }
+    canvas.drawRRect(ringRRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(_GlassFramePainter old) =>
+      old.radius != radius ||
+      old.strokeWidth != strokeWidth ||
+      old.ring != ring ||
+      old.ringColor != ringColor ||
+      !listEquals(old.shadows, shadows);
 }
 
 Radius _deflate(Radius radius, double amount) {

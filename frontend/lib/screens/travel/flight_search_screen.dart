@@ -156,8 +156,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
 
-          final isMobile = width < 768;
-          final isTablet = width >= 768 && width < 1024;
+          final layout = TriporaBreakpoints.sizeFor(width);
+          final isMobile = layout == TriporaLayoutSize.compact;
+          final isTablet = layout == TriporaLayoutSize.medium;
 
           final horizontalPadding = isMobile
               ? 16.0
@@ -170,7 +171,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               left: horizontalPadding,
               right: horizontalPadding,
               top: isMobile ? 24 : 36,
-              bottom: (isMobile ? 24 : 36) + 96,
+              bottom: (isMobile ? 24 : 36) +
+                    GlassNavMetrics.bottomClearance(context),
             ),
             child: Center(
               child: ConstrainedBox(
@@ -498,8 +500,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                     : context.tr('flights.search'),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: scheme.primary,
-                foregroundColor: scheme.onPrimary,
+                backgroundColor: context.brandFill,
+                foregroundColor: context.onBrandFill,
                 disabledBackgroundColor: colors.borderStrong,
                 disabledForegroundColor: scheme.onPrimary,
                 elevation: 0,
@@ -608,13 +610,13 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: colors.border,
+          color: context.inputBorder,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: colors.border,
+          color: context.inputBorder,
         ),
       ),
       focusedBorder: OutlineInputBorder(
@@ -648,27 +650,36 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     final colors = context.triporaColors;
     final scheme = Theme.of(context).colorScheme;
 
+    // Below ~380 px the icons (and the selected tick) pushed the labels
+    // onto two lines ("Exact / date"). The selection styling is unchanged.
+    final narrow = MediaQuery.sizeOf(context).width < 380;
+
     return SegmentedButton<String>(
+      showSelectedIcon: !narrow,
       segments: [
         ButtonSegment(
           value: 'date',
           label: Text(
             context.tr('flights.exactDate'),
           ),
-          icon: const Icon(
-            Icons.calendar_today_outlined,
-            size: 16,
-          ),
+          icon: narrow
+              ? null
+              : const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                ),
         ),
         ButtonSegment(
           value: 'month',
           label: Text(
             context.tr('flights.wholeMonth'),
           ),
-          icon: const Icon(
-            Icons.date_range_outlined,
-            size: 16,
-          ),
+          icon: narrow
+              ? null
+              : const Icon(
+                  Icons.date_range_outlined,
+                  size: 16,
+                ),
         ),
       ],
       selected: {_dateMode},
@@ -809,9 +820,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
   Widget _buildResults() {
     final colors = context.triporaColors;
-    final resultWord = _flights.length == 1
-        ? context.tr('flights.result')
-        : context.tr('flights.results');
+    // The phrase carries the number ("3 flights").
+    final resultText = context.tr(
+      _flights.length == 1 ? 'flights.result' : 'flights.results',
+      params: {'n': '${_flights.length}'},
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,7 +849,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${_flights.length} $resultWord',
+                    resultText,
                     style: GoogleFonts.notoSerif(
                       color: context.headingColor,
                       fontSize: 27,
@@ -997,7 +1010,6 @@ class _FlightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     final price = flight['price'];
 
@@ -1076,13 +1088,13 @@ class _FlightCard extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: scheme.primary,
+                    color: context.brandFill,
                     borderRadius:
                         BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.flight_takeoff_rounded,
-                    color: scheme.onPrimary,
+                    color: context.onBrandFill,
                     size: 19,
                   ),
                 ),
@@ -1319,7 +1331,6 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.triporaColors;
-    final scheme = Theme.of(context).colorScheme;
 
     return GlassSurface(
       variant: GlassVariant.card,
@@ -1331,14 +1342,14 @@ class _EmptyState extends StatelessWidget {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: scheme.primary,
+              color: context.brandFill,
               borderRadius:
                   BorderRadius.circular(16),
             ),
             child: Icon(
               Icons.search_off_rounded,
               size: 27,
-              color: scheme.onPrimary,
+              color: context.onBrandFill,
             ),
           ),
 

@@ -16,11 +16,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Tripora'), findsOneWidget);
-    expect(
-      find.text('Where will the next journey take you?'),
-      findsOneWidget,
-    );
-    expect(find.text('Start planning'), findsOneWidget);
+    // Tripora 2.0 Home: brand, discovery hero (no trips in this test, so
+    // no countdown), the AI command bar and the accent aura cards.
+    expect(find.text('TRIPORA'), findsOneWidget);
+    expect(find.text('Plan this trip'), findsOneWidget);
+    expect(find.text('DESTINATION-DRIVEN ACCENT AURAS'), findsOneWidget);
+    expect(find.textContaining('days to departure'), findsNothing);
   });
 }

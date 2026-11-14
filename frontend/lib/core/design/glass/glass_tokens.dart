@@ -42,6 +42,14 @@ class GlassAccents {
 
   /// Indigo accent (new).
   static const Color indigo = Color(0xFF818CF8);
+
+  /// Tripora 2.0 crimson (same value as TriporaBrand.crimson), used for the
+  /// restrained ambient glow behind dark glass.
+  static const Color crimson = Color(0xFFF01D54);
+
+  /// Deep ocean blue for the dark ambient glow (cool counterweight to the
+  /// crimson, never bright).
+  static const Color ocean = Color(0xFF1D3A7A);
 }
 
 /// Motion tokens shared by all glass widgets.
@@ -111,13 +119,19 @@ class GlassTheme extends ThemeExtension<GlassTheme> {
   // Dark
   // ------------------------------------------------------------
 
+  // Tripora 2.0: navy glass. A lighter white veil and a softer top
+  // highlight than before, so panels read as layered navy rather than
+  // grey frosted slabs; the hairline carries the edge.
+  // The veil is a translucent midnight navy (not white), so dark glass
+  // reads as layered navy instead of grey over the ambient glow.
   static const GlassTheme dark = GlassTheme(
-    tint: Color(0x14FFFFFF),
-    tintStrong: Color(0x1FFFFFFF),
-    strokeTop: Color(0x40FFFFFF),
-    strokeBottom: Color(0x0DFFFFFF),
-    highlight: Color(0x2EFFFFFF),
-    shadow: Color(0x99000000),
+    tint: Color(0xA6151B2F),
+    tintStrong: Color(0xBF171D32),
+    strokeTop: Color(0x33FFFFFF),
+    strokeBottom: Color(0x0AFFFFFF),
+    // 5% white: muted text #9296A8 stays >= 4.92:1 right under it.
+    highlight: Color(0x0DFFFFFF),
+    shadow: Color(0xB3000000),
     blurThin: GlassBlur.thin,
     blurRegular: GlassBlur.regular,
     blurHeavy: GlassBlur.heavy,
@@ -247,6 +261,96 @@ class GlassTheme extends ThemeExtension<GlassTheme> {
 }
 
 double lerpDouble(double a, double b, double t) => a + (b - a) * t;
+
+/// ---------------------------------------------------------------------
+/// Responsive breakpoints
+///
+/// The single source of truth for layout size classes. Decisions are made
+/// from the available logical width only - never from the platform - so
+/// the layout follows browser resizes, rotation, split-screen and
+/// foldables the same way on every target.
+///
+/// | Width          | Size class | Primary navigation      |
+/// |----------------|------------|-------------------------|
+/// | < 600          | compact    | floating bottom bar     |
+/// | 600 - 1023     | medium     | floating bottom bar     |
+/// | >= 1024        | expanded   | left sidebar            |
+/// ---------------------------------------------------------------------
+
+enum TriporaLayoutSize { compact, medium, expanded }
+
+class TriporaBreakpoints {
+  TriporaBreakpoints._();
+
+  /// First width of the medium (tablet) size class.
+  static const double medium = 600;
+
+  /// First width of the expanded (desktop) size class.
+  static const double expanded = 1024;
+
+  /// Size class for an available logical [width].
+  static TriporaLayoutSize sizeFor(double width) {
+    if (width >= expanded) return TriporaLayoutSize.expanded;
+    if (width >= medium) return TriporaLayoutSize.medium;
+    return TriporaLayoutSize.compact;
+  }
+
+  /// Size class for the whole window. Prefer [sizeFor] with
+  /// `LayoutBuilder` constraints when the widget does not fill the window.
+  static TriporaLayoutSize of(BuildContext context) =>
+      sizeFor(MediaQuery.sizeOf(context).width);
+
+  /// Whether the left sidebar (rather than the bottom bar) is the primary
+  /// navigation at [width].
+  static bool usesSidebar(double width) =>
+      sizeFor(width) == TriporaLayoutSize.expanded;
+
+  /// Horizontal padding that centers content no wider than
+  /// [maxContentWidth] in [width], never less than [minGutter]. Lets a
+  /// full-width scroll view (scrollbar and pull-to-refresh at the edge)
+  /// keep a readable column on ultrawide windows.
+  static double gutterFor(
+    double width, {
+    required double maxContentWidth,
+    double minGutter = 16,
+  }) {
+    final centered = (width - maxContentWidth) / 2;
+    return centered > minGutter ? centered : minGutter;
+  }
+}
+
+/// ---------------------------------------------------------------------
+/// Navigation metrics
+/// ---------------------------------------------------------------------
+
+class GlassNavMetrics {
+  GlassNavMetrics._();
+
+  /// Max width of the floating bottom bar, so it stays a centered capsule
+  /// on tablets instead of stretching edge to edge.
+  static const double bottomBarMaxWidth = 560;
+
+  /// Width of the expanded-layout sidebar (Tripora 2.0 docked panel).
+  static const double sidebarWidth = 216;
+
+  /// Minimum interactive size for every navigation target.
+  static const double minTouchTarget = 48;
+
+  /// Extra breathing room kept between the last scrollable item and the
+  /// floating bottom bar.
+  static const double clearanceGap = 12;
+
+  /// Bottom padding a tab page's scroll view needs so its last item can be
+  /// scrolled fully clear of the floating bottom bar.
+  ///
+  /// The shell scaffold uses `extendBody`, so the body's bottom padding
+  /// already equals the bar's laid-out height, including the device's
+  /// gesture / three-button / home-indicator inset. With the sidebar
+  /// layout it is just the device inset.
+  static double bottomClearance(BuildContext context) =>
+      MediaQuery.paddingOf(context).bottom + clearanceGap;
+}
+
 
 /// ---------------------------------------------------------------------
 /// BuildContext access

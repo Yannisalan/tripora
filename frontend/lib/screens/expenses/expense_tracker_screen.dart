@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/preferences/app_preferences.dart';
 import '../../core/design/glass/glass_background.dart';
+import '../../core/design/glass/glass_tokens.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/utils/logger.dart';
@@ -27,6 +28,22 @@ const _paymentMethods = {
 };
 
 /// Full expense tracker for a single trip.
+/// Brand gradient behind the budget summary with an 18% black scrim
+/// composited into each stop: same hues, and white text (secondary at 90%)
+/// reaches WCAG AA 4.5:1 even on the light #3B82F6 end, where plain white
+/// is only 3.7:1.
+final LinearGradient _summaryGradient = LinearGradient(
+  begin: AppColors.brandGradient.begin,
+  end: AppColors.brandGradient.end,
+  stops: AppColors.brandGradient.stops,
+  colors: [
+    for (final c in AppColors.brandGradient.colors)
+      Color.alphaBlend(const Color(0x2E000000), c),
+  ],
+);
+
+const Color _summarySecondaryText = Color(0xE6FFFFFF);
+
 class ExpenseTrackerScreen extends StatefulWidget {
   final TripModel trip;
 
@@ -216,6 +233,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         title: Text(
           dialogContext.tr('expense.deleteTitle'),
         ),
@@ -438,13 +456,20 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadExpenses,
-      child: ListView(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final gutter = TriporaBreakpoints.gutterFor(
+            constraints.maxWidth,
+            maxContentWidth: 920,
+          );
+          return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
+        // Bottom: room for the floating "Add" button plus the device inset.
+        padding: EdgeInsets.fromLTRB(
+          gutter,
           16,
-          16,
-          16,
-          96,
+          gutter,
+          96 + MediaQuery.paddingOf(context).bottom,
         ),
         children: [
           _buildSummaryCard(colors),
@@ -458,6 +483,8 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
           ],
           _buildExpenseList(colors),
         ],
+      );
+        },
       ),
     );
   }
@@ -471,7 +498,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: AppColors.brandGradient,
+          gradient: _summaryGradient,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -496,7 +523,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
               context.tr('expense.setBudgetDescription'),
               style: const TextStyle(
                 fontSize: 13,
-                color: Colors.white70,
+                color: _summarySecondaryText,
                 height: 1.4,
               ),
             ),
@@ -539,7 +566,11 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
         begin: 0,
         end: spent,
       ),
-      duration: const Duration(milliseconds: 700),
+      // Collapses to zero when the OS asks for reduced motion.
+      duration: GlassMotion.resolve(
+        context,
+        const Duration(milliseconds: 700),
+      ),
       curve: Curves.easeOutCubic,
       builder: (
         context,
@@ -558,7 +589,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: AppColors.brandGradient,
+            gradient: _summaryGradient,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -568,12 +599,14 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                 mainAxisAlignment:
                     MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    context.tr('expense.tripBudget'),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white70,
+                  Expanded(
+                    child: Text(
+                      context.tr('expense.tripBudget'),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _summarySecondaryText,
+                      ),
                     ),
                   ),
                   TextButton.icon(
@@ -607,19 +640,30 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                 mainAxisAlignment:
                     MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    context.tr('expense.spent'),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.white70,
+                  Expanded(
+                    child: Text(
+                      context.tr('expense.spent'),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: _summarySecondaryText,
+                      ),
                     ),
                   ),
-                  Text(
-                    _formatAmount(animatedSpent),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                  const SizedBox(width: 12),
+                  // The amount is never truncated: it scales down if a
+                  // narrow phone cannot fit it next to the label.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        _formatAmount(animatedSpent),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -632,8 +676,9 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                     begin: 0,
                     end: animatedProgress,
                   ),
-                  duration: const Duration(
-                    milliseconds: 700,
+                  duration: GlassMotion.resolve(
+                    context,
+                    const Duration(milliseconds: 700),
                   ),
                   curve: Curves.easeOutCubic,
                   builder: (
@@ -658,17 +703,19 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                 crossAxisAlignment:
                     CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    context.tr(
-                      'expense.percentUsed',
-                      params: {
-                        'n': (animatedRatio * 100)
-                            .toStringAsFixed(0),
-                      },
-                    ),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
+                  Flexible(
+                    child: Text(
+                      context.tr(
+                        'expense.percentUsed',
+                        params: {
+                          'n': (animatedRatio * 100)
+                              .toStringAsFixed(0),
+                        },
+                      ),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _summarySecondaryText,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -708,8 +755,9 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                     begin: 0.0,
                     end: 1.0,
                   ),
-                  duration: const Duration(
-                    milliseconds: 500,
+                  duration: GlassMotion.resolve(
+                    context,
+                    const Duration(milliseconds: 500),
                   ),
                   curve: Curves.easeOutBack,
                   builder: (
@@ -946,7 +994,12 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
               horizontal: 14,
               vertical: 12,
             ),
-            child: Row(
+            // On narrow phones the amount moves under the description
+            // instead of squeezing it; nothing is dropped.
+            child: LayoutBuilder(
+              builder: (context, rowConstraints) {
+              final stacked = rowConstraints.maxWidth < 340;
+              return Row(
               children: [
                 Container(
                   width: 40,
@@ -992,9 +1045,36 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                           color: colors.textMuted,
                         ),
                       ),
+                      if (stacked) ...[
+                        const SizedBox(height: 4),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: formattedAmount,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' · ${_paymentMethodLabel(
+                                  expense.paymentMethod,
+                                )}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
+                if (!stacked) ...[
                 const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment:
@@ -1019,6 +1099,7 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                     ),
                   ],
                 ),
+                ],
                 IconButton(
                   tooltip: context.tr(
                     'common.delete',
@@ -1031,6 +1112,8 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
                   ),
                 ),
               ],
+            );
+              },
             ),
           ),
         ),
@@ -1265,6 +1348,7 @@ class _ExpenseFormSheetState
                 const SizedBox(height: 16),
 
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _currency,
                   decoration: InputDecoration(
                     labelText:
@@ -1291,6 +1375,7 @@ class _ExpenseFormSheetState
                 const SizedBox(height: 16),
 
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _category,
                   decoration: InputDecoration(
                     labelText:
@@ -1305,6 +1390,8 @@ class _ExpenseFormSheetState
                             _categoryLabel(
                               category,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
@@ -1361,6 +1448,7 @@ class _ExpenseFormSheetState
                 const SizedBox(height: 16),
 
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _paymentMethod,
                   decoration: InputDecoration(
                     labelText: context.tr(
@@ -1374,6 +1462,8 @@ class _ExpenseFormSheetState
                           value: method,
                           child: Text(
                             _paymentMethodLabel(method),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
@@ -1494,7 +1584,8 @@ class _BudgetSheetState extends State<_BudgetSheet> {
           borderRadius: BorderRadius.circular(20),
         ),
         padding: const EdgeInsets.all(20),
-        child: Form(
+        child: SingleChildScrollView(
+          child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1557,6 +1648,7 @@ class _BudgetSheetState extends State<_BudgetSheet> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
