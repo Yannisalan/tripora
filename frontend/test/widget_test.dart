@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,6 +7,11 @@ import 'package:frontend/main.dart';
 void main() {
   testWidgets('Tripora home page loads', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({'access_token': 'test-token'});
+    // Phone window: Home shows its own app bar with the wordmark (from
+    // 768 px the rail / sidebar replaces it).
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
 
     await tester.pumpWidget(const TriporaApp());
 

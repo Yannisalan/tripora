@@ -9,7 +9,7 @@ import '../../models/destination_model.dart';
 /// ---------------------------------------------------------------------
 /// AI command center (Tripora 2.0 Home)
 ///
-/// Honest by construction: the only Gemini-backed flow in the app is the
+/// Honest by construction: the only AI-backed (Groq) flow in the app is the
 /// Planner (POST /api/trips/generate, behind the AI consent dialog). There
 /// is no free-text command endpoint, so "running" a command opens the
 /// Planner with the typed destination prefilled. Nothing is generated or
@@ -257,11 +257,28 @@ class AccentAuraStrip extends StatelessWidget {
     required this.destinations,
     required this.selectedCity,
     required this.onSelected,
+    this.grid = false,
   });
 
   final List<DestinationModel> destinations;
   final String? selectedCity;
   final ValueChanged<DestinationModel> onSelected;
+
+  /// False: one horizontally scrolling row (phones). True: a responsive
+  /// grid whose cards all share one height (medium and expanded).
+  final bool grid;
+
+  /// Card height in both presentations.
+  static const double _cardHeight = 112;
+
+  /// Widest a grid card may grow before another column is added.
+  static const double _maxCardWidth = 260;
+
+  Widget _card(DestinationModel d) => _AuraCard(
+    destination: d,
+    selected: d.city == selectedCity,
+    onTap: () => onSelected(d),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -280,27 +297,33 @@ class AccentAuraStrip extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 112,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            clipBehavior: Clip.none,
+        if (grid)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: _maxCardWidth,
+              mainAxisExtent: _cardHeight,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+            ),
             itemCount: destinations.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final d = destinations[i];
-              return SizedBox(
-                width: 228,
-                child: _AuraCard(
-                  destination: d,
-                  selected: d.city == selectedCity,
-                  onTap: () => onSelected(d),
-                ),
-              );
-            },
+            itemBuilder: (context, i) => _card(destinations[i]),
+          )
+        else
+          SizedBox(
+            height: _cardHeight,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              clipBehavior: Clip.none,
+              itemCount: destinations.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, i) =>
+                  SizedBox(width: 228, child: _card(destinations[i])),
+            ),
           ),
-        ),
       ],
     );
   }

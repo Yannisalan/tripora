@@ -9,6 +9,7 @@ import '../../models/trip_model.dart';
 import '../../services/trip_service.dart';
 import '../../widgets/shimmer_loader.dart';
 import 'expenses/expense_tracker_screen.dart';
+import 'planner/planner_screen.dart' show ensureAiConsent;
 import 'weather/trip_weather_screen.dart';
 import '../widgets/adaptive_grid.dart';
 import '../core/design/glass/glass_tokens.dart';
@@ -93,6 +94,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   String _extractErrorMessage(Object error) {
+    // Regenerate, swap and date edits all call the AI: show the same
+    // localized "AI is busy" message the planner uses.
+    if (error is AiBusyException) {
+      return context.tr('planner.aiBusy');
+    }
+
     final message = error.toString();
 
     if (message.startsWith('Exception: ')) {
@@ -544,6 +551,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       return;
     }
 
+    // Regenerating sends trip details to the AI provider.
+    if (!await ensureAiConsent(context) || !mounted) {
+      return;
+    }
+
     setState(() {
       _isRegenerating = true;
       _errorMessage = null;
@@ -587,6 +599,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final tripId = _trip.id;
 
     if (tripId == null || _swappingKey != null || TripService.isOffline) {
+      return;
+    }
+
+    // Swapping sends trip details and planned activities to the AI.
+    if (!await ensureAiConsent(context) || !mounted) {
       return;
     }
 
@@ -1095,6 +1112,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     destinationController.dispose();
 
     if (updatedTrip == null || !mounted) {
+      return;
+    }
+
+    // New dates make the backend rebuild the itinerary with the AI.
+    final datesChanged =
+        !DateUtils.isSameDay(updatedTrip.startDate, _trip.startDate) ||
+        !DateUtils.isSameDay(updatedTrip.endDate, _trip.endDate);
+    if (datesChanged && (!await ensureAiConsent(context) || !mounted)) {
       return;
     }
 

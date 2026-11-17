@@ -31,7 +31,7 @@ Only the latest `main` deployment (Render backend, Vercel web app, current store
 | Rate limiting | Per-endpoint buckets in Redis (shared across workers, atomic, survives restarts); per user or per real client IP (IPv6 by /64); unknown endpoints get default limits; platform-wide AI ceiling; documented Redis-failure mode |
 | Transport | HSTS on API and web; CSP on the web app (report-only until production reports are clean) |
 | Secrets | Server-side env vars only; none in the Flutter app; `.env` git-ignored |
-| AI | Gemini key server-side only; schema-constrained JSON output validated server-side; user input fenced as data; per-user and platform-wide generation limits |
+| AI | Groq key (`GROQ_API_KEY`) server-side only; schema-constrained JSON output validated server-side; user input fenced as data; per-user and platform-wide generation limits |
 
 ## Security-related environment variables
 
@@ -48,14 +48,14 @@ All of these live in the Render dashboard (backend) or Vercel project settings (
 | `DB_MIGRATION_USER` / `DB_MIGRATION_PASSWORD` | deploy | Owner credentials used **only** by the pre-deploy `flask db upgrade`. |
 | `REDIS_URL` | yes (prod) | Shared rate-limit store (Render Key Value internal URL or `rediss://`). |
 | `RATE_LIMIT_FAILURE_MODE` | no | `fallback` (default: per-process limits while Redis is down) or `closed` (503 for auth/admin/AI while Redis is down). |
-| `RATE_LIMIT_AI_GLOBAL_LIMIT` / `_WINDOW` | no | Platform-wide Gemini ceiling (default 300 per hour). |
+| `RATE_LIMIT_AI_GLOBAL_LIMIT` / `_WINDOW` | no | Platform-wide AI (Groq) ceiling (default 300 per hour). |
 | `DB_SSLMODE` | recommended | `require` by default for non-local hosts; set `verify-full` when the CA is available. |
 | `CORS_ORIGINS` | yes (prod) | Exact web origin(s), comma-separated. Unset = localhost defaults. |
 | `TRUSTED_PROXY_HOPS` | auto | Proxy hops trusted for `X-Forwarded-For`/`-Proto`. Default 1 on Render (`RENDER=true`), else 0. Too high = clients can spoof their IP. |
 | `JWT_ACCESS_TOKEN_MINUTES` | no | Default 15. Keep short. |
 | `REFRESH_TOKEN_DAYS` | no | Default 30. |
 | `GOOGLE_CLIENT_ID_*`, `APPLE_CLIENT_ID` | if social login | Accepted token audiences. |
-| `GEMINI_API_KEY`, `TRAVELPAYOUTS_API_KEY`, `DUFFEL_API_TOKEN` | per feature | Provider keys. Server-side only. Set a spend cap in each provider console. |
+| `GROQ_API_KEY`, `TRAVELPAYOUTS_API_KEY`, `DUFFEL_API_TOKEN` | per feature (`GROQ_API_KEY` is required at start-up) | Provider keys. Server-side only. Set a spend cap in each provider console. |
 | `MAIL_*` / `RESEND_API_KEY` | for password reset | Email delivery. Without it, reset is unavailable (codes are never logged). |
 | `RATE_LIMIT_*` | no | Override bucket sizes (`RATE_LIMIT_ENABLED=false` only in tests). |
 | `REQUEST_LOGGING_ENABLED` | no | Stores path, status, user id and IP per request in `activity_logs`. |
@@ -78,7 +78,8 @@ All of these live in the Render dashboard (backend) or Vercel project settings (
 | Admin account or authenticator compromised | `flask admin revoke <email>` (role, MFA and sessions removed immediately) or `flask admin revoke-sessions <email>` + `reset-mfa`. Review `admin_audit_log` for that user. |
 | `MFA_ENCRYPTION_KEY` leaked | Generate a new key, deploy it, run `flask admin reset-mfa` for every admin. The old key alone does not grant access (password still required). |
 | Redis down / flushed | Limits fall back to per-process (`fallback`) or auth/admin/AI return 503 (`closed`). Flushing only resets counters; no security state lives in Redis. |
-| Gemini / Travelpayouts / Duffel key leaked or cost spike | Revoke the key in the provider console, issue a new one, set it in Render. Lower `RATE_LIMIT_GENERATE_LIMIT` / `RATE_LIMIT_AI_SWAP_LIMIT` if the spike is abuse. |
+| Groq / Travelpayouts / Duffel key leaked or cost spike | Revoke the key in the provider console, issue a new one, set it in Render. Lower `RATE_LIMIT_GENERATE_LIMIT` / `RATE_LIMIT_AI_SWAP_LIMIT` if the spike is abuse. |
+| Groq rate limit reached (frequent "AI is busy" / HTTP 503 `ai_busy`) | Expected under load on the Groq free tier (limits are per model, per minute and per day). Each request makes at most 3 provider calls, falls back from `openai/gpt-oss-120b` to `openai/gpt-oss-20b`, then answers 503 without saving anything. Lowering `RATE_LIMIT_AI_GLOBAL_LIMIT` spreads load; only a higher Groq tier raises capacity. The AI provider was migrated from Google Gemini to Groq on 2026-11-17. |
 | DB credentials leaked | Rotate the role password in Neon, update `DB_PASSWORD`. Check Neon's connection history. |
 | Vulnerable dependency | Bump the pin in `backend/requirements.txt` or `frontend/pubspec.yaml`. CI pip-audit must pass before deploy. |
 

@@ -5,26 +5,29 @@ import random
 import time
 from datetime import date, timedelta
 
+import groq
 from config import local_safety
-from google import genai
-from google.genai import types
 
 
 logger = logging.getLogger(__name__)
 
 
-# Gemini models used for itinerary generation, in priority order. The primary
-# model can intermittently return 503 UNAVAILABLE ("experiencing high
-# demand"); if it stays down we fall back to the next capable model so a
-# transient capacity spike never fails the user's request. All ids here were
-# verified against the Gemini API (2026-09): `gemini-3.6-flash` and
-# `gemini-3.5-flash-lite` respond; `gemini-3.6-flash-lite` does NOT exist
-# anymore (404) and must not be used as a fallback.
-GEMINI_MODELS = [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
+# Groq models used for itinerary generation, in priority order. If the
+# primary model is rate limited, overloaded or unavailable we fall back to
+# the next one so a transient capacity spike never fails the user's request.
+# Both ids were verified against the Groq API (2026-11-17): listed by
+# GET /openai/v1/models for the project key and accepting
+# response_format={"type": "json_schema", "strict": true} including the
+# `enum` / `minItems` / `maxItems` keywords used by the schemas below.
+GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
 ]
+
+# gpt-oss models reason before answering. "low" keeps an 8-day itinerary
+# inside the 50 s generation budget; correctness is enforced by the strict
+# JSON schema plus the server-side validators, not by the reasoning depth.
+GROQ_REASONING_EFFORT = "low"
 
 # Categories every activity must fall into. Kept in sync with the interest
 # taxonomy used on the Flutter side (Planner's interest chips) plus two
@@ -42,7 +45,7 @@ ACTIVITY_CATEGORIES = [
 ]
 
 # Maps a user's preferred language code to a human-readable name used to
-# instruct Gemini which language the itinerary content should be written in.
+# instruct the AI which language the itinerary content should be written in.
 # Kept in sync with VALID_LANGUAGES in routes/auth.py.
 LANGUAGES_BY_CODE = {
     "en": "English",
@@ -56,13 +59,59 @@ LANGUAGES_BY_CODE = {
 
 local_safety.load_environment()
 
-api_key = os.getenv("GEMINI_API_KEY")
+api_key = os.getenv("GROQ_API_KEY")
 
 if not api_key:
-    raise ValueError("GEMINI_API_KEY is not configured.")
+    raise ValueError("GROQ_API_KEY is not configured.")
 
 
-client = genai.Client(api_key=api_key)
+# SDK-level retries are disabled: the generation loops below own retries,
+# backoff and model fallback so the whole request stays inside its time
+# budget. The per-attempt timeout is passed on every request.
+client = groq.Groq(api_key=api_key, max_retries=0)
+
+
+def _strict_schema(schema):
+    """Copy a JSON schema with ``additionalProperties: false`` on every
+    object, as Groq's strict json_schema mode requires."""
+
+    if isinstance(schema, dict):
+        copied = {key: _strict_schema(value) for key, value in schema.items()}
+        if copied.get("type") == "object":
+            copied.setdefault("additionalProperties", False)
+        return copied
+    if isinstance(schema, list):
+        return [_strict_schema(item) for item in schema]
+    return schema
+
+
+def _request_json(model, prompt, schema_name, schema, timeout_seconds):
+    """Send one prompt to Groq and return the raw JSON text (or None).
+
+    Uses strict structured outputs so the response must match ``schema``.
+    Parsing and validation stay with the caller, exactly as before.
+    """
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema_name,
+                "strict": True,
+                "schema": _strict_schema(schema),
+            },
+        },
+        reasoning_effort=GROQ_REASONING_EFFORT,
+        timeout=timeout_seconds,
+    )
+
+    choices = getattr(response, "choices", None) or []
+    if not choices:
+        return None
+    message = getattr(choices[0], "message", None)
+    return getattr(message, "content", None)
 
 
 # Hard ceilings for the whole AI generation, kept comfortably below the
@@ -77,7 +126,7 @@ ATTEMPT_OVERHEAD_SECONDS = 1.0
 
 
 class AIBusyError(RuntimeError):
-    """Raised when Gemini stays unavailable until the time budget runs out.
+    """Raised when the AI provider stays unavailable until the time budget runs out.
 
     The route layer translates this into an HTTP 503 ``ai_busy`` response so
     the client can show a friendly "the AI is busy" message instead of
@@ -86,7 +135,7 @@ class AIBusyError(RuntimeError):
 
 
 def _attempt_timeout_seconds(total_days):
-    """Per-attempt Gemini timeout, scaled by trip length.
+    """Per-attempt Groq timeout, scaled by trip length.
 
     Roughly 25s for a short trip, growing with the number of days and capped
     so a single attempt can never swallow the whole request budget.
@@ -101,7 +150,7 @@ def _attempt_timeout_seconds(total_days):
 
 
 def _swap_attempt_timeout_seconds():
-    """Per-attempt Gemini timeout for a single-activity swap."""
+    """Per-attempt Groq timeout for a single-activity swap."""
 
     return 15.0
 
@@ -123,7 +172,7 @@ def _validate_itinerary(
     interests,
 ):
     """
-    Strictly validate the itinerary returned by Gemini.
+    Strictly validate the itinerary returned by the AI.
 
     Requirements:
     - day -> title -> date -> activities.
@@ -134,7 +183,7 @@ def _validate_itinerary(
     - Activities contain time/title/description/category/location.
     - category is one of ACTIVITY_CATEGORIES.
     - No two activities across the whole trip share the same title
-      (prevents Gemini repeating the same restaurant/landmark).
+      (prevents the AI repeating the same restaurant/landmark).
     - Every selected interest is covered by at least one activity,
       when interests were provided.
     """
@@ -145,19 +194,19 @@ def _validate_itinerary(
 
     if not isinstance(result, dict):
         raise ValueError(
-            "Gemini response must be a JSON object."
+            "AI response must be a JSON object."
         )
 
     if "itinerary" not in result:
         raise ValueError(
-            "Gemini response does not contain an itinerary."
+            "AI response does not contain an itinerary."
         )
 
     itinerary = result["itinerary"]
 
     if not isinstance(itinerary, list):
         raise ValueError(
-            "Gemini itinerary must be a list."
+            "AI itinerary must be a list."
         )
 
     # --------------------------------------------------------
@@ -186,7 +235,7 @@ def _validate_itinerary(
     if len(itinerary) != expected_days:
         raise ValueError(
             f"Expected exactly {expected_days} itinerary days "
-            f"but Gemini returned {len(itinerary)}."
+            f"but the AI returned {len(itinerary)}."
         )
 
     # --------------------------------------------------------
@@ -474,37 +523,49 @@ def _validate_itinerary(
 # ============================================================
 
 def _is_transient_error(error):
-    """Best-effort check for a transient, retry-friendly Gemini API error.
+    """Best-effort check for a transient, retry-friendly Groq API error.
 
-    The google-genai SDK wraps HTTP failures in exceptions whose ``__str__``
-    includes the status code (e.g. ``503 UNAVAILABLE``). We also honour
-    ``google.api_core.exceptions`` statuses when the rich error object is
-    available. Anything else (auth, invalid argument) is treated as permanent.
+    Rate limits (429), server errors (5xx), connection failures and
+    per-attempt timeouts are retry-friendly while time remains. Anything
+    else (authentication 401, permission 403, bad request 400) is treated
+    as permanent.
     """
+    if isinstance(
+        error,
+        (
+            groq.RateLimitError,
+            groq.InternalServerError,
+            groq.APITimeoutError,
+            groq.APIConnectionError,
+        ),
+    ):
+        return True
+    if isinstance(error, groq.APIStatusError):
+        return error.status_code == 429 or error.status_code >= 500
+    if isinstance(error, groq.GroqError):
+        return False
+    # Non-SDK errors (e.g. a builtin TimeoutError, or httpx errors raised
+    # outside the SDK wrapper): fall back to the status code / wording.
     message = (str(error) + " " + repr(error)).upper()
     if any(code in message for code in ("429", "503", "500", "502", "504")):
         return True
-    # Per-attempt client timeouts surface as httpx TimeoutException (whose
-    # str() is empty), a builtin TimeoutError, or a "deadline exceeded"
-    # API error — all retry-friendly if time still remains.
     if "TIMEOUT" in type(error).__name__.upper():
         return True
     if "TIMEOUT" in message or "TIMED OUT" in message or "DEADLINE" in message:
         return True
-    try:
-        from google.api_core import exceptions as gax
-        return isinstance(
-            error,
-            (
-                gax.ResourceExhausted,
-                gax.ServiceUnavailable,
-                gax.DeadlineExceeded,
-                gax.InternalServerError,
-                gax.TooManyRequests,
-            ),
-        )
-    except Exception:
-        return False
+    return False
+
+
+def _error_code(error):
+    """The Groq error ``code`` (e.g. ``model_not_found``), if present."""
+
+    body = getattr(error, "body", None)
+    if isinstance(body, dict):
+        inner = body.get("error") if isinstance(body.get("error"), dict) else body
+        code = inner.get("code")
+        if code:
+            return str(code)
+    return ""
 
 
 def _is_permanent_model_error(error):
@@ -514,12 +575,49 @@ def _is_permanent_model_error(error):
     chance of success, so the caller should advance to the next model
     immediately instead of waiting on transient-error thresholds.
     """
+    if isinstance(error, groq.NotFoundError):
+        return True
+    if _error_code(error) in ("model_not_found", "model_decommissioned"):
+        return True
     message = str(error).upper()
+    if "MODEL_NOT_FOUND" in message or "MODEL_DECOMMISSIONED" in message:
+        return True
     if "404" in message or "NOT_FOUND" in message:
         return True
-    if "NO LONGER AVAILABLE" in message or "NOT SUPPORTED" in message:
-        return True
     return False
+
+
+def _describe_error(error):
+    """A log-safe one-line description of a provider error.
+
+    Groq error bodies can echo the rejected generation (which contains the
+    traveler's trip details), so SDK errors are reduced to their type,
+    HTTP status and error code. Never includes the API key or request.
+    """
+
+    if isinstance(error, groq.APIStatusError):
+        code = _error_code(error)
+        return "{} (HTTP {}{})".format(
+            type(error).__name__,
+            error.status_code,
+            ", " + code if code else "",
+        )
+    if isinstance(error, groq.GroqError):
+        return type(error).__name__
+    return str(error) or type(error).__name__
+
+
+def _is_output_validation_error(error):
+    """True when Groq rejected the model's own output against the schema.
+
+    Strict structured outputs return HTTP 400 ``json_validate_failed`` when
+    the generated JSON does not match the schema. That is a bad generation,
+    not a bad request, so it consumes an attempt like invalid JSON does.
+    """
+    return (
+        isinstance(error, groq.BadRequestError)
+        and _error_code(error) == "json_validate_failed"
+    )
 
 
 def generate_itinerary(
@@ -556,11 +654,11 @@ def generate_itinerary(
 
     last_error = None
 
-    # Track which Gemini model we are on and how many consecutive times it has
+    # Track which Groq model we are on and how many consecutive times it has
     # failed with a transient/unavailable error, so we can fall back to the
     # next model instead of retrying an overloaded one forever.
     model_index = 0
-    model = GEMINI_MODELS[model_index]
+    model = GROQ_MODELS[model_index]
     model_transient_errors = 0
 
     categories_list = ", ".join(ACTIVITY_CATEGORIES)
@@ -642,8 +740,8 @@ Keep the JSON keys, the 'time' values (e.g. "Morning"), and the
         # ----------------------------------------------------
         # First attempt uses the normal prompt.
         #
-        # If Gemini returns invalid data, subsequent attempts
-        # explicitly tell Gemini what went wrong.
+        # If the AI returns invalid data, subsequent attempts
+        # explicitly tell the AI what went wrong.
         # ----------------------------------------------------
 
         correction_message = ""
@@ -800,116 +898,123 @@ Interests: {interests}
 """
 
         # ====================================================
-        # CALL GEMINI
+        # CALL GROQ
         # ====================================================
 
         try:
 
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema={
-                        "type": "object",
-                        "properties": {
-                            "itinerary": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "day": {
-                                            "type": "integer"
-                                        },
-                                        "date": {
-                                            "type": "string"
-                                        },
-                                        "title": {
-                                            "type": "string"
-                                        },
-                                        "activities": {
-                                            "type": "array",
-                                            "minItems": 3,
-                                            "maxItems": 3,
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "time": {
-                                                        "type": "string"
-                                                    },
-                                                    "title": {
-                                                        "type": "string"
-                                                    },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "category": {
-                                                        "type": "string",
-                                                        "enum": ACTIVITY_CATEGORIES,
-                                                    },
-                                                    "location": {
-                                                        "type": "string"
-                                                    },
+            response_text = _request_json(
+                model,
+                prompt,
+                "tripora_itinerary",
+                {
+                    "type": "object",
+                    "properties": {
+                        "itinerary": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "day": {
+                                        "type": "integer"
+                                    },
+                                    "date": {
+                                        "type": "string"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "activities": {
+                                        "type": "array",
+                                        "minItems": 3,
+                                        "maxItems": 3,
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "time": {
+                                                    "type": "string"
                                                 },
-                                                "required": [
-                                                    "time",
-                                                    "title",
-                                                    "description",
-                                                    "category",
-                                                    "location",
-                                                ],
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                },
+                                                "category": {
+                                                    "type": "string",
+                                                    "enum": ACTIVITY_CATEGORIES,
+                                                },
+                                                "location": {
+                                                    "type": "string"
+                                                },
                                             },
+                                            "required": [
+                                                "time",
+                                                "title",
+                                                "description",
+                                                "category",
+                                                "location",
+                                            ],
                                         },
                                     },
-                                    "required": [
-                                        "day",
-                                        "title",
-                                        "date",
-                                        "activities",
-                                    ],
                                 },
-                            }
-                        },
-                        "required": [
-                            "itinerary"
-                        ],
+                                "required": [
+                                    "day",
+                                    "title",
+                                    "date",
+                                    "activities",
+                                ],
+                            },
+                        }
                     },
-                    http_options=types.HttpOptions(
-                        timeout=int(attempt_timeout * 1000),
-                    ),
-                ),
+                    "required": [
+                        "itinerary"
+                    ],
+                },
+                attempt_timeout,
             )
 
         except Exception as error:
 
             logger.error(
-                "GEMINI API ERROR (attempt %s/%s, model %s): %s",
+                "GROQ API ERROR (attempt %s/%s, model %s): %s",
                 attempt,
                 max_attempts,
                 model,
-                error,
+                _describe_error(error),
             )
 
-            last_error = str(error)
+            last_error = _describe_error(error)
+
+            # Strict structured outputs: Groq rejected the model's own
+            # output against the schema (400 json_validate_failed). Treat
+            # it like invalid JSON: consume this attempt and ask again with
+            # a correction, without echoing the rejected output anywhere.
+            if _is_output_validation_error(error):
+                last_error = (
+                    "The previous response did not match the required JSON "
+                    "schema."
+                )
+                continue
 
             # A model id that no longer exists (404 NOT_FOUND, "no longer
             # available") will never succeed — skip straight to the next
             # model instead of consuming the retry budget on it.
             if (
                 _is_permanent_model_error(error)
-                and model_index < len(GEMINI_MODELS) - 1
+                and model_index < len(GROQ_MODELS) - 1
             ):
                 model_index += 1
-                model = GEMINI_MODELS[model_index]
+                model = GROQ_MODELS[model_index]
                 model_transient_errors = 0
                 logger.warning(
-                    "Skipping permanently unavailable Gemini model, "
+                    "Skipping permanently unavailable Groq model, "
                     "falling back to %s.",
                     model,
                 )
                 continue
 
-            # The Gemini client surfaces HTTP status codes in the message.
+            # Groq errors are classified by SDK exception type and status code.
             # A 429/5xx (notably 503 UNAVAILABLE under high demand) is
             # transient, so back off briefly and, if the model stays down,
             # fall back to the next capable model.
@@ -919,16 +1024,21 @@ Interests: {interests}
                 raise
 
             model_transient_errors += 1
+            if isinstance(error, groq.RateLimitError):
+                # Groq rate limits are per model and reset over tens of
+                # seconds: retrying the same model a second later cannot
+                # succeed, so move to the next model on the next attempt.
+                model_transient_errors = max(model_transient_errors, 2)
             if (
                 model_transient_errors >= 2
-                and model_index < len(GEMINI_MODELS) - 1
+                and model_index < len(GROQ_MODELS) - 1
                 and attempt < max_attempts
             ):
                 model_index += 1
-                model = GEMINI_MODELS[model_index]
+                model = GROQ_MODELS[model_index]
                 model_transient_errors = 0
                 logger.warning(
-                    "Falling back to Gemini model %s after transient error.",
+                    "Falling back to Groq model %s after transient error.",
                     model,
                 )
             time.sleep(_backoff_seconds(model_transient_errors))
@@ -941,24 +1051,24 @@ Interests: {interests}
 
         try:
 
-            result = json.loads(response.text)
+            result = json.loads(response_text)
 
         except (json.JSONDecodeError, TypeError) as error:
 
             logger.error(
-                "GEMINI JSON ERROR (attempt %s/%s): %s",
+                "GROQ JSON ERROR (attempt %s/%s): %s",
                 attempt,
                 max_attempts,
                 error,
             )
 
             logger.debug(
-                "GEMINI RESPONSE: %s",
-                response.text,
+                "GROQ RESPONSE: %s",
+                response_text,
             )
 
             last_error = (
-                f"Gemini returned invalid JSON: {error}"
+                f"The AI returned invalid JSON: {error}"
             )
 
             continue
@@ -1026,7 +1136,7 @@ Interests: {interests}
 # ============================================================
 
 def _validate_swap_activity(activity, time_slot, seen_titles):
-    """Validate the single replacement activity Gemini returned.
+    """Validate the single replacement activity the AI returned.
 
     Enforces the exact same activity contract the itinerary uses
     (time/title/description/category/location), keeps the requested
@@ -1036,7 +1146,7 @@ def _validate_swap_activity(activity, time_slot, seen_titles):
 
     if not isinstance(activity, dict):
         raise ValueError(
-            "Gemini response must be a JSON object."
+            "AI response must be a JSON object."
         )
 
     required_fields = [
@@ -1104,7 +1214,7 @@ def generate_activity_swap(
     day_weather=(),
     deadline=None,
 ):
-    """Ask Gemini for ONE replacement activity for a single itinerary slot.
+    """Ask the AI for ONE replacement activity for a single itinerary slot.
 
     Returns one activity dict in the exact same JSON shape existing
     itinerary activities use (time/title/description/category/location),
@@ -1122,7 +1232,7 @@ def generate_activity_swap(
     last_error = None
 
     model_index = 0
-    model = GEMINI_MODELS[model_index]
+    model = GROQ_MODELS[model_index]
     model_transient_errors = 0
 
     categories_list = ", ".join(ACTIVITY_CATEGORIES)
@@ -1306,71 +1416,78 @@ REQUIREMENTS:
 """
 
         # ====================================================
-        # CALL GEMINI
+        # CALL GROQ
         # ====================================================
 
         try:
 
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema={
-                        "type": "object",
-                        "properties": {
-                            "time": {
-                                "type": "string"
-                            },
-                            "title": {
-                                "type": "string"
-                            },
-                            "description": {
-                                "type": "string"
-                            },
-                            "category": {
-                                "type": "string",
-                                "enum": ACTIVITY_CATEGORIES,
-                            },
-                            "location": {
-                                "type": "string"
-                            },
+            response_text = _request_json(
+                model,
+                prompt,
+                "tripora_activity",
+                {
+                    "type": "object",
+                    "properties": {
+                        "time": {
+                            "type": "string"
                         },
-                        "required": [
-                            "time",
-                            "title",
-                            "description",
-                            "category",
-                            "location",
-                        ],
+                        "title": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "category": {
+                            "type": "string",
+                            "enum": ACTIVITY_CATEGORIES,
+                        },
+                        "location": {
+                            "type": "string"
+                        },
                     },
-                    http_options=types.HttpOptions(
-                        timeout=int(attempt_timeout * 1000),
-                    ),
-                ),
+                    "required": [
+                        "time",
+                        "title",
+                        "description",
+                        "category",
+                        "location",
+                    ],
+                },
+                attempt_timeout,
             )
 
         except Exception as error:
 
             logger.error(
-                "GEMINI API ERROR (swap, attempt %s/%s, model %s): %s",
+                "GROQ API ERROR (swap, attempt %s/%s, model %s): %s",
                 attempt,
                 max_attempts,
                 model,
-                error,
+                _describe_error(error),
             )
 
-            last_error = str(error)
+            last_error = _describe_error(error)
+
+            # Strict structured outputs: Groq rejected the model's own
+            # output against the schema (400 json_validate_failed). Treat
+            # it like invalid JSON: consume this attempt and ask again with
+            # a correction, without echoing the rejected output anywhere.
+            if _is_output_validation_error(error):
+                last_error = (
+                    "The previous response did not match the required JSON "
+                    "schema."
+                )
+                continue
 
             if (
                 _is_permanent_model_error(error)
-                and model_index < len(GEMINI_MODELS) - 1
+                and model_index < len(GROQ_MODELS) - 1
             ):
                 model_index += 1
-                model = GEMINI_MODELS[model_index]
+                model = GROQ_MODELS[model_index]
                 model_transient_errors = 0
                 logger.warning(
-                    "Skipping permanently unavailable Gemini model, "
+                    "Skipping permanently unavailable Groq model, "
                     "falling back to %s.",
                     model,
                 )
@@ -1382,16 +1499,21 @@ REQUIREMENTS:
                 raise
 
             model_transient_errors += 1
+            if isinstance(error, groq.RateLimitError):
+                # Groq rate limits are per model and reset over tens of
+                # seconds: retrying the same model a second later cannot
+                # succeed, so move to the next model on the next attempt.
+                model_transient_errors = max(model_transient_errors, 2)
             if (
                 model_transient_errors >= 2
-                and model_index < len(GEMINI_MODELS) - 1
+                and model_index < len(GROQ_MODELS) - 1
                 and attempt < max_attempts
             ):
                 model_index += 1
-                model = GEMINI_MODELS[model_index]
+                model = GROQ_MODELS[model_index]
                 model_transient_errors = 0
                 logger.warning(
-                    "Falling back to Gemini model %s after "
+                    "Falling back to Groq model %s after "
                     "transient error.",
                     model,
                 )
@@ -1405,24 +1527,24 @@ REQUIREMENTS:
 
         try:
 
-            result = json.loads(response.text)
+            result = json.loads(response_text)
 
         except (json.JSONDecodeError, TypeError) as error:
 
             logger.error(
-                "GEMINI JSON ERROR (swap, attempt %s/%s): %s",
+                "GROQ JSON ERROR (swap, attempt %s/%s): %s",
                 attempt,
                 max_attempts,
                 error,
             )
 
             logger.debug(
-                "GEMINI RESPONSE: %s",
-                response.text,
+                "GROQ RESPONSE: %s",
+                response_text,
             )
 
             last_error = (
-                f"Gemini returned invalid JSON: {error}"
+                f"The AI returned invalid JSON: {error}"
             )
 
             continue

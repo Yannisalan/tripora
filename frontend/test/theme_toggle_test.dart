@@ -140,12 +140,15 @@ void main() {
         await AppPreferences.instance.setThemeMode(ThemeMode.system);
         await settle(tester);
         expect(onScreen(tester), os);
-        // The control names the theme on screen, not "System".
-        final label = os == Brightness.dark ? 'Dark' : 'Light';
+        // The control shows the theme it switches TO (from the theme on
+        // screen), never a "System" state.
+        final icon = os == Brightness.dark
+            ? Icons.light_mode_outlined
+            : Icons.dark_mode_outlined;
         expect(
           find.descendant(
-            of: find.byType(ThemeToggleRow),
-            matching: find.text(label),
+            of: find.byType(ThemeToggleButton),
+            matching: find.byIcon(icon),
           ),
           findsOneWidget,
         );
@@ -205,7 +208,7 @@ void main() {
       expect(inSide(find.text('AI travel companion')), findsNothing);
       expect(inSide(find.textContaining('ACTIVE AURA')), findsNothing);
       // Theme control and the rest of the sidebar are still there.
-      expect(inSide(find.byType(ThemeToggleRow)), findsOneWidget);
+      expect(inSide(find.byType(ThemeToggleButton)), findsOneWidget);
       expect(inSide(find.text('Plan a Trip')), findsOneWidget);
     });
   });
@@ -218,7 +221,7 @@ void main() {
       for (final size in const [
         Size(390, 844),
         Size(320, 640),
-        Size(768, 1024),
+        Size(767, 1024),
       ]) {
         await pumpShell(tester, size);
         final bar = find.byType(AppBar).first;

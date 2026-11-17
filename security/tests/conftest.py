@@ -5,7 +5,7 @@ This module is loaded by pytest as conftest.py. It:
 1. Puts the Tripora backend package on sys.path so the app and models
    can be imported from security/tests/.
 2. Provides an isolated test database (SQLite in-memory by default).
-3. Stubs Gemini AI itinerary generation and weather requests so tests
+3. Stubs Groq AI itinerary generation and weather requests so tests
    never make external API calls or incur API costs.
 4. Disables all external email providers to prevent real emails from
    being sent during the test suite.
@@ -62,7 +62,7 @@ os.environ["JWT_SECRET_KEY"] = (
     "tripora-security-test-secret-key-not-for-production"
 )
 
-os.environ["GEMINI_API_KEY"] = "tripora-test-dummy-gemini-key"
+os.environ["GROQ_API_KEY"] = "tripora-test-dummy-groq-key"
 os.environ["ADMIN_API_TOKEN"] = "tripora-test-admin-token"
 os.environ["ADMIN_LEGACY_TOKEN_ENABLED"] = "true"
 
@@ -252,7 +252,7 @@ def _stub_generate_itinerary(
     weather=(),
     deadline=None,
 ):
-    """Generate a deterministic test itinerary without calling Gemini."""
+    """Generate a deterministic test itinerary without calling Groq."""
 
     start = date.fromisoformat(str(start_date)[:10])
     end = date.fromisoformat(str(end_date)[:10])
@@ -317,7 +317,7 @@ def _stub_generate_activity_swap(
 
 @pytest.fixture(autouse=True)
 def stub_ai(monkeypatch):
-    """Prevent tests from making real Gemini or weather API requests."""
+    """Prevent tests from making real Groq or weather API requests."""
 
     monkeypatch.setattr(
         trips_module,

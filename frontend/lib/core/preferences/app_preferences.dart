@@ -64,7 +64,16 @@ class AppPreferences extends ChangeNotifier {
   static const String _languageKey = 'preferred_language';
   static const String _currencyKey = 'preferred_currency';
   static const String _themeModeKey = 'preferred_theme_mode';
-  static const String _aiConsentKey = 'ai_consent_given';
+  /// Versioned AI-consent key. Bump the suffix whenever the AI disclosure
+  /// (`planner.aiDisclosureBody`) changes materially, so everyone is asked
+  /// again. v2 (2026-11): Groq named as provider, United States processing,
+  /// full list of data sent. The v1 key (`ai_consent_given`) is no longer
+  /// read, so an earlier acceptance never counts as consent to v2.
+  static const String aiConsentKey = 'ai_consent_v2';
+
+  /// Key used by the first (pre-Groq) disclosure. Kept only so tests can
+  /// prove it is ignored; never read or written by the app.
+  static const String legacyAiConsentKey = 'ai_consent_given';
 
   // ============================================================
   // STATE
@@ -93,9 +102,9 @@ class AppPreferences extends ChangeNotifier {
   /// Used to avoid clobbering locally-chosen prefs from backend values.
   bool get loadedFromStorage => _loadedFromStorage;
 
-  /// Whether the user has acknowledged that itinerary generation is powered
-  /// by a third-party AI provider. Persisted locally so the disclosure is
-  /// shown exactly once.
+  /// Whether the user has accepted the CURRENT version of the third-party AI
+  /// disclosure ([aiConsentKey]). Persisted locally so the disclosure is
+  /// shown once per version.
   bool get aiConsentGiven => _aiConsentGiven;
 
   static String symbolFor(String code) => _symbols[code] ?? '$code ';
@@ -112,7 +121,7 @@ class AppPreferences extends ChangeNotifier {
     final storedCurrency = prefs.getString(_currencyKey);
     final storedThemeMode = prefs.getString(_themeModeKey);
 
-    _aiConsentGiven = prefs.getBool(_aiConsentKey) ?? false;
+    _aiConsentGiven = prefs.getBool(aiConsentKey) ?? false;
 
     if (storedLanguage != null && validLanguages.contains(storedLanguage)) {
       _language = storedLanguage;
@@ -159,7 +168,7 @@ class AppPreferences extends ChangeNotifier {
     await prefs.setString(_languageKey, _language);
     await prefs.setString(_currencyKey, _currency);
     await prefs.setString(_themeModeKey, _themeModeToString(_themeMode));
-    await prefs.setBool(_aiConsentKey, _aiConsentGiven);
+    await prefs.setBool(aiConsentKey, _aiConsentGiven);
   }
 
   // ============================================================
@@ -203,8 +212,9 @@ class AppPreferences extends ChangeNotifier {
     await _persist();
   }
 
-  /// Records that the user has seen and accepted the third-party AI
-  /// disclosure. One-time: persisted locally and never re-prompted.
+  /// Records that the user has seen and accepted the current third-party AI
+  /// disclosure. Persisted under [aiConsentKey]; re-prompted only when that
+  /// key's version changes.
   Future<void> setAiConsentGiven(bool given) async {
     if (given == _aiConsentGiven) return;
 

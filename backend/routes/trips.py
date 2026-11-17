@@ -400,7 +400,7 @@ def generate_trip():
     # GENERATE AI ITINERARY
     # ========================================================
 
-    # Hard deadline for the whole generate request (weather + Gemini +
+    # Hard deadline for the whole generate request (weather + Groq +
     # parsing), kept comfortably below the client's 60s request timeout.
     deadline = time.monotonic() + GENERATION_BUDGET_SECONDS
 

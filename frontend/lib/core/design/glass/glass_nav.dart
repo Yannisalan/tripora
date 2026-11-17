@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
@@ -10,13 +12,15 @@ import 'glass_tokens.dart';
 /// Two presentations of the same destinations, both built on
 /// [GlassSurface]:
 ///
-/// - [GlassBottomNav]: floating capsule bar (compact + medium widths).
-/// - [GlassSideNav]: floating vertical sidebar (expanded widths).
+/// - [GlassBottomNav]: floating capsule bar (compact widths).
+/// - [GlassNavRail]: icon-only rail (medium widths).
+/// - [GlassSideNav]: docked full sidebar (expanded widths).
 ///
 /// Kept generic (via [GlassNavItem]) so screens decide their own items and
 /// the shell only wires up index + callback - no business logic lives here.
-/// Both share the same selected-state styling ([_selectedDecoration]) so a
-/// destination looks the same wherever it is rendered.
+/// The bottom bar keeps its pill selection ([_selectedDecoration]); the rail
+/// and the sidebar share a tinted fill with a left accent bar
+/// ([_SideNavSelection]).
 /// ---------------------------------------------------------------------
 
 class GlassNavItem {
@@ -66,23 +70,6 @@ BoxDecoration _selectedDecoration(
           ]
         : null,
   );
-}
-
-/// Small crimson dot marking the active destination (Tripora 2.0).
-class _ActiveDot extends StatelessWidget {
-  const _ActiveDot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: const BoxDecoration(
-        color: TriporaBrand.crimson,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
 }
 
 /// Icon that swaps between outlined and filled with the glass motion.
@@ -369,15 +356,107 @@ class _NavLabel extends StatelessWidget {
   }
 }
 
+
 // ---------------------------------------------------------------------------
-// Sidebar
+// Side navigation (rail + sidebar)
+//
+// Shared by the medium rail and the expanded sidebar: a quiet, translucent
+// panel docked to the window edge (no hard slab), separated from the
+// content by a low-opacity hairline, with an optional light blur.
 // ---------------------------------------------------------------------------
 
-/// Floating vertical glass sidebar used at expanded widths.
+/// Translucent docked panel behind the rail and the sidebar.
+class _SideNavPanel extends StatelessWidget {
+  const _SideNavPanel({required this.width, required this.child});
+
+  final double width;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.glass.isDark;
+    final colors = context.triporaColors;
+
+    return SizedBox(
+      width: width,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              // ~2% white over navy. Light mode needs a little more veil
+              // to read as a panel over the pale ambient background.
+              color: Colors.white.withValues(alpha: isDark ? 0.02 : 0.35),
+              border: Border(
+                right: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : colors.border.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+            child: SafeArea(right: false, child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Selection styling shared by rail and sidebar items: a soft crimson fill
+/// and a 3 px crimson accent bar on the leading edge. No outline, no dot.
+class _SideNavSelection {
+  _SideNavSelection._();
+
+  static const double fillAlpha = 0.12;
+  static const double barWidth = 3;
+
+  static BoxDecoration decoration(bool selected, BorderRadius radius) {
+    return BoxDecoration(
+      color: selected
+          ? TriporaBrand.crimson.withValues(alpha: fillAlpha)
+          : Colors.transparent,
+      borderRadius: radius,
+    );
+  }
+
+  /// Hover wash: ~6% of the foreground (white on navy).
+  static Color hover(BuildContext context) =>
+      context.triporaColors.textPrimary.withValues(alpha: 0.06);
+}
+
+/// The 3 px leading accent bar, animated in/out with the selection.
+class _SideNavAccentBar extends StatelessWidget {
+  const _SideNavAccentBar({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      top: 10,
+      bottom: 10,
+      child: AnimatedOpacity(
+        opacity: selected ? 1 : 0,
+        duration: GlassMotion.resolve(context, GlassMotion.fast),
+        child: Container(
+          width: _SideNavSelection.barWidth,
+          decoration: BoxDecoration(
+            color: TriporaBrand.crimson,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Docked full sidebar used at expanded widths.
 ///
-/// [header] sits above the destinations (the brand), [footer] below them
-/// (the primary call to action). The column scrolls when the window is
-/// too short to fit everything, so it never overflows.
+/// Order, top to bottom: [header] (brand), [primaryAction] (the single
+/// primary CTA), the destinations, then [footer] (account area) pinned to
+/// the bottom. The column scrolls when the window is too short.
 class GlassSideNav extends StatelessWidget {
   const GlassSideNav({
     super.key,
@@ -385,6 +464,7 @@ class GlassSideNav extends StatelessWidget {
     required this.onSelected,
     required this.items,
     this.header,
+    this.primaryAction,
     this.footer,
     this.width = GlassNavMetrics.sidebarWidth,
   });
@@ -393,67 +473,44 @@ class GlassSideNav extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final List<GlassNavItem> items;
   final Widget? header;
+  final Widget? primaryAction;
   final Widget? footer;
   final double width;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.glass.isDark;
-    final colors = context.triporaColors;
-
-    // Tripora 2.0: a compact panel docked to the window edge (not a
-    // floating card), separated from the content by a hairline.
-    return SizedBox(
+    return _SideNavPanel(
       width: width,
-      child: GlassSurface(
-        variant: GlassVariant.bar,
-        borderRadius: BorderRadius.zero,
-        padding: EdgeInsets.zero,
-        elevation: 0,
-        showBorder: false,
-        showHighlight: false,
-        tintStrength: isDark ? 0.55 : 1,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(right: BorderSide(color: colors.border)),
-          ),
-          child: SafeArea(
-            right: false,
-            child: CustomScrollView(
-              primary: false,
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (header != null) ...[
-                          header!,
-                          const SizedBox(height: 18),
-                        ],
-                        for (var i = 0; i < items.length; i++) ...[
-                          _GlassSideNavItemView(
-                            item: items[i],
-                            selected: i == currentIndex,
-                            onTap: () => onSelected(i),
-                          ),
-                          if (i != items.length - 1) const SizedBox(height: 4),
-                        ],
-                        const Spacer(),
-                        if (footer != null) ...[
-                          const SizedBox(height: 18),
-                          footer!,
-                        ],
-                      ],
+      child: CustomScrollView(
+        primary: false,
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 20, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (header != null) ...[header!, const SizedBox(height: 16)],
+                  if (primaryAction != null) ...[
+                    primaryAction!,
+                    const SizedBox(height: 16),
+                  ],
+                  for (var i = 0; i < items.length; i++) ...[
+                    _GlassSideNavItemView(
+                      item: items[i],
+                      selected: i == currentIndex,
+                      onTap: () => onSelected(i),
                     ),
-                  ),
-                ),
-              ],
+                    if (i != items.length - 1) const SizedBox(height: 4),
+                  ],
+                  const Spacer(),
+                  if (footer != null) ...[const SizedBox(height: 16), footer!],
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -475,15 +532,13 @@ class _GlassSideNavItemView extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final colors = context.triporaColors;
 
-    // Icon: brand crimson in light, bright AA variant in dark (see the
-    // bottom bar). Label: the mode's AA crimson text (scheme.primary).
-    final active = context.glass.isDark ? scheme.primary : TriporaBrand.crimson;
-    final activeLabel = scheme.primary;
-    final inactive = colors.textSecondary;
-    final color = selected ? active : inactive;
+    // Icon: the mode's AA crimson (scheme.primary). Label: primary text on
+    // the 12% wash, so it stays well above 4.5:1 in both modes.
+    final iconColor = selected ? scheme.primary : colors.textSecondary;
+    final labelColor = selected ? colors.textPrimary : colors.textSecondary;
 
     final duration = GlassMotion.resolve(context, GlassMotion.base);
-    final radius = BorderRadius.circular(GlassRadius.sm);
+    final radius = BorderRadius.circular(GlassRadius.xs);
 
     return Semantics(
       button: true,
@@ -495,50 +550,173 @@ class _GlassSideNavItemView extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: radius,
-          hoverColor: active.withValues(alpha: 0.08),
-          focusColor: active.withValues(alpha: 0.20),
-          highlightColor: active.withValues(alpha: 0.10),
-          child: AnimatedContainer(
-            duration: duration,
-            curve: GlassMotion.standard,
-            constraints: const BoxConstraints(
-              minHeight: GlassNavMetrics.minTouchTarget,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: _selectedDecoration(
-              context,
-              selected,
-              radius: GlassRadius.sm,
-            ),
-            child: Row(
-              children: [
-                _NavIcon(
-                  item: item,
-                  selected: selected,
-                  color: color,
-                  size: 20,
+          hoverColor: _SideNavSelection.hover(context),
+          focusColor: scheme.primary.withValues(alpha: 0.20),
+          highlightColor: scheme.primary.withValues(alpha: 0.10),
+          child: Stack(
+            children: [
+              AnimatedContainer(
+                duration: duration,
+                curve: GlassMotion.standard,
+                constraints: const BoxConstraints(
+                  minHeight: GlassNavMetrics.minTouchTarget,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AnimatedDefaultTextStyle(
-                    duration: duration,
-                    curve: GlassMotion.standard,
-                    style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                      fontSize: 14,
-                      color: selected ? activeLabel : inactive,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: _SideNavSelection.decoration(selected, radius),
+                child: Row(
+                  children: [
+                    _NavIcon(
+                      item: item,
+                      selected: selected,
+                      color: iconColor,
+                      size: 20,
                     ),
-                    child: Text(
-                      item.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AnimatedDefaultTextStyle(
+                        duration: duration,
+                        curve: GlassMotion.standard,
+                        style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                          fontSize: 14,
+                          color: labelColor,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                        ),
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+              ),
+              _SideNavAccentBar(selected: selected),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Icon-only navigation rail used at medium widths.
+///
+/// Same destinations and selection styling as [GlassSideNav]; every item
+/// carries a [Tooltip] and a [Semantics] label because the text is hidden.
+/// [leading] sits above the destinations (the primary action), [trailing]
+/// is pinned to the bottom (account + theme).
+class GlassNavRail extends StatelessWidget {
+  const GlassNavRail({
+    super.key,
+    required this.currentIndex,
+    required this.onSelected,
+    required this.items,
+    this.leading,
+    this.trailing,
+    this.width = GlassNavMetrics.railWidth,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+  final List<GlassNavItem> items;
+  final Widget? leading;
+  final Widget? trailing;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SideNavPanel(
+      width: width,
+      child: CustomScrollView(
+        primary: false,
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 20, 8, 14),
+              child: Column(
+                children: [
+                  if (leading != null) ...[leading!, const SizedBox(height: 16)],
+                  for (var i = 0; i < items.length; i++) ...[
+                    _GlassNavRailItemView(
+                      item: items[i],
+                      selected: i == currentIndex,
+                      onTap: () => onSelected(i),
+                    ),
+                    if (i != items.length - 1) const SizedBox(height: 4),
+                  ],
+                  const Spacer(),
+                  if (trailing != null) ...[
+                    const SizedBox(height: 16),
+                    trailing!,
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlassNavRailItemView extends StatelessWidget {
+  const _GlassNavRailItemView({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final GlassNavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.triporaColors;
+    final radius = BorderRadius.circular(GlassRadius.xs);
+
+    return Tooltip(
+      message: item.label,
+      preferBelow: false,
+      waitDuration: const Duration(milliseconds: 300),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: item.label,
+        excludeSemantics: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            hoverColor: _SideNavSelection.hover(context),
+            focusColor: scheme.primary.withValues(alpha: 0.20),
+            highlightColor: scheme.primary.withValues(alpha: 0.10),
+            child: Stack(
+              children: [
+                AnimatedContainer(
+                  duration: GlassMotion.resolve(context, GlassMotion.base),
+                  curve: GlassMotion.standard,
+                  width: double.infinity,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: _SideNavSelection.decoration(selected, radius),
+                  child: _NavIcon(
+                    item: item,
+                    selected: selected,
+                    color: selected ? scheme.primary : colors.textSecondary,
+                    size: 22,
                   ),
                 ),
-                if (selected) ...[
-                  const SizedBox(width: 8),
-                  const _ActiveDot(),
-                ],
+                _SideNavAccentBar(selected: selected),
               ],
             ),
           ),

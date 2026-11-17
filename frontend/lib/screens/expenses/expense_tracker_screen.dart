@@ -337,7 +337,9 @@ class _ExpenseTrackerScreenState extends State<ExpenseTrackerScreen> {
       if (!mounted) return;
 
       _showMessage(
-        error.toString(),
+        error is AiBusyException
+            ? context.tr('planner.aiBusy')
+            : error.toString(),
         isError: true,
       );
     }

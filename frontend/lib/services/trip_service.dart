@@ -24,6 +24,16 @@ class AiBusyException implements Exception {
   String toString() => message;
 }
 
+/// Throws [AiBusyException] when the backend answered HTTP 503 `ai_busy`
+/// (the AI provider stayed rate limited or unavailable). Shared by every
+/// AI-backed call so the UI can show the localized "AI is busy" message
+/// instead of the backend's English text.
+void _throwIfAiBusy(int statusCode, Object? decoded) {
+  if (statusCode == 503 && decoded is Map && decoded['error'] == 'ai_busy') {
+    throw const AiBusyException();
+  }
+}
+
 /// Adapts TripModel to the TripLike interface TripReminderScheduler
 /// expects. If your TripModel's field names differ from `destination`,
 /// `startDate`, or `endDate`, update the getters below — nothing else
@@ -380,6 +390,8 @@ class TripService {
       throw Exception('Trip not found.');
     }
 
+    _throwIfAiBusy(response.statusCode, decoded);
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       if (decoded is Map) {
         throw Exception(
@@ -442,6 +454,8 @@ class TripService {
     if (response.statusCode == 404) {
       throw Exception('Trip not found.');
     }
+
+    _throwIfAiBusy(response.statusCode, decoded);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       if (decoded is Map) {
@@ -509,6 +523,8 @@ class TripService {
     if (response.statusCode == 404) {
       throw Exception('Trip not found.');
     }
+
+    _throwIfAiBusy(response.statusCode, decoded);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       if (decoded is Map) {

@@ -306,7 +306,7 @@ class Config:
     RATE_LIMIT_VERIFY_RESEND_WINDOW = os.getenv(
         "RATE_LIMIT_VERIFY_RESEND_WINDOW", "3600")
 
-    # Platform-wide ceiling on AI (Gemini) calls across ALL users, so many
+    # Platform-wide ceiling on AI (Groq) calls across ALL users, so many
     # accounts together cannot run up unbounded spend.
     RATE_LIMIT_AI_GLOBAL_LIMIT = os.getenv("RATE_LIMIT_AI_GLOBAL_LIMIT", "300")
     RATE_LIMIT_AI_GLOBAL_WINDOW = os.getenv(
@@ -335,7 +335,7 @@ class Config:
     RATE_LIMIT_RESET_LIMIT = os.getenv("RATE_LIMIT_RESET_LIMIT", "5")
     RATE_LIMIT_RESET_WINDOW = os.getenv("RATE_LIMIT_RESET_WINDOW", "900")
 
-    # AI activity swap (one Gemini call chain per request)
+    # AI activity swap (one Groq call chain per request)
     RATE_LIMIT_AI_SWAP_LIMIT = os.getenv("RATE_LIMIT_AI_SWAP_LIMIT", "20")
     RATE_LIMIT_AI_SWAP_WINDOW = os.getenv("RATE_LIMIT_AI_SWAP_WINDOW", "600")
 

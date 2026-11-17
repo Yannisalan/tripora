@@ -132,13 +132,36 @@ class PrivacyContent {
     ),
     LegalSection(
       '4. Third-Party AI Processing',
-      'To generate your itineraries, we send your trip details (destination, '
-      'dates, number of travelers, and selected interests) to a third-party AI '
-      'provider, which processes that information solely to produce your '
-      'itinerary. This processing is not used for advertising or to build '
-      'profiles about you. AI-generated content may occasionally be '
-      'inaccurate, so please verify reservations, opening hours, and other '
-      'trip details yourself before relying on them.',
+      'Tripora uses Groq, a third-party AI provider, to generate, regenerate, '
+      'and update your itineraries and to swap individual activities. For '
+      'these features we send Groq the trip details the request needs: '
+      'destination, travel dates, number of travelers, budget, travel style, '
+      'selected interests, your language preference, and, when available, '
+      'the weather forecast for your trip dates. When you swap an activity, '
+      'we also send the activity being replaced and the other activities '
+      'already planned in your trip. We do not send your name, email '
+      'address, or password.'
+      '\n\n'
+      'Groq is based in the United States. Information we send to Groq may '
+      'be processed and stored in the United States, which may have data '
+      'protection laws that differ from those in your country.'
+      '\n\n'
+      'Groq handles this information under its own terms and documentation, '
+      'which may change. According to Groq’s published documentation, Groq '
+      'does not retain inference requests by default, but it may temporarily '
+      'log requests and responses for up to 30 days (or longer where '
+      'required by law) to troubleshoot reliability issues or investigate '
+      'suspected abuse. Groq’s published Services Agreement states that Groq '
+      'is not permitted to use these inputs and outputs to train or '
+      'fine-tune AI models unless the customer gives permission or '
+      'instructions to do so, and otherwise limits their use to providing '
+      'its service and certain other purposes, such as reliable operation '
+      'and legal compliance.'
+      '\n\n'
+      'Tripora does not use your trip details for advertising and does not '
+      'sell them. AI-generated content may occasionally be inaccurate, so '
+      'please verify reservations, opening hours, and other trip details '
+      'yourself before relying on them.',
     ),
     LegalSection(
       '5. Data Retention and Security',

@@ -270,23 +270,26 @@ double lerpDouble(double a, double b, double t) => a + (b - a) * t;
 /// the layout follows browser resizes, rotation, split-screen and
 /// foldables the same way on every target.
 ///
-/// | Width          | Size class | Primary navigation      |
-/// |----------------|------------|-------------------------|
-/// | < 600          | compact    | floating bottom bar     |
-/// | 600 - 1023     | medium     | floating bottom bar     |
-/// | >= 1024        | expanded   | left sidebar            |
+/// | Width          | Size class | Primary navigation           |
+/// |----------------|------------|------------------------------|
+/// | < 768          | compact    | floating bottom bar          |
+/// | 768 - 1279     | medium     | icon-only rail (72 px)       |
+/// | >= 1280        | expanded   | full left sidebar (240 px)   |
 /// ---------------------------------------------------------------------
 
 enum TriporaLayoutSize { compact, medium, expanded }
 
+/// The primary navigation shown for a size class. Exactly one is built.
+enum TriporaNavMode { bottomBar, rail, sidebar }
+
 class TriporaBreakpoints {
   TriporaBreakpoints._();
 
-  /// First width of the medium (tablet) size class.
-  static const double medium = 600;
+  /// First width of the medium (tablet / small laptop) size class.
+  static const double medium = 768;
 
   /// First width of the expanded (desktop) size class.
-  static const double expanded = 1024;
+  static const double expanded = 1280;
 
   /// Size class for an available logical [width].
   static TriporaLayoutSize sizeFor(double width) {
@@ -300,10 +303,26 @@ class TriporaBreakpoints {
   static TriporaLayoutSize of(BuildContext context) =>
       sizeFor(MediaQuery.sizeOf(context).width);
 
-  /// Whether the left sidebar (rather than the bottom bar) is the primary
-  /// navigation at [width].
+  /// Primary navigation for an available logical [width].
+  static TriporaNavMode navFor(double width) {
+    switch (sizeFor(width)) {
+      case TriporaLayoutSize.compact:
+        return TriporaNavMode.bottomBar;
+      case TriporaLayoutSize.medium:
+        return TriporaNavMode.rail;
+      case TriporaLayoutSize.expanded:
+        return TriporaNavMode.sidebar;
+    }
+  }
+
+  /// Whether the full left sidebar is the primary navigation at [width].
   static bool usesSidebar(double width) =>
-      sizeFor(width) == TriporaLayoutSize.expanded;
+      navFor(width) == TriporaNavMode.sidebar;
+
+  /// Whether any side navigation (rail or sidebar) replaces the bottom bar
+  /// at [width].
+  static bool usesSideNavigation(double width) =>
+      navFor(width) != TriporaNavMode.bottomBar;
 
   /// Horizontal padding that centers content no wider than
   /// [maxContentWidth] in [width], never less than [minGutter]. Lets a
@@ -330,8 +349,11 @@ class GlassNavMetrics {
   /// on tablets instead of stretching edge to edge.
   static const double bottomBarMaxWidth = 560;
 
-  /// Width of the expanded-layout sidebar (Tripora 2.0 docked panel).
-  static const double sidebarWidth = 216;
+  /// Width of the expanded-layout sidebar.
+  static const double sidebarWidth = 240;
+
+  /// Width of the medium-layout icon-only rail.
+  static const double railWidth = 72;
 
   /// Minimum interactive size for every navigation target.
   static const double minTouchTarget = 48;

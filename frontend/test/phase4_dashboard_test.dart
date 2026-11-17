@@ -123,17 +123,17 @@ void main() {
       await pumpShell(tester, const Size(1440, 900));
       await settle(tester);
 
-      final card = find.bySemanticsLabel(RegExp(r'^Venice, Italy, '));
+      final card = find.bySemanticsLabel(RegExp(r'^London, United Kingdom, '));
       await tester.ensureVisible(card);
       await settle(tester);
       await tester.tap(card);
       await settle(tester);
 
-      expect(ActiveAura.instance.destination?.city, 'Venice');
+      expect(ActiveAura.instance.destination?.city, 'London');
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('active_aura_city'), 'Venice');
+      expect(prefs.getString('active_aura_city'), 'London');
       // Drives the AI command bar (the sidebar selector was removed).
-      expect(find.text('Plan Venice'), findsOneWidget);
+      expect(find.text('Plan London'), findsOneWidget);
     });
   });
 
@@ -183,7 +183,10 @@ void main() {
       );
 
       final before = AppPreferences.instance.themeMode;
-      await tester.tap(find.byType(ThemeToggleRow));
+      // The Light/Dark switch lives in the sidebar's account area.
+      await tester.tap(
+        find.descendant(of: side, matching: find.byType(ThemeToggleButton)),
+      );
       await settle(tester);
       expect(AppPreferences.instance.themeMode, isNot(before));
     });

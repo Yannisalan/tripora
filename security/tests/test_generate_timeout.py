@@ -1,7 +1,7 @@
 """Tests for the AI generation time-budget / retry policy.
 
 The backend must always answer within a short budget (well under the
-client's 60s timeout), retry a transient Gemini failure only a few times,
+client's 60s timeout), retry a transient Groq failure only a few times,
 never retry a permanent error, and never persist a trip after it has
 already given up (which would leave an orphan/duplicate).
 """
@@ -28,24 +28,41 @@ from .helpers import (
 # ----------------------------------------------------------------------
 
 
+class _FakeMessage:
+    def __init__(self, content):
+        self.content = content
+
+
+class _FakeChoice:
+    def __init__(self, content):
+        self.message = _FakeMessage(content)
+
+
 class _FakeResponse:
+    """Shape of a Groq chat completion: ``choices[0].message.content``."""
+
     def __init__(self, text):
-        self.text = text
+        self.choices = [_FakeChoice(text)]
 
 
-class _FakeModels:
+class _FakeCompletions:
     def __init__(self, handler):
         self._handler = handler
         self.calls = []
 
-    def generate_content(self, model=None, contents=None, config=None):
-        self.calls.append((model, config))
+    def create(self, model=None, **kwargs):
+        self.calls.append((model, kwargs))
         return self._handler(len(self.calls))
+
+
+class _FakeChat:
+    def __init__(self, handler):
+        self.completions = _FakeCompletions(handler)
 
 
 class _FakeClient:
     def __init__(self, handler):
-        self.models = _FakeModels(handler)
+        self.chat = _FakeChat(handler)
 
 
 class _ExpiredClock:
@@ -135,7 +152,7 @@ class TestRetryPolicy:
             _generate()
 
         # Capped at three tries, never the old eight.
-        assert len(fake.models.calls) == 3
+        assert len(fake.chat.completions.calls) == 3
 
     def test_first_transient_then_success(self, monkeypatch):
         def handler(n):
@@ -150,7 +167,7 @@ class TestRetryPolicy:
         result = _generate()
 
         assert result["itinerary"][0]["day"] == 1
-        assert len(fake.models.calls) == 2
+        assert len(fake.chat.completions.calls) == 2
 
     def test_client_timeout_is_transient_and_per_attempt_timeout_is_set(
         self, monkeypatch
@@ -167,13 +184,12 @@ class TestRetryPolicy:
         result = _generate()
 
         assert result["itinerary"][0]["day"] == 1
-        assert len(fake.models.calls) == 2
+        assert len(fake.chat.completions.calls) == 2
 
-        # A per-attempt timeout in milliseconds must reach the SDK config.
-        config = fake.models.calls[0][1]
-        timeout_ms = config.http_options.timeout
-        assert isinstance(timeout_ms, int)
-        assert timeout_ms >= itinerary_service.MIN_ATTEMPT_SECONDS * 1000
+        # A per-attempt timeout in seconds must reach the SDK request.
+        timeout_s = fake.chat.completions.calls[0][1]["timeout"]
+        assert isinstance(timeout_s, float)
+        assert timeout_s >= itinerary_service.MIN_ATTEMPT_SECONDS
 
     def test_permanent_error_is_not_retried(self, monkeypatch):
         fake = _FakeClient(lambda n: _raise_permanent())
@@ -184,7 +200,7 @@ class TestRetryPolicy:
             _generate()
 
         assert not isinstance(excinfo.value, itinerary_service.AIBusyError)
-        assert len(fake.models.calls) == 1
+        assert len(fake.chat.completions.calls) == 1
 
 
 # ----------------------------------------------------------------------
@@ -251,7 +267,7 @@ class TestGenerateRouteBudget:
         )
 
         assert resp.status_code == 200, resp.get_json()
-        assert len(fake.models.calls) == 2
+        assert len(fake.chat.completions.calls) == 2
 
         user = get_user_by_email("ok@example.com")
         assert Trip.query.filter_by(user_id=user.id).count() == 1

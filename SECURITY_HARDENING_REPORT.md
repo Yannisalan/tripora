@@ -722,7 +722,7 @@ No production SQL, no Render/Neon changes, no commits. Production facts below co
 | `ADMIN_API_TOKEN` | Transitional | none (shared-token path off) | Unset before an MFA admin exists = no admin access at all. | Keep until step I, then delete |
 | `ADMIN_LEGACY_TOKEN_ENABLED` | No | `true` | `false` before an MFA admin exists = no admin access. | Step I only |
 | `REQUEST_LOGGING_ENABLED`, `LOG_LEVEL` | No | `true`, `INFO` | `DEBUG` logs more detail. | Unchanged |
-| `GEMINI_API_KEY`, `DUFFEL_API_TOKEN`, `TRAVELPAYOUTS_API_KEY`, `GOOGLE_CLIENT_ID_*`, `APPLE_CLIENT_ID` | Feature keys | none | The feature fails closed. | Unchanged |
+| `GROQ_API_KEY`, `GEMINI_API_KEY`, `DUFFEL_API_TOKEN`, `TRAVELPAYOUTS_API_KEY`, `GOOGLE_CLIENT_ID_*`, `APPLE_CLIENT_ID` | Feature keys | none | The feature fails closed. | Unchanged |
 | `FLASK_DEBUG` | No | `0` | Ignored under Gunicorn. | Unchanged |
 
 ## P6.3 Runtime role

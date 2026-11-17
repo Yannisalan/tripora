@@ -73,7 +73,7 @@ SQL_RE = re.compile(
 )
 PATH_RE = re.compile(r"[A-Za-z]:\\\\|/usr/|/var/|site-packages|\\\\AppData\\\\|/backend/")
 JWT_RE = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")
-ENV_RE = re.compile(r"\b(DB_PASSWORD|DB_USER|JWT_SECRET_KEY|GEMINI_API_KEY|SECRET_KEY)\s*[=:]")
+ENV_RE = re.compile(r"\b(DB_PASSWORD|DB_USER|JWT_SECRET_KEY|GROQ_API_KEY|SECRET_KEY)\s*[=:]")
 KEY_RE = re.compile(r"\b[A-Za-z0-9_]{16,}\b=|\"(password|secret|api[_-]?key|token)\":\s*\"[^\"]+\"", re.I)
 VERSION_RE = re.compile(r"\b(sqla?chemy|flask[\s-]?[\d.]+|werkzeug|mysql|pymysql)[\s-]*\d+\.\d+", re.I)
 CLASSPATH_RE = re.compile(r"site-packages")
@@ -83,7 +83,7 @@ SQLITE_RE = re.compile(r"sqlite|mysql\+|\d+\.\d+\.\d+:\d+")
 # production secrets). We assert these exact dummy values never leak.
 DUMMY_SECRETS = [
     "tripora-security-test-secret-key",
-    "tripora-test-dummy-gemini-key",
+    "tripora-test-dummy-groq-key",
     "test_password",
 ]
 

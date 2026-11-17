@@ -13,7 +13,7 @@ Covers the contract of ``POST /api/auth/google`` (and the shared
 * The email used comes from the *verified token claims*, never from the client.
 
 The Google ID token verification is stubbed (``routes.auth.verify_identity_token``
-is monkeypatched) exactly like the Gemini stub in conftest — verification
+is monkeypatched) exactly like the AI stub in conftest — verification
 itself is covered by the real ``google-auth`` library and is out of scope here.
 """
 

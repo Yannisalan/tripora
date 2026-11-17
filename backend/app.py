@@ -234,7 +234,7 @@ AUTH_FLOW_ENDPOINTS = frozenset({
 # Blueprints whose features require a verified email address.
 VERIFIED_EMAIL_BLUEPRINTS = frozenset({"trips", "expenses", "travel", "weather"})
 
-# Endpoints that call Gemini; also counted against the platform-wide budget.
+# Endpoints that call the AI provider (Groq); also counted against the platform-wide budget.
 AI_ENDPOINTS = frozenset({
     "trips.generate_trip",
     "trips.regenerate_trip_itinerary",

@@ -55,7 +55,7 @@ def _swap(client, token, trip_id):
 
 
 # ----------------------------------------------------------------------
-# TRP-01  AI swap endpoint had no rate limit (unbounded Gemini spend)
+# TRP-01  AI swap endpoint had no rate limit (unbounded AI provider spend)
 # ----------------------------------------------------------------------
 
 def test_trp01_swap_activity_is_rate_limited(client, production_limits):

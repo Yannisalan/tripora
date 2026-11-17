@@ -40,6 +40,26 @@ Widget buildAiConsentDialog(BuildContext dialogContext) {
   );
 }
 
+/// Shows the AI disclosure unless the current version was already accepted,
+/// and returns whether AI features may run. Every action that sends trip
+/// data to the AI provider (generate, regenerate, swap, date edits) calls
+/// this first; declining sends nothing.
+Future<bool> ensureAiConsent(BuildContext context) async {
+  if (AppPreferences.instance.aiConsentGiven) return true;
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: buildAiConsentDialog,
+  );
+
+  if (confirmed == true) {
+    await AppPreferences.instance.setAiConsentGiven(true);
+  }
+
+  return confirmed == true;
+}
+
 class PlannerScreen extends StatefulWidget {
   final String? initialDestination;
 
@@ -538,12 +558,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
       return;
     }
 
-    if (!AppPreferences.instance.aiConsentGiven) {
-      final consented = await _askAiConsent();
-
-      if (consented != true || !mounted) {
-        return;
-      }
+    if (!await ensureAiConsent(context) || !mounted) {
+      return;
     }
 
     final TripModel trip = TripModel(
@@ -664,23 +680,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
         });
       }
     }
-  }
-
-  /// Shows the one-time third-party AI disclosure before the first itinerary
-  /// is generated. The user's acceptance is persisted so the dialog only
-  /// appears once per install.
-  Future<bool> _askAiConsent() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: buildAiConsentDialog,
-    );
-
-    if (confirmed == true) {
-      await AppPreferences.instance.setAiConsentGiven(true);
-    }
-
-    return confirmed == true;
   }
 
   // ============================================================

@@ -5,7 +5,7 @@ from services.itinerary_service import generate_itinerary
 
 @pytest.mark.integration
 def test_generate_itinerary():
-    """Verify that Gemini can generate a structured travel itinerary."""
+    """Verify that the AI provider (Groq) can generate a structured itinerary."""
     result = generate_itinerary(
         destination="Cotonou, Benin",
         start_date="2026-08-22",

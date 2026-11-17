@@ -1,6 +1,6 @@
 # Security Testing Guide
 
-How to run, extend and interpret Tripora's security checks. Everything here runs **locally** against an in-memory SQLite app with Gemini, weather and email stubbed. No test contacts production or third-party APIs.
+How to run, extend and interpret Tripora's security checks. Everything here runs **locally** against an in-memory SQLite app with the AI provider (Groq), weather and email stubbed. No test contacts production or third-party APIs.
 
 ## 1. Run everything locally (Windows / PowerShell)
 
@@ -46,7 +46,7 @@ podman run -d --name tripora-redis-test -p 127.0.0.1:56379:6379 docker.io/librar
 
 # migrate as owner, then create + grant the runtime role
 cd backend
-DB_USER=tripora_owner DB_PASSWORD=local-test-only DB_HOST=127.0.0.1 DB_PORT=55432 DB_NAME=tripora_security_test JWT_SECRET_KEY=local-only-0123456789abcdefghijkl GEMINI_API_KEY=dummy venv/Scripts/python -m flask --app wsgi db upgrade
+DB_USER=tripora_owner DB_PASSWORD=local-test-only DB_HOST=127.0.0.1 DB_PORT=55432 DB_NAME=tripora_security_test JWT_SECRET_KEY=local-only-0123456789abcdefghijkl GROQ_API_KEY=dummy venv/Scripts/python -m flask --app wsgi db upgrade
 podman exec tripora-pg-test psql -U tripora_owner -d tripora_security_test   -c "CREATE ROLE tripora_runtime LOGIN PASSWORD 'local-runtime-test-only';"
 podman cp db/roles.sql tripora-pg-test:/tmp/roles.sql      # MSYS_NO_PATHCONV=1 in Git Bash
 podman exec tripora-pg-test psql -U tripora_owner -d tripora_security_test   -v migrator=tripora_owner -f /tmp/roles.sql
@@ -181,7 +181,7 @@ rm -r frontend/test/canvaskit
 - [ ] `curl -I https://<api>/api/health` shows `Strict-Transport-Security`, `X-Content-Type-Options`, `Content-Security-Policy`.
 - [ ] `curl -I https://<web>` shows HSTS, `X-Frame-Options`, `Referrer-Policy`.
 - [ ] Release Android build is signed with the upload key, not the debug key.
-- [ ] Provider consoles (Gemini, Travelpayouts, Duffel) have spend or quota caps.
+- [ ] Provider consoles (Groq, Travelpayouts, Duffel) have spend or quota caps.
 - [ ] Dependabot PRs and the weekly workflow run are green.
 
 ## 5. Baselines

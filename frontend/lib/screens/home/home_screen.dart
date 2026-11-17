@@ -54,6 +54,22 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Active Aura: the first of Home's existing featured destinations.
   static const String _featuredCity = 'Seychelles';
 
+  /// "Destination-driven accent auras" shows only two countries from each
+  /// continent (first two of each continent block in the catalogue). North
+  /// America has a single country (United States), so it keeps its two
+  /// cities. The full catalogue is still used everywhere else.
+  static const Set<String> _auraCities = {
+    'Paris', 'London', // Europe
+    'Tokyo', 'Dubai', // Asia
+    'Cotonou', 'Abidjan', // Africa
+    'New York', 'San Francisco', // North America
+    'Rio de Janeiro', 'Buenos Aires', // South America
+    'Sydney', 'Queenstown', // Oceania
+  };
+
+  static final List<DestinationModel> _auraDestinations =
+      destinations.where((d) => _auraCities.contains(d.city)).toList();
+
   @override
   void initState() {
     super.initState();
@@ -199,7 +215,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 24.0
                 : 40.0;
 
-            const maxContentWidth = 1280.0;
+            // Wide windows: one centered 1200 px column, so the hero, the
+            // command bar and the grids stay grouped instead of stretching.
+            const maxContentWidth = 1200.0;
 
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -238,7 +256,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildCommandBar(isMobile),
                           SizedBox(height: isMobile ? 28 : 36),
                           AccentAuraStrip(
-                            destinations: destinations,
+                            // Phones keep the horizontal strip; wider
+                            // layouts get an equal-height grid.
+                            grid: !isMobile,
+                            destinations: _auraDestinations,
                             selectedCity: ActiveAura.instance.destination?.city,
                             onSelected: (d) => ActiveAura.instance.select(d),
                           ),

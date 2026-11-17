@@ -70,8 +70,9 @@ Finder _item(Finder nav, String label) => find.descendant(
 );
 
 /// Finder for whichever primary navigation is on screen.
-Finder _anyNav() =>
-    find.byWidgetPredicate((w) => w is GlassBottomNav || w is GlassSideNav);
+Finder _anyNav() => find.byWidgetPredicate(
+  (w) => w is GlassBottomNav || w is GlassNavRail || w is GlassSideNav,
+);
 
 void main() {
   setUp(() {
@@ -86,19 +87,26 @@ void main() {
 
   test('breakpoints follow width only', () {
     expect(TriporaBreakpoints.sizeFor(360), TriporaLayoutSize.compact);
-    expect(TriporaBreakpoints.sizeFor(599.9), TriporaLayoutSize.compact);
-    expect(TriporaBreakpoints.sizeFor(600), TriporaLayoutSize.medium);
-    expect(TriporaBreakpoints.sizeFor(1023.9), TriporaLayoutSize.medium);
-    expect(TriporaBreakpoints.sizeFor(1024), TriporaLayoutSize.expanded);
-    expect(TriporaBreakpoints.usesSidebar(1023), isFalse);
-    expect(TriporaBreakpoints.usesSidebar(1024), isTrue);
+    expect(TriporaBreakpoints.sizeFor(767.9), TriporaLayoutSize.compact);
+    expect(TriporaBreakpoints.sizeFor(768), TriporaLayoutSize.medium);
+    expect(TriporaBreakpoints.sizeFor(1279.9), TriporaLayoutSize.medium);
+    expect(TriporaBreakpoints.sizeFor(1280), TriporaLayoutSize.expanded);
+    expect(TriporaBreakpoints.navFor(767), TriporaNavMode.bottomBar);
+    expect(TriporaBreakpoints.navFor(768), TriporaNavMode.rail);
+    expect(TriporaBreakpoints.navFor(1279), TriporaNavMode.rail);
+    expect(TriporaBreakpoints.navFor(1280), TriporaNavMode.sidebar);
+    expect(TriporaBreakpoints.usesSidebar(1279), isFalse);
+    expect(TriporaBreakpoints.usesSidebar(1280), isTrue);
   });
 
-  for (final width in const <double>[360, 390, 768, 1024, 1440]) {
-    final sidebar = width >= 1024;
+  for (final width in const <double>[360, 390, 767, 768, 1024, 1279, 1280, 1440]) {
+    final mode = TriporaBreakpoints.navFor(width);
+    final sidebar = mode == TriporaNavMode.sidebar;
+    final rail = mode == TriporaNavMode.rail;
+    final vertical = sidebar || rail;
 
     testWidgets(
-      'width $width: exactly one ${sidebar ? 'sidebar' : 'bottom bar'} '
+      'width $width: exactly one ${mode.name} '
       'with the original five icons',
       (tester) async {
         await _pumpApp(tester, width);
@@ -113,8 +121,12 @@ void main() {
           sidebar ? findsOneWidget : findsNothing,
         );
         expect(
+          find.byType(GlassNavRail),
+          rail ? findsOneWidget : findsNothing,
+        );
+        expect(
           find.byType(GlassBottomNav),
-          sidebar ? findsNothing : findsOneWidget,
+          vertical ? findsNothing : findsOneWidget,
         );
 
         // Same order, labels and icons in either presentation.
@@ -138,16 +150,38 @@ void main() {
           for (final label in _labels) tester.getCenter(_item(nav, label)),
         ];
         for (var i = 1; i < positions.length; i++) {
-          if (sidebar) {
+          if (vertical) {
             expect(positions[i].dy, greaterThan(positions[i - 1].dy));
           } else {
             expect(positions[i].dx, greaterThan(positions[i - 1].dx));
           }
         }
 
-        // One Plan a Trip CTA: Home's app bar on compact/medium, the
-        // sidebar footer on expanded.
-        expect(find.text('Plan a Trip'), findsOneWidget);
+        // One Plan a Trip CTA: Home's app bar on compact, an icon button
+        // (with tooltip) in the rail, a labelled button in the sidebar.
+        if (rail) {
+          expect(find.text('Plan a Trip'), findsNothing);
+          expect(
+            find.descendant(
+              of: find.byType(GlassNavRail),
+              matching: find.byTooltip('Plan a Trip'),
+            ),
+            findsOneWidget,
+          );
+          // Every rail destination has a tooltip with its label.
+          for (final label in _labels) {
+            expect(
+              find.descendant(
+                of: find.byType(GlassNavRail),
+                matching: find.byTooltip(label),
+              ),
+              findsOneWidget,
+              reason: 'rail tooltip $label',
+            );
+          }
+        } else {
+          expect(find.text('Plan a Trip'), findsOneWidget);
+        }
         if (sidebar) {
           expect(
             find.descendant(
@@ -181,7 +215,7 @@ void main() {
   }
 
   testWidgets('tapping a destination switches tabs', (tester) async {
-    for (final width in const <double>[390, 1440]) {
+    for (final width in const <double>[390, 1024, 1440]) {
       await _pumpApp(tester, width);
       final nav = _anyNav();
       await tester.tap(_item(nav, 'Explore'));
@@ -208,10 +242,31 @@ void main() {
     }
   });
 
-  testWidgets('sidebar items are at least 48 px tall at 1024 px', (
+  testWidgets('rail items are at least 48x48 at 1024 px', (tester) async {
+    await _pumpApp(tester, 1024);
+    final railRect = tester.getRect(find.byType(GlassNavRail));
+    expect(railRect.width, GlassNavMetrics.railWidth);
+    for (final label in _labels) {
+      final item = find
+          .descendant(
+            of: _item(find.byType(GlassNavRail), label),
+            matching: find.byType(InkWell),
+          )
+          .first;
+      final size = tester.getSize(item);
+      expect(size.height, greaterThanOrEqualTo(48), reason: label);
+      expect(size.width, greaterThanOrEqualTo(48), reason: label);
+    }
+  });
+
+  testWidgets('sidebar items are at least 48 px tall at 1280 px', (
     tester,
   ) async {
-    await _pumpApp(tester, 1024);
+    await _pumpApp(tester, 1280);
+    expect(
+      tester.getRect(find.byType(GlassSideNav)).width,
+      GlassNavMetrics.sidebarWidth,
+    );
     // One InkWell per destination (the CTA button is not a destination).
     for (final label in _labels) {
       final item = find
@@ -231,8 +286,8 @@ void main() {
     }
   });
 
-  testWidgets('bottom bar is a centered capsule on tablets', (tester) async {
-    await _pumpApp(tester, 768);
+  testWidgets('bottom bar is a centered capsule below 768 px', (tester) async {
+    await _pumpApp(tester, 700);
     final surface = find
         .descendant(
           of: find.byType(GlassBottomNav),
@@ -241,7 +296,7 @@ void main() {
         .first;
     final rect = tester.getRect(surface);
     expect(rect.width, lessThanOrEqualTo(GlassNavMetrics.bottomBarMaxWidth));
-    expect(rect.center.dx, moreOrLessEquals(384, epsilon: 0.5));
+    expect(rect.center.dx, moreOrLessEquals(350, epsilon: 0.5));
   });
 
   testWidgets('bottom bar collapses while the keyboard is open', (
@@ -343,7 +398,17 @@ void main() {
       tester.state(find.byType(ProfileScreen, skipOffstage: false)),
     ];
 
-    for (final width in const <double>[768, 1024, 1440, 600, 360, 1100, 390]) {
+    for (final width in const <double>[
+      768,
+      1024,
+      1280,
+      1440,
+      600,
+      360,
+      1279,
+      767,
+      390,
+    ]) {
       await _resize(tester, width);
       expect(MainShell.currentIndex.value, 2, reason: 'tab at $width');
       expect(_anyNav(), findsOneWidget, reason: 'one nav at $width');

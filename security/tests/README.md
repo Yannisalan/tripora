@@ -48,9 +48,9 @@ in-memory databases.
   the SQLAlchemy URI to an **in-memory SQLite** database that is created
   empty per test and dropped afterwards.
 - **No real credentials are read or required.** Dummy env values
-  (`DB_*`, `JWT_SECRET_KEY`, `GEMINI_API_KEY`) are set for test construction.
+  (`DB_*`, `JWT_SECRET_KEY`, `GROQ_API_KEY`) are set for test construction.
   The real `backend/.env` is never read.
-- **No external network calls.** The Gemini AI itinerary call is stubbed with
+- **No external network calls.** The Groq AI itinerary call is stubbed with
   a deterministic fixture, so tests never reach a third-party API and incur
   no cost.
 

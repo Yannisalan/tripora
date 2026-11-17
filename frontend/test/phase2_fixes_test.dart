@@ -266,30 +266,46 @@ void main() {
   // R2, R4, R5, R8, R10 - layout
   // -------------------------------------------------------------------
 
-  testWidgets('R2: hero actions stack below 720 px of hero width', (
+  testWidgets('R2: hero actions sit below the title, grouped on the left', (
     tester,
   ) async {
     addTearDown(tester.view.reset);
     await http.runWithClient(() async {
-      for (final (width, stacked) in const [(700.0, true), (1280.0, false)]) {
+      // Every width: title, description and actions form one left-aligned
+      // block (wide heroes no longer push the actions to the far right).
+      for (final width in const [700.0, 1024.0, 1280.0, 1920.0]) {
         await pumpShell(tester, Size(width, 1000));
         final title = tester.getRect(find.text('Rio de Janeiro, Brazil').first);
-        final action = tester.getRect(find.text('Open trip'));
-        if (stacked) {
-          expect(action.top, greaterThan(title.bottom), reason: '$width');
-        } else {
-          expect(action.left, greaterThan(title.right), reason: '$width');
-        }
+        final action = tester.getRect(
+          find
+              .ancestor(
+                of: find.text('Open trip'),
+                matching: find.byWidgetPredicate((w) => w is FilledButton),
+              )
+              .first,
+        );
+        expect(action.top, greaterThan(title.bottom), reason: '$width');
+        expect(
+          action.left,
+          moreOrLessEquals(title.left, epsilon: 1),
+          reason: '$width',
+        );
       }
     }, fakeBackend);
   });
 
-  testWidgets('R4: My Trips is one column below 768 px, two at 768', (
+  testWidgets('R4: My Trips is one column below 768 px of content, two above', (
     tester,
   ) async {
     addTearDown(tester.view.reset);
     await http.runWithClient(() async {
-      for (final (width, columns) in const [(600.0, 1), (768.0, 2)]) {
+      // 768-839 px windows: the 72 px rail leaves under 768 px of content,
+      // so the list stays one column until the cards have room.
+      for (final (width, columns) in const [
+        (600.0, 1),
+        (768.0, 1),
+        (840.0, 2),
+      ]) {
         await pumpShell(tester, Size(width, 1400));
         MainShell.currentIndex.value = 3;
         await settle(tester);

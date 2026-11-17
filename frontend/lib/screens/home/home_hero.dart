@@ -109,6 +109,23 @@ class HomeHero extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Wider layouts: an extra bottom-up navy fall-off (90% at
+                  // the bottom edge, clear by 60% of the height), so the
+                  // left-grouped text stays readable over bright photos.
+                  // Phones keep their original scrims unchanged.
+                  if (!_compact)
+                    const Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [Color(0xE6080C1C), Color(0x00080C1C)],
+                            stops: [0.0, 0.6],
+                          ),
+                        ),
+                      ),
+                    ),
                   ConstrainedBox(
                     constraints: BoxConstraints(minHeight: height),
                     child: IntrinsicHeight(
@@ -277,37 +294,32 @@ class HomeHero extends StatelessWidget {
   }
 
   // ---------------------------------------------------------------------
-  // Bottom: metadata, title, description (left) + actions (right)
+  // Bottom: metadata, title, description, then the actions, all grouped
+  // on the left (no empty middle on wide heroes)
   // ---------------------------------------------------------------------
 
-  /// Below this hero width the text and the actions stack (as on phones)
-  /// instead of sitting side by side: at 600-719 px the side-by-side
-  /// actions squeezed the title onto two lines ("Tokyo, / Japan").
-  static const double _sideBySideMinWidth = 720;
+  /// Widest the bottom text group grows on wide heroes, so the title,
+  /// description and buttons read as one block on the left.
+  static const double _groupMaxWidth = 640;
 
   Widget _buildBottom(BuildContext context, double width) {
-    final stacked = _compact || width < _sideBySideMinWidth;
-    final text = _buildText(context);
-    final actions = _buildActions(context, stacked: stacked);
-
-    if (stacked) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [text, const SizedBox(height: 16), actions],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    final group = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(flex: 3, child: text),
-        const SizedBox(width: 20),
-        Flexible(
-          flex: 2,
-          child: Align(alignment: Alignment.bottomRight, child: actions),
-        ),
+        _buildText(context),
+        const SizedBox(height: 16),
+        _buildActions(context),
       ],
+    );
+
+    if (_compact) return group;
+    return Align(
+      alignment: Alignment.bottomLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _groupMaxWidth),
+        child: group,
+      ),
     );
   }
 
@@ -392,7 +404,7 @@ class HomeHero extends StatelessWidget {
     );
   }
 
-  Widget _buildActions(BuildContext context, {required bool stacked}) {
+  Widget _buildActions(BuildContext context) {
     final t = trip;
     final d = destination;
 
@@ -423,7 +435,6 @@ class HomeHero extends StatelessWidget {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      alignment: stacked ? WrapAlignment.start : WrapAlignment.end,
       children: buttons,
     );
   }
